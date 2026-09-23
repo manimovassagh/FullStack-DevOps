@@ -9,6 +9,8 @@
 
 In: plant CRUD, watering schedule + "water now", media (photos + any files) per plant with captions, a timeline that mixes photos/files/waterings, a local dev environment, Docker images, Terraform deployment to Floci (ECR, ECS, ALB, RDS, S3, Secrets Manager, CloudWatch Logs).
 
+Stage 5: rebuild the identical infrastructure with AWS CDK (TypeScript) in `infra-cdk/` to compare IaC tools.
+
 Out (candidate later stages): auth (Cognito), Lambda thumbnail generation on S3 upload, EventBridge Scheduler + SNS watering notifications, presigned-URL uploads, CI/CD, real-AWS deployment.
 
 ## Architecture
@@ -130,7 +132,7 @@ All data access goes through one typed `api.ts` module (`fetch`). Errors are sho
 
 `docker compose up` starts Postgres (5432, plus a `plant_test` database for integration tests) and Floci (4566). `make bucket` creates the S3 bucket in Floci. The backend runs with `go run ./cmd/server`; the frontend with `npm run dev` (proxy `/api` → `:8080`).
 
-## Deployment to Floci (stage 4, Terraform, separate plan)
+## Deployment to Floci (stage 4 Terraform, then stage 5 AWS CDK — same infra, built together with the user)
 
 The Terraform AWS provider is configured with `endpoints { ... = "http://localhost:4566" }`, test credentials, `skip_credentials_validation`, `skip_requesting_account_id`, `s3_use_path_style`.
 
