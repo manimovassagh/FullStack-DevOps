@@ -16,3 +16,6 @@ infra/.terraform/
 .DS_Store
 .idea/
 .vscode/
+
+# local browser automation artifacts
+.playwright-mcp/
