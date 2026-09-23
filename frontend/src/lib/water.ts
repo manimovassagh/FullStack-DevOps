@@ -14,6 +14,9 @@ export interface WaterStatus {
  *   daysUntil > 0  → upcoming
  */
 export function waterStatus(daysUntil: number): WaterStatus {
-  // TODO(you): implement — see water.test.ts for the exact expected labels.
-  throw new Error(`waterStatus not implemented (daysUntil=${daysUntil})`)
+  if (daysUntil < 0) return { tone: 'overdue', label: `${-daysUntil}d overdue` }
+  if (daysUntil === 0) return { tone: 'today', label: 'Water today' }
+  if (daysUntil === 1) return { tone: 'soon', label: 'Tomorrow' }
+  if (daysUntil <= 2) return { tone: 'soon', label: `In ${daysUntil} days` }
+  return { tone: 'ok', label: `In ${daysUntil} days` }
 }

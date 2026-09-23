@@ -22,7 +22,7 @@
 - Local creds for Floci: `AWS_ACCESS_KEY_ID=test`, `AWS_SECRET_ACCESS_KEY=test`, region `us-east-1`, bucket `plant-media`.
 - DB: user/pass/db `plant/plant/plant`, integration tests use DB `plant_test` via `TEST_DATABASE_URL`.
 - **Commit AND push as often as possible** (user request): after each green test step, each component, each config change — small conventional commits with the `Co-Authored-By` trailer, `git push` right after each commit.
-- **Learning checkpoints** (marked 🎓): stop and ask the user to write that function (5–10 lines) before continuing; the reference implementation in this plan is the fallback.
+- **No learning checkpoints in app code** (user request): the user's learning focus is only the Terraform/AWS deployment (Plan 2). Implement 🎓-marked functions directly using the reference implementation.
 
 ---
 
