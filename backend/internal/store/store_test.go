@@ -53,8 +53,6 @@ func mustCreate(t *testing.T, s *Postgres, in NewPlant) Plant {
 	return p
 }
 
-func ptr[T any](v T) *T { return &v }
-
 func TestMigrateIsIdempotent(t *testing.T) {
 	_, pool := newTestStore(t)
 	if err := Migrate(context.Background(), pool); err != nil {
@@ -66,7 +64,7 @@ func TestCreateAndGetPlantComputesSchedule(t *testing.T) {
 	s, pool := newTestStore(t)
 	ctx := context.Background()
 
-	created := mustCreate(t, s, NewPlant{Name: "Monstera", Species: "M. deliciosa", WaterEveryDays: 7, LastWateredOn: ptr(daysAgo(t, pool, 3))})
+	created := mustCreate(t, s, NewPlant{Name: "Monstera", Species: "M. deliciosa", WaterEveryDays: 7, LastWateredOn: new(daysAgo(t, pool, 3))})
 	if created.DaysUntilWater != 4 {
 		t.Errorf("DaysUntilWater = %d, want 4", created.DaysUntilWater)
 	}
@@ -97,7 +95,7 @@ func TestCreatePlantDefaultsLastWateredToToday(t *testing.T) {
 func TestListPlantsThirstiestFirst(t *testing.T) {
 	s, pool := newTestStore(t)
 	mustCreate(t, s, NewPlant{Name: "Cactus", WaterEveryDays: 30})
-	mustCreate(t, s, NewPlant{Name: "Fern", WaterEveryDays: 2, LastWateredOn: ptr(daysAgo(t, pool, 5))})
+	mustCreate(t, s, NewPlant{Name: "Fern", WaterEveryDays: 2, LastWateredOn: new(daysAgo(t, pool, 5))})
 	mustCreate(t, s, NewPlant{Name: "Basil", WaterEveryDays: 3})
 
 	list, err := s.ListPlants(context.Background())
@@ -121,7 +119,7 @@ func TestUpdatePlantPartial(t *testing.T) {
 	p := mustCreate(t, s, NewPlant{Name: "Pothos", Species: "Epipremnum", WaterEveryDays: 7})
 	time.Sleep(5 * time.Millisecond)
 
-	u, err := s.UpdatePlant(context.Background(), p.ID, PlantPatch{WaterEveryDays: ptr(10), Location: ptr("Kitchen")})
+	u, err := s.UpdatePlant(context.Background(), p.ID, PlantPatch{WaterEveryDays: new(10), Location: new("Kitchen")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +138,7 @@ func TestUnknownPlantIsNotFound(t *testing.T) {
 	if _, err := s.GetPlant(ctx, id); !errors.Is(err, ErrNotFound) {
 		t.Errorf("GetPlant: %v", err)
 	}
-	if _, err := s.UpdatePlant(ctx, id, PlantPatch{Name: ptr("x")}); !errors.Is(err, ErrNotFound) {
+	if _, err := s.UpdatePlant(ctx, id, PlantPatch{Name: new("x")}); !errors.Is(err, ErrNotFound) {
 		t.Errorf("UpdatePlant: %v", err)
 	}
 	if err := s.DeletePlant(ctx, id); !errors.Is(err, ErrNotFound) {
@@ -157,7 +155,7 @@ func TestUnknownPlantIsNotFound(t *testing.T) {
 func TestWaterPlant(t *testing.T) {
 	s, pool := newTestStore(t)
 	ctx := context.Background()
-	p := mustCreate(t, s, NewPlant{Name: "Fern", WaterEveryDays: 3, LastWateredOn: ptr(daysAgo(t, pool, 5))})
+	p := mustCreate(t, s, NewPlant{Name: "Fern", WaterEveryDays: 3, LastWateredOn: new(daysAgo(t, pool, 5))})
 
 	watered, err := s.WaterPlant(ctx, p.ID, nil)
 	if err != nil {
@@ -168,7 +166,7 @@ func TestWaterPlant(t *testing.T) {
 	}
 
 	// Logging an older watering must not move last_watered_on backwards.
-	back, err := s.WaterPlant(ctx, p.ID, ptr(daysAgo(t, pool, 2)))
+	back, err := s.WaterPlant(ctx, p.ID, new(daysAgo(t, pool, 2)))
 	if err != nil {
 		t.Fatal(err)
 	}
