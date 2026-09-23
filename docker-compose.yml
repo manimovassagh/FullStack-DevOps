@@ -1,0 +1,27 @@
+# Local development dependencies. The Go backend and Vite frontend run on the host.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: plant
+      POSTGRES_PASSWORD: plant
+      POSTGRES_DB: plant
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./dev/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plant -d plant"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  # Local AWS emulator (S3 now; ECS/RDS/ALB later in the Terraform stage).
+  floci:
+    image: floci/floci:latest
+    ports:
+      - "4566:4566"
+
+volumes:
+  pgdata:
