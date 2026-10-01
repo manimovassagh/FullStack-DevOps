@@ -16,6 +16,10 @@ resource "aws_key_pair" "main" {
 }
 
 locals {
+  # Our baked AMIs (ami/image-catalog.yaml). Graviton (arm64) vs x86, as you would choose on real AWS.
+  ami_id        = "ami-plant-ubuntu2404-${var.arch}"
+  instance_type = var.arch == "arm64" ? "t4g.micro" : "t3.micro"
+
   template_vars = {
     region                = var.region
     instance_aws_endpoint = var.instance_aws_endpoint
@@ -26,8 +30,8 @@ locals {
 }
 
 resource "aws_instance" "backend" {
-  ami                         = var.ami_id
-  instance_type               = var.instance_type
+  ami                         = local.ami_id
+  instance_type               = local.instance_type
   subnet_id                   = aws_subnet.app["a"].id
   vpc_security_group_ids      = [aws_security_group.backend.id]
   iam_instance_profile        = aws_iam_instance_profile.app["backend"].name
@@ -46,8 +50,8 @@ resource "aws_instance" "backend" {
 }
 
 resource "aws_instance" "frontend" {
-  ami                         = var.ami_id
-  instance_type               = var.instance_type
+  ami                         = local.ami_id
+  instance_type               = local.instance_type
   subnet_id                   = aws_subnet.app["a"].id
   vpc_security_group_ids      = [aws_security_group.frontend.id]
   iam_instance_profile        = aws_iam_instance_profile.app["frontend"].name

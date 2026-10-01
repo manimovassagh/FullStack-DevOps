@@ -15,21 +15,21 @@ variable "name" {
   default     = "plant-ec2"
 }
 
-variable "ami_id" {
-  description = "Floci AMI alias. ami-ubuntu2404-cloud boots systemd (bake it first with `make ami`); ami-ubuntu2404 is the no-systemd fallback."
+variable "arch" {
+  description = "CPU architecture of the local Docker host (arm64 on Apple Silicon, amd64 on CI runners). Picks the AMI and instance type; set by the Makefile."
   type        = string
-  default     = "ami-ubuntu2404-cloud"
+  default     = "arm64"
+
+  validation {
+    condition     = contains(["arm64", "amd64"], var.arch)
+    error_message = "arch must be arm64 or amd64."
+  }
 }
 
 variable "use_systemd" {
-  description = "false only with the fallback AMI: UserData then starts processes directly."
+  description = "false only with an AMI without systemd: UserData then starts processes directly."
   type        = bool
   default     = true
-}
-
-variable "instance_type" {
-  type    = string
-  default = "t4g.micro"
 }
 
 variable "alb_listener_port" {

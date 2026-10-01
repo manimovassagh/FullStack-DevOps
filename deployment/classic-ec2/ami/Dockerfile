@@ -1,7 +1,6 @@
-# Local stand-in for an Ubuntu 24.04 cloud AMI: systemd as PID 1 plus sshd.
-# Floci maps the AMI alias `ami-ubuntu2404-cloud` to the image tag
-# floci/ami-ubuntu:24.04-<arch>, which is not published; building it locally
-# under that tag makes Floci use it (same idea as baking an AMI with Packer).
+# Our "AMI": Ubuntu 24.04 with systemd as PID 1 plus sshd, baked like Packer would.
+# `make ami` tags it plant/ami-ubuntu-systemd:24.04-<arch>; ami/image-catalog.yaml
+# registers that tag with Floci as AMI ami-plant-ubuntu2404-<arch>.
 FROM public.ecr.aws/docker/library/ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive

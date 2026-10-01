@@ -12,12 +12,12 @@ AWS   := aws --endpoint-url $(FLOCI)
 # Instances are containers on the local Docker, so build for its CPU.
 DOCKER_ARCH := $(shell docker info --format '{{.Architecture}}' 2>/dev/null)
 GOARCH      := $(if $(filter aarch64 arm64,$(DOCKER_ARCH)),arm64,amd64)
+export TF_VAR_arch := $(GOARCH)
 
 .PHONY: ami artifacts init plan apply smoke health wait ssh-backend ssh-frontend destroy forget
 
-ami: ## bake the systemd Ubuntu image Floci uses for ami-ubuntu2404-cloud (see FLOCI-NOTES.md)
-	# Both tags: Floci's catalog maps the alias to the -arm64 tag even on amd64 hosts (CI runners).
-	docker build -t floci/ami-ubuntu:24.04-arm64 -t floci/ami-ubuntu:24.04-amd64 ami
+ami: ## bake our Ubuntu 24.04 + systemd "AMI" (ami/Dockerfile) for this host's CPU, see ami/image-catalog.yaml
+	docker build --platform linux/$(GOARCH) -t plant/ami-ubuntu-systemd:24.04-$(GOARCH) ami
 
 artifacts: ## build the Go binary and the React bundle that instances download from S3
 	mkdir -p $(BUILD)
@@ -60,7 +60,8 @@ ssh-backend:
 ssh-frontend:
 	./scripts/ssh.sh "$$(terraform output -raw frontend_instance_id)"
 
-destroy:
+destroy: ## empty the buckets first: on Floci, the provider's force_destroy can loop forever on leftover objects
+	-@for b in $$(terraform output -raw media_bucket 2>/dev/null) plant-ec2-artifacts; do $(AWS) s3 rm "s3://$$b" --recursive --quiet 2>/dev/null; done
 	terraform destroy -auto-approve
 
 forget: ## Floci was restarted and lost everything: drop the stale state so the next apply starts clean

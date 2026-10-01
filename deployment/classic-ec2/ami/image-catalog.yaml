@@ -1,0 +1,30 @@
+# Floci EC2 image catalog (mounted by docker-compose, FLOCI_SERVICES_EC2_IMAGE_CATALOG_PATH).
+# It replaces Floci's built-in catalog, so it lists only the AMIs this repo uses:
+# our baked Ubuntu 24.04 + systemd image (ami/Dockerfile, `make ami`) per CPU
+# architecture. Floci only uses a local image whose platform matches
+# `architecture`, so arm64 hosts (Apple Silicon) and amd64 hosts (CI runners)
+# each get their own entry.
+defaultDockerImage: public.ecr.aws/docker/library/ubuntu:24.04
+
+images:
+  - imageId: ami-plant-ubuntu2404-arm64
+    dockerImage: plant/ami-ubuntu-systemd:24.04-arm64
+    name: plant-ubuntu-24.04-systemd-arm64
+    description: Ubuntu 24.04 with systemd and sshd, baked locally (arm64)
+    ownerId: "000000000000"
+    architecture: arm64
+    rootDeviceType: ebs
+    virtualizationType: hvm
+    creationDate: "2026-10-01T00:00:00.000Z"
+    guestRuntime: systemd
+
+  - imageId: ami-plant-ubuntu2404-amd64
+    dockerImage: plant/ami-ubuntu-systemd:24.04-amd64
+    name: plant-ubuntu-24.04-systemd-amd64
+    description: Ubuntu 24.04 with systemd and sshd, baked locally (x86_64)
+    ownerId: "000000000000"
+    architecture: x86_64
+    rootDeviceType: ebs
+    virtualizationType: hvm
+    creationDate: "2026-10-01T00:00:00.000Z"
+    guestRuntime: systemd
