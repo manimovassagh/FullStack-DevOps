@@ -1,0 +1,38 @@
+# ---- frontend (artifact ${artifact_hash}) ----
+ENDPOINT="$${AWS_ENDPOINT_URL:-${instance_aws_endpoint}}"
+awsx() { aws --region ${region} $${ENDPOINT:+--endpoint-url "$ENDPOINT"} "$@"; }
+
+apt-get install -y -q --no-install-recommends nginx
+awsx s3 cp "s3://${artifacts_bucket}/frontend/dist.tar.gz" /tmp/dist.tar.gz
+rm -rf /var/www/plant && install -d /var/www/plant
+tar -xzf /tmp/dist.tar.gz -C /var/www/plant && rm /tmp/dist.tar.gz
+
+# Floci serves IMDS on 169.254.169.254:80 inside the instance, so `listen 80`
+# (0.0.0.0:80) fails with "address in use". Listen on each of our own IPs instead.
+# On real AWS a plain `listen 80;` is all you need.
+LISTEN=$(hostname -I | tr ' ' '\n' | grep -E '^[0-9.]+$' | sed 's/.*/    listen &:80;/')
+
+# Static files only — the ALB sends /api/* to the backend, never to nginx.
+cat > /etc/nginx/sites-available/default <<EOF
+server {
+$LISTEN
+    root /var/www/plant;
+    index index.html;
+
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # React Router: unknown paths are client-side routes.
+    location / {
+        try_files \$uri /index.html;
+    }
+}
+EOF
+nginx -t
+%{ if use_systemd ~}
+systemctl enable nginx && systemctl restart nginx
+%{ else ~}
+nginx
+%{ endif ~}

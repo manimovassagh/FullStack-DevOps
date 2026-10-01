@@ -7,11 +7,12 @@ backend/bin/
 .env
 .env.*
 !.env.example
-# terraform
-infra/.terraform/
+# terraform / deployments
+.terraform/
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl.bak
+deployment/**/build/
 # os / editor
 .DS_Store
 .idea/

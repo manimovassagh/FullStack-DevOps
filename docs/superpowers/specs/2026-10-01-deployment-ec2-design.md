@@ -73,7 +73,7 @@ The app applies its migrations at startup, so no separate migration step is need
 
 ## Data, secrets and IAM
 
-- RDS: `aws_db_instance` PostgreSQL 16, `db.t3.micro`, db name `plant`, user `plant`, `aws_db_subnet_group` over the two private-db subnets, SG `db`, `skip_final_snapshot = true`.
+- RDS: `aws_db_instance` PostgreSQL 16, `db.t4g.micro`, db name `plant`, user `plant`, `aws_db_subnet_group` over the two private-db subnets, SG `db`, `skip_final_snapshot = true`.
 - Password: `random_password` → `aws_secretsmanager_secret` `plant-ec2/db` holding JSON `{username, password, host, port, dbname}`.
 - S3: `plant-ec2-media` and `plant-ec2-artifacts`, with public access blocked and `force_destroy` (local learning stack). Names differ from the local-dev bucket `plant-media`, which lives in the same Floci.
 - IAM roles + instance profiles:

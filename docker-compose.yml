@@ -17,11 +17,18 @@ services:
       timeout: 3s
       retries: 20
 
-  # Local AWS emulator (S3 now; ECS/RDS/ALB later in the Terraform stage).
+  # Local AWS emulator. The Docker socket lets Floci run EC2 instances, RDS and
+  # ECS tasks as real containers (deployment/ stages).
   floci:
-    image: floci/floci:latest
+    # Pinned: deployment/classic-ec2 depends on 2.1.0 behaviour (see its FLOCI-NOTES.md).
+    image: floci/floci:2.1.0
     ports:
       - "4566:4566"
+      - "8088:80"   # ALB listener of deployment/classic-ec2 → http://localhost:8088
+    environment:
+      FLOCI_NETWORK_SECURITY_GROUP_ENFORCEMENT_ENABLED: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   pgdata:

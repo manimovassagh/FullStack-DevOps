@@ -1,0 +1,50 @@
+# ---- backend (artifact ${artifact_hash}) ----
+# Floci injects AWS_ENDPOINT_URL / AWS_EC2_METADATA_SERVICE_ENDPOINT into instances.
+# On real AWS both are unset and the CLI/SDK use the normal endpoints and IMDS.
+ENDPOINT="$${AWS_ENDPOINT_URL:-${instance_aws_endpoint}}"
+IMDS="$${AWS_EC2_METADATA_SERVICE_ENDPOINT:-}"
+awsx() { aws --region ${region} $${ENDPOINT:+--endpoint-url "$ENDPOINT"} "$@"; }
+
+id plant >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin plant
+install -d -m 0755 /opt/plant
+awsx s3 cp "s3://${artifacts_bucket}/backend/plant-api" /opt/plant/plant-api
+chmod 0755 /opt/plant/plant-api
+
+SECRET=$(awsx secretsmanager get-secret-value --secret-id "${db_secret_name}" --query SecretString --output text)
+DB_URL=$(echo "$SECRET" | jq -r '"postgres://\(.username):\(.password)@\(.host):\(.port)/\(.dbname)?sslmode=disable"')
+
+install -d -m 0700 /etc/plant # systemd reads EnvironmentFile as root
+cat > /etc/plant/env <<EOF
+PORT=8080
+DATABASE_URL=$DB_URL
+S3_BUCKET=${media_bucket}
+AWS_REGION=${region}
+AWS_ENDPOINT_URL=$ENDPOINT
+AWS_EC2_METADATA_SERVICE_ENDPOINT=$IMDS
+EOF
+chmod 0600 /etc/plant/env
+
+%{ if use_systemd ~}
+cat > /etc/systemd/system/plant-api.service <<'EOF'
+[Unit]
+Description=Plant Parent API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=plant
+EnvironmentFile=/etc/plant/env
+ExecStart=/opt/plant/plant-api
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+systemctl enable --now plant-api
+%{ else ~}
+# Fallback image without systemd: run directly, restart loop instead of Restart=always.
+nohup bash -c 'set -a; . /etc/plant/env; while true; do su -s /bin/sh plant -c /opt/plant/plant-api; sleep 2; done' \
+  >>/var/log/plant-api.log 2>&1 &
+%{ endif ~}

@@ -1,0 +1,11 @@
+{
+  "name": "deployment-smoke",
+  "private": true,
+  "description": "Post-deployment smoke tests shared by every deployment style",
+  "scripts": {
+    "browser": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0"
+  }
+}
