@@ -34,8 +34,12 @@ plan: artifacts
 apply: ami artifacts
 	terraform apply -auto-approve
 
-smoke:
-	./scripts/smoke.sh "$$(terraform output -raw app_url)" "$$(terraform output -raw media_bucket)"
+SMOKE := ../smoke
+
+smoke: ## API + browser smoke tests through the ALB (shared with every deployment style)
+	$(SMOKE)/api-smoke.sh "$$(terraform output -raw app_url)" "$$(terraform output -raw media_bucket)"
+	cd $(SMOKE) && npm ci --silent && npx playwright install chromium >/dev/null \
+		&& SMOKE_BASE_URL="$$(cd $(CURDIR) && terraform output -raw app_url)" npx playwright test
 
 health: ## target health of both target groups
 	@for tg in backend frontend; do echo "$$tg:"; $(AWS) elbv2 describe-target-health \
