@@ -27,7 +27,8 @@ curl -sf -o "$TMP/dl.png" "$API/media/$MID" || fail "download"
 cmp -s "$TMP/big.png" "$TMP/dl.png" && pass "download bytes match" || fail "download bytes differ"
 "${AWS[@]}" s3 ls "s3://$BUCKET/plants/$ID/" | grep -q "$MID" && pass "object in s3://$BUCKET" || fail "object missing in S3"
 
-curl -sf -X POST "$API/plants/$ID/water" >/dev/null && pass "water" || fail "water"
+# Same request the frontend sends (api.ts always posts a JSON body).
+curl -sf -X POST "$API/plants/$ID/water" -H 'content-type: application/json' -d '{}' >/dev/null && pass "water" || fail "water"
 [ "$(curl -sf "$API/plants/$ID" | json '["waterings"].__len__()')" = 1 ] && pass "watering recorded" || fail "watering recorded"
 [ "$(curl -sf "$API/plants" | python3 -c "import sys,json;print([p['cover_media_id'] for p in json.load(sys.stdin) if p['id']=='$ID'][0])")" = "$MID" ] \
   && pass "list shows cover photo" || fail "list shows cover photo"

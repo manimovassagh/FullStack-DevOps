@@ -65,4 +65,9 @@ resource "aws_iam_instance_profile" "app" {
   for_each = local.roles
   name     = "${var.name}-${each.key}"
   role     = aws_iam_role.app[each.key].name
+
+  # Floci does not store instance-profile tags, so default_tags would show as a change on every plan.
+  lifecycle {
+    ignore_changes = [tags_all]
+  }
 }

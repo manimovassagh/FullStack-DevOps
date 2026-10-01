@@ -36,6 +36,16 @@ Floci serves IMDS inside every instance through a socat listener on `169.254.169
 
 `CreateListener` binds the listener port inside the Floci container ("ELBv2 listener port started on 80"); docker-compose publishes it as `localhost:8088`. Floci itself can reach an instance on its compose-network IP. Whether the ALB's target health and forwarding succeed with the stage's security groups is verified by the Terraform apply (Task 7). See the stage README for the result.
 
+## ALB quirks
+
+- Floci's ALB connects to targets on their **VPC private IP**, but the Floci container is not attached to the VPC's Docker network (`floci-vpc-4566-<region>-<vpc id>`), so health checks time out. [floci.tf](floci.tf) attaches it (`docker network connect`) after the instances start; with that, both target groups turn `healthy`.
+- A `POST` with **no body** through the ALB reaches the Go API as a request its JSON binder rejects (`400 invalid JSON body`); the same request sent directly to the instance works. The frontend always sends a JSON body, so the app is unaffected; the smoke test sends `{}` like the frontend does.
+
+## Terraform drift on Floci
+
+- `referenced_security_group_id` comes back as `000000000000/sg-…` → `ignore_changes` on those rules.
+- Instance-profile tags are not stored → `ignore_changes = [tags_all]`.
+
 ## Security-group enforcement
 
 `FLOCI_NETWORK_SECURITY_GROUP_ENFORCEMENT_ENABLED=true` is set in docker-compose. Its effect on ALB → instance traffic is recorded in the README after the apply.

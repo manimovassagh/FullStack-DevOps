@@ -81,3 +81,9 @@ variable "frontend_dist_dir" {
   type    = string
   default = "../../frontend/dist"
 }
+
+variable "floci_container" {
+  description = "Name of the Floci container (docker compose project 'fullstack-devops', service 'floci')."
+  type        = string
+  default     = "fullstack-devops-floci-1"
+}

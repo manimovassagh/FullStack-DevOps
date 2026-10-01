@@ -47,6 +47,11 @@ resource "aws_vpc_security_group_ingress_rule" "from_alb" {
   ip_protocol                  = "tcp"
   from_port                    = each.value.port
   to_port                      = each.value.port
+
+  # Floci reports the reference as "<account>/sg-…", which would show as a change on every plan.
+  lifecycle {
+    ignore_changes = [referenced_security_group_id]
+  }
 }
 
 # Floci fallback (see FLOCI-NOTES.md): its ALB connects from its own address.
@@ -74,6 +79,11 @@ resource "aws_vpc_security_group_ingress_rule" "db_from_backend" {
   ip_protocol                  = "tcp"
   from_port                    = 5432
   to_port                      = 5432
+
+  # Floci reports the reference as "<account>/sg-…" (see from_alb).
+  lifecycle {
+    ignore_changes = [referenced_security_group_id]
+  }
 }
 
 resource "aws_vpc_security_group_egress_rule" "all" {
