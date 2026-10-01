@@ -1,6 +1,6 @@
 # Our "AMI": Ubuntu 24.04 with systemd as PID 1 plus sshd, baked like Packer would.
-# `make ami` tags it plant/ami-ubuntu-systemd:24.04-<arch>; ami/image-catalog.yaml
-# registers that tag with Floci as AMI ami-plant-ubuntu2404-<arch>.
+# Floci maps AMI ami-ubuntu2404-cloud to the image floci/ami-ubuntu:24.04-arm64,
+# which is not published; `make ami` builds it under that tag so Floci uses it.
 FROM public.ecr.aws/docker/library/ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive

@@ -9,15 +9,14 @@ export AWS_REGION            ?= us-east-1
 FLOCI := http://localhost:4566
 AWS   := aws --endpoint-url $(FLOCI)
 
-# Instances are containers on the local Docker, so build for its CPU.
-DOCKER_ARCH := $(shell docker info --format '{{.Architecture}}' 2>/dev/null)
-GOARCH      := $(if $(filter aarch64 arm64,$(DOCKER_ARCH)),arm64,amd64)
-export TF_VAR_arch := $(GOARCH)
+# The AMI (ami-ubuntu2404-cloud) is arm64, so instances are arm64 containers:
+# native on Apple Silicon, emulated with QEMU on amd64 hosts such as CI runners.
+GOARCH := arm64
 
 .PHONY: ami artifacts init plan apply smoke health wait ssh-backend ssh-frontend destroy forget
 
-ami: ## bake our Ubuntu 24.04 + systemd "AMI" (ami/Dockerfile) for this host's CPU, see ami/image-catalog.yaml
-	docker build --platform linux/$(GOARCH) -t plant/ami-ubuntu-systemd:24.04-$(GOARCH) ami
+ami: ## bake the Ubuntu 24.04 + systemd image Floci uses for ami-ubuntu2404-cloud (see FLOCI-NOTES.md)
+	docker build --platform linux/arm64 -t floci/ami-ubuntu:24.04-arm64 ami
 
 artifacts: ## build the Go binary and the React bundle that instances download from S3
 	mkdir -p $(BUILD)

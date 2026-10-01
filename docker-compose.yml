@@ -20,19 +20,15 @@ services:
   # Local AWS emulator. The Docker socket lets Floci run EC2 instances, RDS and
   # ECS tasks as real containers (deployment/ stages).
   floci:
-    # Pinned nightly: the EC2 image-catalog setting used by deployment/classic-ec2
-    # landed after release 2.1.0. Move to the next release tag once it ships.
-    image: floci/floci:nightly-09302026
+    # Pinned: deployment/classic-ec2 depends on 2.1.0 behaviour (see its FLOCI-NOTES.md).
+    image: floci/floci:2.1.0
     ports:
       - "4566:4566"
       - "8088:80"   # ALB listener of deployment/classic-ec2 → http://localhost:8088
     environment:
       FLOCI_NETWORK_SECURITY_GROUP_ENFORCEMENT_ENABLED: "true"
-      # Our own AMIs (baked systemd Ubuntu image) for the classic-ec2 stage.
-      FLOCI_SERVICES_EC2_IMAGE_CATALOG_PATH: /etc/floci/ec2-image-catalog.yaml
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./deployment/classic-ec2/ami/image-catalog.yaml:/etc/floci/ec2-image-catalog.yaml:ro
 
 volumes:
   pgdata:

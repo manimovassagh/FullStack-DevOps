@@ -15,15 +15,16 @@ variable "name" {
   default     = "plant-ec2"
 }
 
-variable "arch" {
-  description = "CPU architecture of the local Docker host (arm64 on Apple Silicon, amd64 on CI runners). Picks the AMI and instance type; set by the Makefile."
+variable "ami_id" {
+  description = "Floci's Ubuntu 24.04 systemd AMI (arm64). Its image is not published, so `make ami` bakes it locally (see FLOCI-NOTES.md)."
   type        = string
-  default     = "arm64"
+  default     = "ami-ubuntu2404-cloud"
+}
 
-  validation {
-    condition     = contains(["arm64", "amd64"], var.arch)
-    error_message = "arch must be arm64 or amd64."
-  }
+variable "instance_type" {
+  description = "Graviton (arm64), matching the arm64 AMI."
+  type        = string
+  default     = "t4g.micro"
 }
 
 variable "use_systemd" {
