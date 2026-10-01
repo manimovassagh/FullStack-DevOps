@@ -13,10 +13,11 @@ AWS   := aws --endpoint-url $(FLOCI)
 DOCKER_ARCH := $(shell docker info --format '{{.Architecture}}' 2>/dev/null)
 GOARCH      := $(if $(filter aarch64 arm64,$(DOCKER_ARCH)),arm64,amd64)
 
-.PHONY: ami artifacts init plan apply smoke health ssh-backend ssh-frontend destroy forget
+.PHONY: ami artifacts init plan apply smoke health wait ssh-backend ssh-frontend destroy forget
 
 ami: ## bake the systemd Ubuntu image Floci uses for ami-ubuntu2404-cloud (see FLOCI-NOTES.md)
-	docker build -t floci/ami-ubuntu:24.04-$(GOARCH) ami
+	# Both tags: Floci's catalog maps the alias to the -arm64 tag even on amd64 hosts (CI runners).
+	docker build -t floci/ami-ubuntu:24.04-arm64 -t floci/ami-ubuntu:24.04-amd64 ami
 
 artifacts: ## build the Go binary and the React bundle that instances download from S3
 	mkdir -p $(BUILD)
@@ -45,6 +46,13 @@ health: ## target health of both target groups
 	@for tg in backend frontend; do echo "$$tg:"; $(AWS) elbv2 describe-target-health \
 		--target-group-arn "$$(terraform output -raw $${tg}_target_group_arn)" \
 		--query 'TargetHealthDescriptions[].[Target.Id,TargetHealth.State,TargetHealth.Reason]' --output text; done
+
+wait: ## block until both target groups are healthy (UserData takes a minute or two), max ~6 min
+	@for i in $$(seq 1 72); do \
+		out=$$($(MAKE) -s health); \
+		[ "$$(echo "$$out" | grep -c healthy)" = 2 ] && [ -z "$$(echo "$$out" | grep unhealthy)" ] && { echo "$$out"; exit 0; }; \
+		sleep 5; \
+	done; echo "targets not healthy:"; $(MAKE) -s health; exit 1
 
 ssh-backend:
 	./scripts/ssh.sh "$$(terraform output -raw backend_instance_id)"

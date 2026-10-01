@@ -1,0 +1,86 @@
+# Deploys the classic EC2 stage to Floci on the runner, verifies it with the
+# shared smoke tests, then tears everything down. No real AWS account involved.
+name: deploy classic-ec2 (Floci)
+
+on:
+  push:
+    branches: [main, deployment-ec2]
+    paths: [deployment/classic-ec2/**, deployment/smoke/**, backend/**, frontend/**, docker-compose.yml, .github/workflows/deploy-classic-ec2.yml]
+  pull_request:
+    paths: [deployment/classic-ec2/**, deployment/smoke/**, backend/**, frontend/**, docker-compose.yml, .github/workflows/deploy-classic-ec2.yml]
+  workflow_dispatch:
+
+concurrency:
+  group: classic-ec2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: deployment/classic-ec2
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            deployment/smoke/package-lock.json
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.6
+          terraform_wrapper: false
+
+      - name: Start Postgres + Floci
+        working-directory: .
+        run: docker compose up -d --wait
+
+      - name: Terraform init
+        run: make init
+
+      - name: Deploy (bake AMI, build artifacts, terraform apply)
+        run: make apply
+
+      - name: Wait for healthy ALB targets
+        run: make wait
+
+      - name: Terraform plan is clean (idempotent)
+        run: terraform plan -detailed-exitcode -input=false
+
+      - name: Smoke tests (API + browser)
+        env:
+          CI: "true"
+        run: make smoke
+
+      - name: Diagnostics
+        if: failure()
+        run: |
+          make -s health || true
+          for id in $(terraform output -raw backend_instance_id) $(terraform output -raw frontend_instance_id); do
+            echo "::group::user-data $id"; docker exec "floci-ec2-$id" tail -60 /var/log/user-data.log || true; echo "::endgroup::"
+          done
+          docker exec "floci-ec2-$(terraform output -raw backend_instance_id)" journalctl -u plant-api -n 60 --no-pager || true
+          docker compose -f ../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: deployment/smoke/playwright-report
+          if-no-files-found: ignore
+
+      - name: Destroy
+        if: always()
+        run: make destroy || true
