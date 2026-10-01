@@ -13,6 +13,11 @@ resource "local_sensitive_file" "ssh_key" {
 resource "aws_key_pair" "main" {
   key_name   = var.name
   public_key = tls_private_key.ssh.public_key_openssh
+
+  # Floci does not store key-pair tags, so default_tags would show as a change on every plan.
+  lifecycle {
+    ignore_changes = [tags_all]
+  }
 }
 
 locals {

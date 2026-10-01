@@ -46,8 +46,10 @@ health: ## target health of both target groups
 		--target-group-arn "$$(terraform output -raw $${tg}_target_group_arn)" \
 		--query 'TargetHealthDescriptions[].[Target.Id,TargetHealth.State,TargetHealth.Reason]' --output text; done
 
-wait: ## block until both target groups are healthy (UserData takes a minute or two), max ~6 min
-	@for i in $$(seq 1 72); do \
+WAIT_TRIES ?= 72 # × 5 s; CI raises it because instances run under QEMU there
+
+wait: ## block until both target groups are healthy (UserData takes a minute or two)
+	@for i in $$(seq 1 $(WAIT_TRIES)); do \
 		out=$$($(MAKE) -s health); \
 		[ "$$(echo "$$out" | grep -c healthy)" = 2 ] && [ -z "$$(echo "$$out" | grep unhealthy)" ] && { echo "$$out"; exit 0; }; \
 		sleep 5; \

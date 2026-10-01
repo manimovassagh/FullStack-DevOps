@@ -8,9 +8,13 @@ They explain the few places where this stage differs from a real-AWS setup.
 - `RunInstances` starts a container named `floci-ec2-<instance-id>`. SSH (port 22) is published on the host from port 2200 upwards.
 - Floci attaches each instance to three Docker networks: the default bridge, the VPC network (the private IP from your subnet, e.g. `10.0.10.x`), and Floci's own compose network (`172.21.0.0/16`).
 
+## Floci version
+
+docker-compose pins `floci/floci:2.1.0`. The nightly builds (late September 2026) changed instance container names, VPC network names and IMDS registration, which breaks this stage; move to a newer release only after re-running `make apply wait smoke`.
+
 ## The systemd AMI must be baked locally
 
-`ami-ubuntu2404-cloud` maps to the image `floci/ami-ubuntu:24.04-arm64`, which is **not published**: launching fails with `pull access denied`. Floci uses an image that is already present locally, so `make ami` builds [ami/Dockerfile](ami/Dockerfile) (Ubuntu 24.04 + systemd + sshd) under that tag. With it, `systemctl is-system-running` reports `running`. This is the local equivalent of baking an AMI with Packer.
+`ami-ubuntu2404-cloud` maps to the image `floci/ami-ubuntu:24.04-arm64`, which is **not published**: launching fails with `pull access denied`. Floci uses an image that is already present locally, so `make ami` builds [ami/Dockerfile](ami/Dockerfile) (Ubuntu 24.04 + systemd + sshd) under that tag. With it, `systemctl is-system-running` reports `running`. This is the local equivalent of baking an AMI with Packer. The catalog entry is arm64, and Floci only uses a local image whose platform matches, so the image (and the Go binary) are always arm64. That's native on Apple Silicon; the GitHub Actions runner (x86) runs it under QEMU (`docker/setup-qemu-action`).
 
 ## What an instance sees
 
@@ -44,7 +48,7 @@ Floci serves IMDS inside every instance through a socat listener on `169.254.169
 ## Terraform drift on Floci
 
 - `referenced_security_group_id` comes back as `000000000000/sg-…` → `ignore_changes` on those rules.
-- Instance-profile tags are not stored → `ignore_changes = [tags_all]`.
+- Instance-profile and key-pair tags are not stored → `ignore_changes = [tags_all]`.
 
 ## Security-group enforcement
 

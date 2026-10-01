@@ -17,7 +17,7 @@ concurrency:
 jobs:
   deploy-and-verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: deployment/classic-ec2
@@ -42,6 +42,12 @@ jobs:
           terraform_version: 1.14.6
           terraform_wrapper: false
 
+      # The AMI is arm64 (Floci's ami-ubuntu2404-cloud); runners are x86, so the
+      # instance containers run under QEMU emulation.
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       - name: Start Postgres + Floci
         working-directory: .
         run: docker compose up -d --wait
@@ -53,7 +59,7 @@ jobs:
         run: make apply
 
       - name: Wait for healthy ALB targets
-        run: make wait
+        run: make wait WAIT_TRIES=240
 
       - name: Terraform plan is clean (idempotent)
         run: terraform plan -detailed-exitcode -input=false
