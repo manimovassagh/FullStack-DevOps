@@ -27,8 +27,8 @@ Each stage is self-contained: its own Terraform root, state, Makefile and README
  private app subnets a/b:  EC2 "frontend" — nginx serving the React build
                            EC2 "backend"  — Go binary as systemd service "plant-api"
  private db subnets a/b:   RDS PostgreSQL 16 ◄── backend only
- S3:      plant-media (user photos/files) · plant-artifacts (build outputs)
- Secrets: Secrets Manager "plant/db" (DB credentials)
+ S3:      plant-ec2-media (user photos/files) · plant-ec2-artifacts (build outputs)
+ Secrets: Secrets Manager "plant-ec2/db" (DB credentials)
 ```
 
 The ALB does the path routing, as on real AWS. The frontend calls relative `/api/...` URLs, so no app code changes are needed and nginx on the frontend instance only serves static files (with SPA fallback to `index.html`).
@@ -49,14 +49,14 @@ The ALB does the path routing, as on real AWS. The frontend calls relative `/api
 
 ## Compute
 
-Two `aws_instance` resources (one frontend, one backend, both in private-app subnet a), AMI `ami-ubuntu2404-cloud` (Floci's systemd + cloud-init Ubuntu image), a generated key pair (`tls_private_key` → `aws_key_pair`, private key written to a git-ignored file) and `user_data_replace_on_change = true`.
+Two `aws_instance` resources (one frontend, one backend, both in private-app subnet a), AMI `ami-ubuntu2404-cloud` (Floci's systemd + cloud-init Ubuntu image, arm64), instance type `t4g.micro` (arm64, matching the local Docker), a generated key pair (`tls_private_key` → `aws_key_pair`, private key written to a git-ignored file) and `user_data_replace_on_change = true`.
 
 Fallback if the systemd image does not boot locally: `ami-ubuntu2404` with UserData starting the processes directly (`nohup`/nginx daemon) instead of via systemd units. The README records which variant is in use.
 
 **Backend UserData (bash):**
-1. Install `awscli`/`jq` if not present.
-2. Download `backend/plant-api` from `plant-artifacts` to `/opt/plant/plant-api` using the instance profile.
-3. Read secret `plant/db` from Secrets Manager; write `/etc/plant/env` (mode 0600) with `PORT=8080`, `DATABASE_URL`, `S3_BUCKET=plant-media`, `AWS_REGION`, `AWS_ENDPOINT_URL`.
+1. Install `curl`, `unzip`, `jq` and AWS CLI v2 (official zip; Ubuntu 24.04 apt has no awscli). Shared bootstrap with the frontend.
+2. Download `backend/plant-api` from `plant-ec2-artifacts` to `/opt/plant/plant-api` using the instance profile.
+3. Read secret `plant-ec2/db` from Secrets Manager; write `/etc/plant/env` (mode 0600) with `PORT=8080`, `DATABASE_URL`, `S3_BUCKET=plant-ec2-media`, `AWS_REGION`, `AWS_ENDPOINT_URL`, `AWS_EC2_METADATA_SERVICE_ENDPOINT` (systemd services do not inherit the container env, so the Go SDK needs IMDS spelled out).
 4. Install the systemd unit `plant-api.service` (`EnvironmentFile=/etc/plant/env`, `Restart=always`, runs as user `plant`), then `systemctl enable --now plant-api`.
 
 The app applies its migrations at startup, so no separate migration step is needed.
@@ -67,18 +67,18 @@ The app applies its migrations at startup, so no separate migration step is need
 
 ## Artifacts and redeploys
 
-- `make artifacts` builds `build/plant-api` (`CGO_ENABLED=0 GOOS=linux GOARCH=<docker arch>`) and `build/dist.tar.gz` (`npm ci && npm run build`).
-- Terraform uploads them with `aws_s3_object` (`source_hash = filemd5(...)`).
-- The artifact hash is embedded in each instance's UserData as a comment, so a changed artifact gives changed UserData, which replaces that instance. This is a simple immutable redeploy.
+- `make artifacts` builds `build/plant-api` (`CGO_ENABLED=0 GOOS=linux GOARCH=<docker arch> -trimpath`) and `build/dist.tar.gz` from `frontend/dist`.
+- Terraform uploads them with `aws_s3_object` (`source_hash` = the content hash below).
+- Terraform computes a content hash (backend: `filemd5` of the binary; frontend: hash over every file in `frontend/dist`, because tarballs embed mtimes) and embeds it in each instance's UserData as a comment. Changed content → changed UserData → that instance is replaced. Unchanged content → `terraform plan` shows no changes.
 
 ## Data, secrets and IAM
 
 - RDS: `aws_db_instance` PostgreSQL 16, `db.t3.micro`, db name `plant`, user `plant`, `aws_db_subnet_group` over the two private-db subnets, SG `db`, `skip_final_snapshot = true`.
-- Password: `random_password` → `aws_secretsmanager_secret` `plant/db` holding JSON `{username, password, host, port, dbname}`.
-- S3: `plant-media` and `plant-artifacts`, with public access blocked.
+- Password: `random_password` → `aws_secretsmanager_secret` `plant-ec2/db` holding JSON `{username, password, host, port, dbname}`.
+- S3: `plant-ec2-media` and `plant-ec2-artifacts`, with public access blocked and `force_destroy` (local learning stack). Names differ from the local-dev bucket `plant-media`, which lives in the same Floci.
 - IAM roles + instance profiles:
-  - backend: `s3:GetObject` on `plant-artifacts/backend/*`; `s3:GetObject/PutObject/DeleteObject` on `plant-media/*` plus `s3:ListBucket` on `plant-media`; `secretsmanager:GetSecretValue` on `plant/db`.
-  - frontend: `s3:GetObject` on `plant-artifacts/frontend/*`.
+  - backend: `s3:GetObject` on `plant-ec2-artifacts/backend/*`; `s3:GetObject/PutObject/DeleteObject` on `plant-ec2-media/*` plus `s3:ListBucket` on `plant-ec2-media`; `secretsmanager:GetSecretValue` on `plant-ec2/db`.
+  - frontend: `s3:GetObject` on `plant-ec2-artifacts/frontend/*`.
 
 ## Terraform layout
 
@@ -95,7 +95,7 @@ deployment/
     ├── iam.tf              roles, policies, instance profiles
     ├── storage.tf          s3 buckets + artifact objects
     ├── database.tf         rds, subnet group, secret
-    ├── compute.tf          key pair, ami lookup, instances
+    ├── compute.tf          key pair, instances (AMI id is a variable)
     ├── alb.tf              alb, target groups, attachments, listener, /api/* rule
     ├── templates/backend-user-data.sh.tftpl, frontend-user-data.sh.tftpl, nginx.conf
     └── scripts/smoke.sh
@@ -125,7 +125,7 @@ The probe is a throwaway AWS CLI script against Floci; findings go into the stag
 - `make apply` from a clean Floci succeeds; target health of both target groups becomes `healthy`.
 - `make smoke` passes against the ALB URL: health → create plant → upload photo → download (bytes match) → water → list shows cover → delete → 404, S3 prefix empty.
 - The app UI loads from the ALB URL in a browser.
-- If SG enforcement is on: removing the `db` ingress rule makes `/api/health` return 503 (manual experiment documented in the README).
+- SG experiment: the probe records which paths Floci enforces (ALB → instance, instance → RDS proxy); the README documents one experiment that visibly breaks traffic when a rule is removed.
 - `make destroy` leaves no instances or RDS containers running.
 - Root `make test` still passes.
 
