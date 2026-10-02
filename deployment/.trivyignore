@@ -30,3 +30,7 @@ AWS-0031
 
 # The baked EC2 "AMI" image runs systemd as PID 1, which needs root (like a real VM).
 DS-0002
+
+# EKS public API endpoint: kubectl runs from your machine. It is limited to
+# var.kubectl_allowed_cidrs. On real AWS: private endpoint only, reached via VPN/bastion/SSM.
+AWS-0040

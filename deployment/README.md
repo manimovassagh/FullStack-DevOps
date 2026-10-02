@@ -9,10 +9,10 @@ The AWS stages run **locally on [Floci](https://floci.io)**, so no cloud account
 |---|---|---|
 | [classic-ec2](classic-ec2/) | VPC + ALB + EC2 + RDS + S3 | public/private subnets, security groups, EC2 UserData + systemd, IAM instance profiles, Secrets Manager |
 | [ecs](ecs/) | ECS Fargate + ALB + RDS + S3 | Docker images in ECR, task definitions, services, execution vs task roles, secrets injection |
-| eks (planned) | Elastic Kubernetes Service | Kubernetes on AWS |
+| [eks](eks/) | EKS (Kubernetes) + ALB + RDS + S3 | cluster vs app layer (Terraform + kubectl/Kustomize), node groups, NodePort + ALB, IRSA, kubectl auth with `aws eks get-token` |
 
-Later: Azure and Google Cloud equivalents in their own folders.
+Next stages, the target folder structure and the rules for adding a stage: [ROADMAP.md](ROADMAP.md). Later: Azure and Google Cloud equivalents in their own folders.
 
 ## Prerequisites
 
-Docker, Terraform ≥ 1.14, AWS CLI v2, Go 1.26+, Node 22+. From the repo root, `make up` starts Postgres and Floci (Floci gets the Docker socket so it can run instances as containers).
+Docker, Terraform ≥ 1.14, AWS CLI v2, Go 1.26+, Node 22+, kubectl (eks). From the repo root, `make up` starts Postgres and Floci (Floci gets the Docker socket so it can run instances as containers).

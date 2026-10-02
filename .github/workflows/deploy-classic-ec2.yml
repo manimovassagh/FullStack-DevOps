@@ -1,0 +1,81 @@
+# Deploy+verify the classic-ec2 stage on Floci. Called by pipeline.yml after the
+# EC2 artifacts are built and the IaC checks pass; downloads `ec2-artifacts` of that run.
+name: deploy-classic-ec2
+
+on:
+  workflow_call:
+    inputs:
+      terraform_version:
+        type: string
+        required: true
+      node_version:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy+verify · classic-ec2
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: deployment/classic-ec2
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: npm
+          cache-dependency-path: deployment/smoke/package-lock.json
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+          terraform_wrapper: false
+      # The AMI is arm64; runners are x86, so instance containers run under QEMU.
+      - uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+      - uses: actions/download-artifact@v8
+        with:
+          name: ec2-artifacts
+          path: .
+      - name: Start Floci
+        working-directory: .
+        run: docker compose up -d --wait floci
+      - name: Deploy (bake AMI, terraform apply)
+        run: make init && make deploy
+      - name: "Verify: ALB targets healthy"
+        run: make wait WAIT_TRIES=240
+      - name: "Verify: idempotent (plan shows no changes)"
+        run: make check
+      - name: "Verify: API + browser smoke tests"
+        env:
+          CI: "true"
+        run: make smoke
+      - name: Diagnostics
+        if: failure()
+        run: |
+          make -s health || true
+          for id in $(terraform output -raw backend_instance_id) $(terraform output -raw frontend_instance_id); do
+            echo "::group::user-data $id"; docker exec "floci-ec2-$id" tail -60 /var/log/user-data.log || true; echo "::endgroup::"
+          done
+          docker compose -f ../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
+      - name: Upload UI test video + screenshots
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ui-video-classic-ec2
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Destroy
+        if: always()
+        run: make destroy || true
+      - name: "Verify: teardown left nothing running"
+        run: |
+          left=$(docker ps --format '{{.Names}}' | grep -E '^floci-(ec2|rds)' || true)
+          [ -z "$left" ] || { echo "still running: $left"; exit 1; }
