@@ -37,7 +37,9 @@ case $cmd in
     need green_count -eq 0
     set_state ".green_tag=\"$arg\" | .green_count=1 | .green_weight=0" ;;
   canary)
-    [[ $arg =~ ^[0-9]+$ ]] && [ "$arg" -ge 0 ] && [ "$arg" -le 100 ] || { echo "canary needs a percentage 0-100"; exit 1; }
+    if ! [[ $arg =~ ^[0-9]+$ ]] || [ "$arg" -gt 100 ]; then
+      echo "canary needs a percentage 0-100"; exit 1
+    fi
     need green_count -gt 0
     set_state ".green_weight=$arg" ;;
   promote)
