@@ -21,10 +21,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-concurrency:
-  group: pipeline-${{ github.ref }}
-  cancel-in-progress: true
-
 permissions:
   contents: read
 
