@@ -10,6 +10,7 @@ const PNG = Buffer.from(
 const STAGES: Record<string, string> = {
   'classic-ec2': 'EC2 + ALB',
   ecs: 'ECS Fargate',
+  'ecs-blue-green': 'ECS blue/green (weighted ALB)',
   eks: 'EKS (Kubernetes)',
   serverless: 'Lambda + API Gateway + CloudFront',
 }
