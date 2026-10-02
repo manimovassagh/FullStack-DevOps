@@ -12,6 +12,8 @@ const STAGES: Record<string, string> = {
   ecs: 'ECS Fargate',
   'ecs-blue-green': 'ECS blue/green (weighted ALB)',
   eks: 'EKS (Kubernetes)',
+  'eks-helm': 'EKS + Helm',
+  'eks-gitops': 'EKS + Argo CD (GitOps)',
   serverless: 'Lambda + API Gateway + CloudFront',
 }
 const stage = process.env.SMOKE_STAGE ?? 'local'

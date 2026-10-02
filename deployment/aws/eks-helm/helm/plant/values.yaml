@@ -1,0 +1,34 @@
+# Defaults. `make app` overrides image.registry, the tags, backend.s3Bucket/awsRegion and backend.roleArn
+# with `--set` from Terraform outputs. Change anything else with a values file: helm upgrade … -f my-values.yaml
+
+image:
+  registry: "" # e.g. 000000000000.dkr.ecr.us-east-1.localhost:4566
+  backend:
+    repository: plant-eks-helm-backend
+    tag: latest
+  frontend:
+    repository: plant-eks-helm-frontend
+    tag: latest
+
+replicas:
+  backend: 2
+  frontend: 2
+
+backend:
+  s3Bucket: ""
+  awsRegion: us-east-1
+  # IRSA: the IAM role the backend's ServiceAccount assumes on real AWS (Terraform output backend_role_arn).
+  roleArn: ""
+  resources:
+    requests: { cpu: 100m, memory: 64Mi }
+    limits: { memory: 256Mi }
+
+frontend:
+  resources:
+    requests: { cpu: 50m, memory: 32Mi }
+    limits: { memory: 128Mi }
+
+# NodePort: every node listens on a fixed port; the ALB target groups (alb.tf) point at <node IP>:<nodePort>.
+nodePorts:
+  frontend: 30080
+  backend: 30081
