@@ -21,6 +21,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Off on purpose: a concurrency group made runs wait for / cancel each other, which delayed the start.
+# Uncomment to cancel superseded runs of the same branch (saves runner minutes, but a push can kill a run in progress):
+# concurrency:
+#   group: pipeline-${{ github.ref }}
+#   cancel-in-progress: true
+
 permissions:
   contents: read
 
