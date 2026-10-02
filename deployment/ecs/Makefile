@@ -10,7 +10,8 @@ FLOCI := http://localhost:4566
 AWS   := aws --endpoint-url $(FLOCI)
 
 # Image tag = git commit (+ -dirty for uncommitted changes); override with IMAGE_TAG=...
-IMAGE_TAG ?= $(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- $(ROOT)/backend $(ROOT)/frontend || echo -dirty)
+# Evaluated once (:=), so images/push/deploy in one run always agree even if HEAD moves.
+IMAGE_TAG := $(or $(IMAGE_TAG),$(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- $(ROOT)/backend $(ROOT)/frontend || echo -dirty))
 export TF_VAR_image_tag := $(IMAGE_TAG)
 REGISTRY := 000000000000.dkr.ecr.$(AWS_REGION).localhost:4566
 
