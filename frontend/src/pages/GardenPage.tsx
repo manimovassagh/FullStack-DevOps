@@ -12,14 +12,16 @@ import type { NewPlant, PlantSummary } from '@/types'
 export function GardenPage() {
   const [plants, setPlants] = useState<PlantSummary[] | null>(null)
 
-  const load = useCallback(async () => {
-    try {
-      setPlants(await api.listPlants())
-    } catch (e) {
-      toast.error(`Couldn't load your garden: ${errorMessage(e)}`)
-      setPlants((prev) => prev ?? [])
-    }
-  }, [])
+  // State is set in promise callbacks, never synchronously, so the effect below
+  // doesn't trigger a cascading render (react/set-state-in-effect).
+  const load = useCallback(
+    () =>
+      api.listPlants().then(setPlants, (e: unknown) => {
+        toast.error(`Couldn't load your garden: ${errorMessage(e)}`)
+        setPlants((prev) => prev ?? [])
+      }),
+    [],
+  )
 
   useEffect(() => {
     void load()

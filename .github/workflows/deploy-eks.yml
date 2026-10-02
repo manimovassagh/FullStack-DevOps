@@ -1,0 +1,90 @@
+# Deploy+verify the EKS stage on Floci. Called by pipeline.yml after the images
+# are built and the IaC checks pass; downloads the `images` artifact of that run.
+name: deploy-eks
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        type: string
+        required: true
+      terraform_version:
+        type: string
+        required: true
+      node_version:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy+verify · eks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: deployment/eks
+    env:
+      IMAGE_TAG: ${{ inputs.image_tag }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: npm
+          cache-dependency-path: deployment/smoke/package-lock.json
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+          terraform_wrapper: false
+      - uses: azure/setup-kubectl@v5
+        with:
+          version: v1.34.1
+      - uses: actions/download-artifact@v8
+        with:
+          name: images
+          path: .
+      - name: Load images from the build job
+        run: gunzip -c "$GITHUB_WORKSPACE/images.tar.gz" | docker load
+      - name: Start Floci
+        working-directory: .
+        run: docker compose up -d --wait floci
+      - name: "Deploy platform (push to ECR, terraform apply)"
+        run: make init && make push deploy
+      - name: "Deploy app (kubeconfig, secrets, kubectl apply -k, rollout status)"
+        run: make kubeconfig secrets app
+      - name: "Verify: ALB targets healthy"
+        run: make register wait
+      - name: "Verify: idempotent (plan shows no changes)"
+        run: make check
+      - name: "Verify: API + browser smoke tests"
+        env:
+          CI: "true"
+        run: make smoke
+      - name: "Verify: rolling update (new tag → new ReplicaSet, healthy, API smoke)"
+        run: make rollout
+      - name: Diagnostics
+        if: failure()
+        run: |
+          make -s health || true
+          kubectl get events -A --sort-by=.lastTimestamp 2>/dev/null | tail -40 || true
+          make -s logs || true
+          docker compose -f ../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
+      - name: Upload UI test video + screenshots
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ui-video-eks
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Destroy
+        if: always()
+        run: make destroy || true
+      - name: "Verify: teardown left nothing running"
+        run: |
+          left=$(docker ps --format '{{.Names}}' | grep -E '^floci-(eks|rds)' || true)
+          [ -z "$left" ] || { echo "still running: $left"; exit 1; }

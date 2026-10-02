@@ -7,6 +7,8 @@
 #
 # Builds happen once and are handed to the deploy jobs as artifacts, like a
 # real release pipeline. Every deployment runs on Floci on the runner (no AWS).
+# The deploy stages are reusable workflows: deploy-classic-ec2.yml, deploy-ecs.yml,
+# deploy-eks.yml (keep TERRAFORM_VERSION / NODE_VERSION in sync with their `with:`).
 name: pipeline
 
 on:
@@ -32,11 +34,11 @@ jobs:
   # ── Stage 1: tests and static checks (parallel) ───────────────────────────
   backend:
     name: Backend · vet + unit + integration
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: ${{ env.GO_VERSION_FILE }}
           cache-dependency-path: backend/go.sum
@@ -61,14 +63,14 @@ jobs:
 
   frontend:
     name: Frontend · lint + typecheck + unit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -83,7 +85,7 @@ jobs:
 
   iac:
     name: IaC · ${{ matrix.stage }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     strategy:
       fail-fast: false
@@ -95,8 +97,8 @@ jobs:
     env:
       TF_VAR_image_tag: validate-only
     steps:
-      - uses: actions/checkout@v5
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
@@ -126,22 +128,22 @@ jobs:
   build-ec2-artifacts:
     name: Build · EC2 artifacts
     needs: [backend, frontend]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: ${{ env.GO_VERSION_FILE }}
           cache-dependency-path: backend/go.sum
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Build Go binary (linux/arm64) + React bundle
         run: make -C deployment/classic-ec2 artifacts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ec2-artifacts
           path: |
@@ -153,11 +155,11 @@ jobs:
   build-images:
     name: Build · container images
     needs: [backend, frontend]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Build backend + frontend images
         run: |
           for svc in backend frontend; do
@@ -185,216 +187,48 @@ jobs:
           skip-setup-trivy: true
       - name: Save images
         run: docker save "plant/backend:${IMAGE_TAG}" "plant/frontend:${IMAGE_TAG}" | gzip > images.tar.gz
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: images
           path: images.tar.gz
           retention-days: 3
 
   # ── Stage 3: deploy to Floci and verify (parallel per style) ──────────────
+  # Each style lives in its own reusable workflow (deploy-<style>.yml). It runs
+  # inside this run, so it reuses the artifacts built above and gates the summary.
+  # (`env` isn't available in `with:` of a reusable-workflow call, hence literals.)
   deploy-classic-ec2:
-    name: Deploy+verify · classic-ec2
+    name: classic-ec2
     needs: [build-ec2-artifacts, iac]
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    defaults:
-      run:
-        working-directory: deployment/classic-ec2
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: deployment/smoke/package-lock.json
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
-          terraform_wrapper: false
-      # The AMI is arm64; runners are x86, so instance containers run under QEMU.
-      - uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-      - uses: actions/download-artifact@v5
-        with:
-          name: ec2-artifacts
-          path: .
-      - name: Start Floci
-        working-directory: .
-        run: docker compose up -d --wait floci
-      - name: Deploy (bake AMI, terraform apply)
-        run: make init && make deploy
-      - name: "Verify: ALB targets healthy"
-        run: make wait WAIT_TRIES=240
-      - name: "Verify: idempotent (plan shows no changes)"
-        run: make check
-      - name: "Verify: API + browser smoke tests"
-        env:
-          CI: "true"
-        run: make smoke
-      - name: Diagnostics
-        if: failure()
-        run: |
-          make -s health || true
-          for id in $(terraform output -raw backend_instance_id) $(terraform output -raw frontend_instance_id); do
-            echo "::group::user-data $id"; docker exec "floci-ec2-$id" tail -60 /var/log/user-data.log || true; echo "::endgroup::"
-          done
-          docker compose -f ../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
-      - name: Upload UI test video + screenshots
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: ui-video-classic-ec2
-          path: |
-            deployment/smoke/test-results
-            deployment/smoke/playwright-report
-          if-no-files-found: warn
-      - name: Destroy
-        if: always()
-        run: make destroy || true
-      - name: "Verify: teardown left nothing running"
-        run: |
-          left=$(docker ps --format '{{.Names}}' | grep -E '^floci-(ec2|rds)' || true)
-          [ -z "$left" ] || { echo "still running: $left"; exit 1; }
+    uses: ./.github/workflows/deploy-classic-ec2.yml
+    with:
+      terraform_version: 1.14.6
+      node_version: "22"
 
   deploy-ecs:
-    name: Deploy+verify · ecs
+    name: ecs
     needs: [build-images, iac]
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: deployment/ecs
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: deployment/smoke/package-lock.json
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
-          terraform_wrapper: false
-      - uses: actions/download-artifact@v5
-        with:
-          name: images
-          path: .
-      - name: Load images from the build job
-        run: gunzip -c "$GITHUB_WORKSPACE/images.tar.gz" | docker load
-      - name: Start Floci
-        working-directory: .
-        run: docker compose up -d --wait floci
-      - name: Deploy (push to ECR, terraform apply)
-        run: make init && make push deploy
-      - name: "Verify: ALB targets healthy"
-        run: make wait
-      - name: "Verify: idempotent (plan shows no changes)"
-        run: make check
-      - name: "Verify: API + browser smoke tests"
-        env:
-          CI: "true"
-        run: make smoke
-      - name: "Verify: rolling deploy (new tag → new revisions, healthy, API smoke)"
-        run: make rollout
-      - name: Diagnostics
-        if: failure()
-        run: |
-          make -s health || true
-          make -s logs || true
-          docker compose -f ../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
-      - name: Upload UI test video + screenshots
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: ui-video-ecs
-          path: |
-            deployment/smoke/test-results
-            deployment/smoke/playwright-report
-          if-no-files-found: warn
-      - name: Destroy
-        if: always()
-        run: make destroy || true
-      - name: "Verify: teardown left nothing running"
-        run: |
-          left=$(docker ps --format '{{.Names}}' | grep -E '^floci-(ecs|rds)' || true)
-          [ -z "$left" ] || { echo "still running: $left"; exit 1; }
+    uses: ./.github/workflows/deploy-ecs.yml
+    with:
+      image_tag: ci-${{ github.sha }}
+      terraform_version: 1.14.6
+      node_version: "22"
 
   deploy-eks:
-    name: Deploy+verify · eks
+    name: eks
     needs: [build-images, iac]
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: deployment/eks
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: deployment/smoke/package-lock.json
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
-          terraform_wrapper: false
-      - uses: azure/setup-kubectl@v4
-        with:
-          version: v1.34.1
-      - uses: actions/download-artifact@v5
-        with:
-          name: images
-          path: .
-      - name: Load images from the build job
-        run: gunzip -c "$GITHUB_WORKSPACE/images.tar.gz" | docker load
-      - name: Start Floci
-        working-directory: .
-        run: docker compose up -d --wait floci
-      - name: "Deploy platform (push to ECR, terraform apply)"
-        run: make init && make push deploy
-      - name: "Deploy app (kubeconfig, secrets, kubectl apply -k, rollout status)"
-        run: make kubeconfig secrets app
-      - name: "Verify: ALB targets healthy"
-        run: make register wait
-      - name: "Verify: idempotent (plan shows no changes)"
-        run: make check
-      - name: "Verify: API + browser smoke tests"
-        env:
-          CI: "true"
-        run: make smoke
-      - name: "Verify: rolling update (new tag → new ReplicaSet, healthy, API smoke)"
-        run: make rollout
-      - name: Diagnostics
-        if: failure()
-        run: |
-          make -s health || true
-          kubectl get events -A --sort-by=.lastTimestamp 2>/dev/null | tail -40 || true
-          make -s logs || true
-          docker compose -f ../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
-      - name: Upload UI test video + screenshots
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: ui-video-eks
-          path: |
-            deployment/smoke/test-results
-            deployment/smoke/playwright-report
-          if-no-files-found: warn
-      - name: Destroy
-        if: always()
-        run: make destroy || true
-      - name: "Verify: teardown left nothing running"
-        run: |
-          left=$(docker ps --format '{{.Names}}' | grep -E '^floci-(eks|rds)' || true)
-          [ -z "$left" ] || { echo "still running: $left"; exit 1; }
+    uses: ./.github/workflows/deploy-eks.yml
+    with:
+      image_tag: ci-${{ github.sha }}
+      terraform_version: 1.14.6
+      node_version: "22"
 
   # ── Stage 4: one result for branch protection ─────────────────────────────
   summary:
     name: Pipeline summary
     needs: [backend, frontend, iac, build-ec2-artifacts, build-images, deploy-classic-ec2, deploy-ecs, deploy-eks]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Report
         env:

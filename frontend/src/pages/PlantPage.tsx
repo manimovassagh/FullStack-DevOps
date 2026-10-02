@@ -32,14 +32,15 @@ export function PlantPage() {
   const [notFound, setNotFound] = useState(false)
   const [photo, setPhoto] = useState<Media | null>(null)
 
-  const load = useCallback(async () => {
-    try {
-      setPlant(await api.getPlant(id))
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 404) setNotFound(true)
-      else toast.error(errorMessage(e))
-    }
-  }, [id])
+  // State is set in promise callbacks, never synchronously (react/set-state-in-effect).
+  const load = useCallback(
+    () =>
+      api.getPlant(id).then(setPlant, (e: unknown) => {
+        if (e instanceof ApiError && e.status === 404) setNotFound(true)
+        else toast.error(errorMessage(e))
+      }),
+    [id],
+  )
 
   useEffect(() => {
     void load()
