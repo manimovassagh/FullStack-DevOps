@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  labels: { app: backend }
+spec:
+  replicas: {{ .Values.replicas.backend }}
+  selector:
+    matchLabels: { app: backend }
+  strategy:
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } # never drop below the desired ready pods during a rollout
+  template:
+    metadata:
+      labels: { app: backend }
+      annotations:
+        # A changed ConfigMap rolls the pods (Helm does not do this on its own).
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: backend
+      securityContext:
+        runAsNonRoot: true # distroless :nonroot image
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: backend
+          image: {{ include "plant.image" (dict "root" . "tier" "backend") }}
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: PORT, value: "8080" }
+            - name: S3_BUCKET
+              valueFrom: { configMapKeyRef: { name: backend-config, key: S3_BUCKET } }
+            - name: AWS_REGION
+              valueFrom: { configMapKeyRef: { name: backend-config, key: AWS_REGION } }
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: database, key: DATABASE_URL } }
+          # Floci only: endpoint + static keys (see FLOCI-NOTES.md). On real AWS this Secret doesn't exist and IRSA is used.
+          envFrom:
+            - secretRef: { name: aws-local, optional: true }
+          readinessProbe:
+            httpGet: { path: /api/health, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /api/health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
