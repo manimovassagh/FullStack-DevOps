@@ -36,6 +36,14 @@ curl -sf -X POST "$API/plants/$ID/water" -H 'content-type: application/json' -d 
   && pass "list shows cover photo" || fail "list shows cover photo"
 
 [ "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "$API/plants/$ID")" = 204 ] && pass "delete" || fail "delete"
-[ "$(curl -s -o /dev/null -w '%{http_code}' "$API/plants/$ID")" = 404 ] && pass "gone after delete" || fail "still there after delete"
+# SMOKE_ALLOW_SPA_FALLBACK=1: the front door rewrites every 404 into the SPA page (serverless on Floci,
+# where CloudFront Functions don't run). The deleted plant must then be gone from the response body.
+gone=$(curl -s -w '\n%{http_code}' "$API/plants/$ID")
+code=${gone##*$'\n'}
+if [ "$code" = 404 ] || { [ "${SMOKE_ALLOW_SPA_FALLBACK:-}" = 1 ] && [ "$code" = 200 ] && ! grep -q "$ID" <<<"${gone%$'\n'*}"; }; then
+  pass "gone after delete"
+else
+  fail "still there after delete (HTTP $code)"
+fi
 [ -z "$("${AWS[@]}" s3 ls "s3://$BUCKET/plants/$ID/" || true)" ] && pass "S3 prefix empty" || fail "S3 objects left behind"
 echo "SMOKE PASSED"

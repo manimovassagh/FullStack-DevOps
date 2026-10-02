@@ -1,0 +1,147 @@
+# The serverless stage (Lambda + API Gateway + CloudFront + S3) has its own workflow:
+# it builds what it deploys (a Go zip and the React bundle), needs no container images or
+# EC2 artifacts, and runs on its own Floci (deployment/serverless/compose.yaml).
+# It runs only when something it depends on changes.
+name: serverless
+
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - backend-serverless/**
+      - deployment/serverless/**
+      - deployment/smoke/**
+      - frontend/**
+      - .github/workflows/serverless.yml
+  pull_request:
+    paths: *paths
+  workflow_dispatch:
+
+concurrency:
+  group: serverless-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22
+  TERRAFORM_VERSION: 1.14.6
+
+jobs:
+  test:
+    name: Lambda backend · vet + unit + integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend-serverless/go.mod
+          cache-dependency-path: backend-serverless/go.sum
+      - name: Start Postgres + Floci (integration test dependencies)
+        run: make up
+      - name: go vet
+        working-directory: backend-serverless
+        run: go vet ./...
+      - name: Unit + integration tests (race detector)
+        working-directory: backend-serverless
+        env:
+          TEST_DATABASE_URL: postgres://plant:plant@localhost:5432/plant_test?sslmode=disable
+          AWS_ENDPOINT_URL: http://localhost:4566
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_REGION: us-east-1
+          S3_BUCKET: plant-media
+        run: go test -race -count=1 ./...
+
+  iac:
+    name: IaC · serverless
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: deployment/serverless
+    env:
+      # validate only needs the file to exist
+      TF_VAR_lambda_zip: /dev/null
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+      - name: terraform validate
+        run: terraform init -backend=false -input=false >/dev/null && terraform validate
+      - uses: terraform-linters/setup-tflint@v6
+      - name: tflint (terraform + aws rulesets)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tflint --config ../.tflint.hcl --init && tflint --config ../.tflint.hcl --format compact
+      - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: deployment/serverless
+          severity: HIGH,CRITICAL
+          trivyignores: deployment/.trivyignore
+          exit-code: "1"
+
+  deploy:
+    name: Deploy+verify · serverless
+    needs: [test, iac]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: deployment/serverless
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend-serverless/go.mod
+          cache-dependency-path: backend-serverless/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            deployment/smoke/package-lock.json
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - name: "Start this stage's Floci, build the function + React app, terraform apply"
+        run: make up
+      - name: "Verify: idempotent (plan shows no changes)"
+        run: make check
+      - name: "Verify: API + browser smoke tests"
+        env:
+          CI: "true"
+        run: make smoke
+      - name: "Verify: new release goes live (X-Release changes, API smoke passes)"
+        run: make rollout
+      - name: Diagnostics
+        if: failure()
+        run: |
+          make -s logs || true
+          docker compose logs floci | grep -v ContainerLogStreamer | tail -150
+      - name: Upload UI test video + screenshots
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ui-video-serverless
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Destroy
+        if: always()
+        run: make destroy || true
+      - name: "Verify: teardown left nothing running"
+        run: |
+          left=$(docker ps --format '{{.Names}}' | grep -E '^floci-(plant-serverless|rds)' || true)
+          [ -z "$left" ] || { echo "still running: $left"; exit 1; }

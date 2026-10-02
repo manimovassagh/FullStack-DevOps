@@ -28,7 +28,7 @@ deployment/
 │   ├── ecs/                  ✅ containers: ECS Fargate + ALB
 │   ├── eks/                  ✅ Kubernetes: EKS + Kustomize + ALB
 │   ├── ec2-asg/              VMs done right: Launch Template + Auto Scaling Group
-│   ├── serverless/           Lambda + API Gateway + S3 static site (+ CloudFront)
+│   ├── serverless/           ✅ Lambda + API Gateway + S3 + CloudFront (own Go project: /backend-serverless)
 │   ├── ecs-blue-green/       ECS with weighted target groups (blue/green + canary)
 │   ├── eks-helm/             same app as a Helm chart
 │   ├── eks-gitops/           Argo CD pulls the manifests from git
@@ -73,7 +73,7 @@ Each stage folder looks the same inside:
 | ecs | http://localhost:8089 |
 | eks | http://localhost:8090 |
 | ec2-asg | http://localhost:8091 |
-| serverless | http://localhost:8092 |
+| serverless | http://plant.localhost:4567 (its own Floci, via a CloudFront alias) |
 | ecs-blue-green | http://localhost:8093 |
 | eks-helm | http://localhost:8094 |
 | eks-gitops | http://localhost:8095 |
@@ -92,13 +92,15 @@ Each phase is one branch and one PR, merged only when CI is green.
 - Put the port table into the README.
 - **Done when:** all three stages are green in CI and each stage still deploys from its own folder alone.
 
-### Phase 1: `aws/serverless/`, the biggest new concept
+### Phase 1: `serverless/` ✅ done
 
-Lambda (Go, `provided.al2023`) + API Gateway HTTP API (v2) + React build in S3, with CloudFront in front if Floci supports it.
-- **Teaches:** no servers or clusters, the function packaging and handler model, cold starts, per-function IAM, Lambda in a VPC talking to RDS, and static hosting.
-- **App change:** a small Lambda entry point (`backend/cmd/lambda`) using an HTTP adapter, so the same router serves both the server and Lambda. No business logic changes.
-- **Floci check first:** can a Go `provided.al2023` zip run, does API Gateway v2 proxy to it, can the Lambda reach RDS, and does CloudFront serve an S3 origin?
-- **Rollout:** publish a new version and move the `live` alias to it.
+Lambda (Go, `provided.al2023`) + API Gateway HTTP API (v2) + React build in a private S3 bucket + CloudFront in front (one hostname; `/api/*` to the API, everything else to S3).
+- **Teaches:** no servers or clusters, the function packaging and handler model, cold starts, versions and aliases, per-function IAM, a function in a VPC talking to RDS, secrets read at cold start, CloudFront origins and behaviors, a private static site.
+- **Own project, not mixed:** the function code is [`backend-serverless/`](../backend-serverless/), a separate Go module with its own copy of the handlers (same routes as `backend/`). `backend/` is untouched.
+- **Own workflow:** [`.github/workflows/serverless.yml`](../.github/workflows/serverless.yml) runs the tests, IaC checks and deploy for this stage only, and only when its paths change.
+- **Own Floci:** it runs on a dated nightly (port 4567, `deployment/serverless/compose.yaml`), because Floci 2.1.0 does not forward POST/PUT/DELETE through CloudFront. Details in its FLOCI-NOTES.md.
+- **Still to do (phase 0):** move it into `aws/` with the others.
+- **Rollout:** a new release label changes the function's environment, publishes a version and moves the `live` alias; the test checks the `X-Release` header.
 
 ### Phase 2: `aws/ecs-blue-green/`, release strategies
 

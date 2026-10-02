@@ -34,3 +34,11 @@ DS-0002
 # EKS public API endpoint: kubectl runs from your machine. It is limited to
 # var.kubectl_allowed_cidrs. On real AWS: private endpoint only, reached via VPN/bastion/SSM.
 AWS-0040
+
+# serverless: the viewer protocol is `allow-all` only when var.on_floci is true (plain http://plant.localhost
+# locally). With on_floci=false it is `redirect-to-https`; the scanner reads the default value.
+AWS-0012
+
+# serverless: no AWS WAF in front of CloudFront. Floci does not emulate WAF and it costs money on AWS.
+# For production attach an aws_wafv2_web_acl (managed rule groups, rate limiting).
+AWS-0011
