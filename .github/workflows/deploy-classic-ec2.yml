@@ -63,11 +63,11 @@ jobs:
             echo "::group::user-data $id"; docker exec "floci-ec2-$id" tail -60 /var/log/user-data.log || true; echo "::endgroup::"
           done
           docker compose -f ../../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
-      - name: Upload UI test video + screenshots
+      - name: Upload e2e recording (Playwright video, screenshots, report)
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: ui-video-classic-ec2
+          name: e2e-recording-classic-ec2
           path: |
             deployment/smoke/test-results
             deployment/smoke/playwright-report

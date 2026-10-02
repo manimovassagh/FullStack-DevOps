@@ -6,9 +6,34 @@ const PNG = Buffer.from(
   'base64',
 )
 
+// What each stage is, shown in the recording so a video is recognisable on its own.
+const STAGES: Record<string, string> = {
+  'classic-ec2': 'EC2 + ALB',
+  ecs: 'ECS Fargate',
+  eks: 'EKS (Kubernetes)',
+  serverless: 'Lambda + API Gateway + CloudFront',
+}
+const stage = process.env.SMOKE_STAGE ?? 'local'
+
+// A small label in the corner of every page (pointer-events: none, so it never blocks a click).
+test.beforeEach(async ({ page, baseURL }) => {
+  const label = `${stage} · ${STAGES[stage] ?? 'local run'} · ${baseURL}`
+  await page.addInitScript((text) => {
+    window.addEventListener('DOMContentLoaded', () => {
+      const el = document.createElement('div')
+      el.textContent = text
+      el.setAttribute('aria-hidden', 'true')
+      el.style.cssText =
+        'position:fixed;left:12px;bottom:12px;z-index:2147483647;pointer-events:none;padding:6px 12px;' +
+        'border-radius:999px;background:#111;color:#fff;font:600 13px/1.2 ui-monospace,monospace;opacity:.9'
+      document.body.appendChild(el)
+    })
+  }, label)
+})
+
 // The journey a user takes after a deployment: add a plant, add a photo,
 // water it, reload the deep link, then delete it again (leaves no data behind).
-test('a user can manage a plant end to end', async ({ page }) => {
+test(`[${stage}] a user can manage a plant end to end`, async ({ page }) => {
   const name = `Smoke Fern ${Date.now()}`
 
   await page.goto('/')

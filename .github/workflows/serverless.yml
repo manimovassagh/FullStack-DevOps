@@ -195,11 +195,11 @@ jobs:
         run: |
           make -s logs || true
           docker compose logs floci | grep -v ContainerLogStreamer | tail -150
-      - name: Upload UI test video + screenshots
+      - name: Upload e2e recording (Playwright video, screenshots, report)
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: ui-video-serverless
+          name: e2e-recording-serverless
           path: |
             deployment/smoke/test-results
             deployment/smoke/playwright-report

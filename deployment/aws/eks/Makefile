@@ -109,7 +109,7 @@ check: ## idempotency: after an apply, a plan must show no changes (exit 0)
 smoke: ## API + browser smoke tests through the ALB (shared with every deployment style)
 	$(SMOKE)/api-smoke.sh "$$(terraform output -raw app_url)" "$$(terraform output -raw media_bucket)"
 	cd $(SMOKE) && npm ci --silent && npx playwright install chromium >/dev/null \
-		&& SMOKE_BASE_URL="$$(cd $(CURDIR) && terraform output -raw app_url)" npx playwright test
+		&& SMOKE_STAGE=eks SMOKE_BASE_URL="$$(cd $(CURDIR) && terraform output -raw app_url)" npx playwright test
 
 health: ## pods + target health of both target groups
 	@$(K) get pods -o wide 2>/dev/null || true

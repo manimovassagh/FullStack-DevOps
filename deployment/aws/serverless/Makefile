@@ -84,7 +84,7 @@ smoke: export SMOKE_ALLOW_SPA_FALLBACK := 1
 smoke: ## API + browser smoke tests through CloudFront (shared with every deployment style)
 	$(SMOKE)/api-smoke.sh "$(apiurl)" "$$(terraform output -raw media_bucket)"
 	cd $(SMOKE) && npm ci --silent && npx playwright install chromium >/dev/null \
-		&& SMOKE_BASE_URL="$$(cd $(CURDIR) && terraform output -raw app_url)" npx playwright test
+		&& SMOKE_STAGE=serverless SMOKE_BASE_URL="$$(cd $(CURDIR) && terraform output -raw app_url)" npx playwright test
 
 logs: ## the function's recent output (Floci keeps it in CloudWatch Logs)
 	-@$(AWS) logs tail "/aws/lambda/$$(terraform output -raw function_name)" --since 15m 2>&1 | tail -40
