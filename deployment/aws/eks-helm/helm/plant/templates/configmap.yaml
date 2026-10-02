@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+data:
+  S3_BUCKET: {{ required "backend.s3Bucket is required" .Values.backend.s3Bucket | quote }}
+  AWS_REGION: {{ .Values.backend.awsRegion | quote }}

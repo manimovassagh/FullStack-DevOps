@@ -30,7 +30,7 @@ deployment/
 │   ├── ec2-asg/              VMs done right: Launch Template + Auto Scaling Group
 │   ├── serverless/           ✅ Lambda + API Gateway + S3 + CloudFront (own Go project: /backend-serverless)
 │   ├── ecs-blue-green/       ✅ ECS with weighted target groups (blue/green + canary)
-│   ├── eks-helm/             same app as a Helm chart
+│   ├── eks-helm/             ✅ same app as a Helm chart
 │   ├── eks-gitops/           Argo CD pulls the manifests from git
 │   └── beanstalk/            PaaS: Elastic Beanstalk (only if Floci supports it)
 │
@@ -107,9 +107,9 @@ Lambda (Go, `provided.al2023`) + API Gateway HTTP API (v2) + React build in a pr
 - **Test:** `make rollout` walks release → preview → canary → promote → rollback → promote → finalize and asserts after each step where the traffic goes (it counts requests in each environment's backend logs).
 - **Not done:** CodeDeploy's ECS blue/green deployment type (Floci lists `codedeploy`, untested here). The weights are moved explicitly so each step is visible.
 
-### Phase 3: `aws/eks-helm/` and `aws/eks-gitops/`, how Kubernetes teams ship
+### Phase 3: how Kubernetes teams ship (`eks-helm` ✅, `eks-gitops` next)
 
-- **eks-helm:** the same app as a Helm chart (`helm/plant/`), deployed with `helm upgrade --install`. The point is to compare it with eks's Kustomize: templating vs patching, values files, and `helm rollback`.
+- **eks-helm ✅:** the same app as a Helm chart (`helm/plant/`), delivered with `helm upgrade --install --wait`. The point is the comparison with eks's Kustomize: templating vs patching, values files, numbered releases, `helm rollback`. `make rollout` upgrades, rolls back and upgrades again, with an API smoke test after each.
 - **eks-gitops:** Argo CD installed in the cluster watches a manifest path in this repo, so a git change becomes a deploy. CI only builds and pushes images, then bumps the image tag.
 - Each is a full recipe: its own copy of the EKS platform Terraform (VPC, cluster, RDS, S3, ALB) plus its own delivery method. Neither one references or edits `aws/eks/`.
 
