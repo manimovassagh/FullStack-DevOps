@@ -97,7 +97,7 @@ Each phase is one branch and one PR, merged only when CI is green.
 Lambda (Go, `provided.al2023`) + API Gateway HTTP API (v2) + React build in a private S3 bucket + CloudFront in front (one hostname; `/api/*` to the API, everything else to S3).
 - **Teaches:** no servers or clusters, the function packaging and handler model, cold starts, versions and aliases, per-function IAM, a function in a VPC talking to RDS, secrets read at cold start, CloudFront origins and behaviors, a private static site.
 - **Own project, not mixed:** the function code is [`backend-serverless/`](../backend-serverless/), a separate Go module with its own copy of the handlers (same routes as `backend/`). `backend/` is untouched.
-- **Own workflow:** [`.github/workflows/serverless.yml`](../.github/workflows/serverless.yml) runs the tests, IaC checks and deploy for this stage only, and only when its paths change.
+- **Own workflow, visible stage:** the deploy lives in its own file, [`.github/workflows/deploy-serverless.yml`](../.github/workflows/deploy-serverless.yml), and `pipeline.yml` calls it, so it shows up as a stage next to classic-ec2, ecs and eks and counts in the summary. Its Lambda tests and IaC checks are jobs in the main pipeline too.
 - **Own Floci:** it runs on a dated nightly (port 4567, `deployment/serverless/compose.yaml`), because Floci 2.1.0 does not forward POST/PUT/DELETE through CloudFront. Details in its FLOCI-NOTES.md.
 - **Still to do (phase 0):** move it into `aws/` with the others.
 - **Rollout:** a new release label changes the function's environment, publishes a version and moves the `live` alias; the test checks the `X-Release` header.
