@@ -29,7 +29,7 @@ deployment/
 │   ├── eks/                  ✅ Kubernetes: EKS + Kustomize + ALB
 │   ├── ec2-asg/              VMs done right: Launch Template + Auto Scaling Group
 │   ├── serverless/           ✅ Lambda + API Gateway + S3 + CloudFront (own Go project: /backend-serverless)
-│   ├── ecs-blue-green/       ECS with weighted target groups (blue/green + canary)
+│   ├── ecs-blue-green/       ✅ ECS with weighted target groups (blue/green + canary)
 │   ├── eks-helm/             same app as a Helm chart
 │   ├── eks-gitops/           Argo CD pulls the manifests from git
 │   └── beanstalk/            PaaS: Elastic Beanstalk (only if Floci supports it)
@@ -72,9 +72,9 @@ Each stage folder looks the same inside:
 | classic-ec2 | http://localhost:8088 |
 | ecs | http://localhost:8089 |
 | eks | http://localhost:8090 |
-| ec2-asg | http://localhost:8091 |
+| ecs-blue-green | http://localhost:8091 (preview: 8092) |
+| ec2-asg | http://localhost:8093 |
 | serverless | http://plant.localhost:4567 (its own Floci, via a CloudFront alias) |
-| ecs-blue-green | http://localhost:8093 |
 | eks-helm | http://localhost:8094 |
 | eks-gitops | http://localhost:8095 |
 | beanstalk | http://localhost:8096 |
@@ -100,12 +100,12 @@ Lambda (Go, `provided.al2023`) + API Gateway HTTP API (v2) + React build in a pr
 - **Own Floci:** it runs on a dated nightly (port 4567, `deployment/aws/serverless/compose.yaml`), because Floci 2.1.0 does not forward POST/PUT/DELETE through CloudFront. Details in its FLOCI-NOTES.md.
 - **Rollout:** a new release label changes the function's environment, publishes a version and moves the `live` alias; the test checks the `X-Release` header.
 
-### Phase 2: `aws/ecs-blue-green/`, release strategies
+### Phase 2: `aws/ecs-blue-green/` ✅ done
 
-- Two target groups (blue/green) behind one ALB listener with **weighted forwarding**.
-- **Make targets:** `make shift PCT=10` (canary), `make promote` (100% green) and `make rollback`.
-- **Test:** deploy green, send 10%, run the smoke tests, promote, and smoke again. Then roll back and smoke again.
-- **Optional:** compare with CodeDeploy's ECS blue/green (Floci lists `codedeploy`; verify it).
+- Two environments (blue, green) × two tiers, each with its own ECS services and target groups, behind one ALB. The public listener **forwards with weights**; a second **preview listener** always goes to green so a candidate is smoke-tested before any user sees it.
+- **Make targets:** `release TAG=…`, `preview`, `canary PCT=10`, `promote`, `rollback`, `finalize`, `abort`, `sample`. A small state machine (`scripts/release.sh`) edits `release.auto.tfvars.json` and refuses nonsense transitions.
+- **Test:** `make rollout` walks release → preview → canary → promote → rollback → promote → finalize and asserts after each step where the traffic goes (it counts requests in each environment's backend logs).
+- **Not done:** CodeDeploy's ECS blue/green deployment type (Floci lists `codedeploy`, untested here). The weights are moved explicitly so each step is visible.
 
 ### Phase 3: `aws/eks-helm/` and `aws/eks-gitops/`, how Kubernetes teams ship
 

@@ -10,6 +10,7 @@ The AWS stages run **locally on [Floci](https://floci.io)**, so no cloud account
 | [classic-ec2](aws/classic-ec2/) | VPC + ALB + EC2 + RDS + S3 | public/private subnets, security groups, EC2 UserData + systemd, IAM instance profiles, Secrets Manager |
 | [ecs](aws/ecs/) | ECS Fargate + ALB + RDS + S3 | Docker images in ECR, task definitions, services, execution vs task roles, secrets injection |
 | [eks](aws/eks/) | EKS (Kubernetes) + ALB + RDS + S3 | cluster vs app layer (Terraform + kubectl/Kustomize), node groups, NodePort + ALB, IRSA, kubectl auth with `aws eks get-token` |
+| [ecs-blue-green](aws/ecs-blue-green/) | ECS Fargate + weighted ALB (two environments) | blue/green and canary releases, weighted target groups, a preview listener, instant rollback, a release state machine |
 | [serverless](aws/serverless/) | Lambda + API Gateway + CloudFront + S3 | function packaging and cold starts, API Gateway events, versions and aliases, CloudFront origins and behaviors, a private S3 site with origin access control, secrets read by the function |
 
 Next stages, the target folder structure and the rules for adding a stage: [ROADMAP.md](ROADMAP.md). Later: Azure and Google Cloud equivalents in their own folders.

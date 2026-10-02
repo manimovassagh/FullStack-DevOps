@@ -27,6 +27,8 @@ services:
       - "8088:80"   # ALB listener of deployment/aws/classic-ec2 → http://localhost:8088
       - "8089:81"   # ALB listener of deployment/aws/ecs         → http://localhost:8089
       - "8090:82"   # ALB listener of deployment/aws/eks         → http://localhost:8090
+      - "8091:83"   # ALB public listener of deployment/aws/ecs-blue-green → http://localhost:8091
+      - "8092:84"   # ALB preview (green only) listener of ecs-blue-green  → http://localhost:8092
     environment:
       FLOCI_NETWORK_SECURITY_GROUP_ENFORCEMENT_ENABLED: "true"
       # ECS task containers join Floci's network, so the ALB and the RDS proxy reach them.
