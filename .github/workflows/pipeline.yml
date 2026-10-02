@@ -1,16 +1,19 @@
-# One pipeline for the whole repo. Each stage gates the next:
+# Pipeline for the AWS stages that run servers or containers: classic-ec2, ecs, eks.
+# Each stage gates the next:
 #
-#   backend tests ──────┐                 ┌─ build EC2 artifacts ─┐
-#                       ├─ (both green) ──┤                       ├─ deploy+verify classic-ec2 ─┐
-#   frontend tests ─────┘                 └─ build images ────────┼─ deploy+verify ecs ─────────┤
-#   IaC checks (classic-ec2, ecs, eks, serverless) ───────────────┼─ deploy+verify eks ─────────┼─ summary
-#   Lambda backend tests (backend-serverless) ────────────────────┴─ deploy+verify serverless ──┘
+#   backend tests ─┐                 ┌─ build EC2 artifacts ─┐
+#                  ├─ (both green) ──┤                       ├─ deploy+verify classic-ec2 ─┐
+#   frontend tests ┘                 └─ build images ────────┼─ deploy+verify ecs ─────────┼─ summary
+#   IaC checks (classic-ec2, ecs, eks) ──────────────────────┴─ deploy+verify eks ─────────┘
 #
 # Builds happen once and are handed to the deploy jobs as artifacts, like a
 # real release pipeline. Every deployment runs on Floci on the runner (no AWS).
 # The deploy stages are reusable workflows: deploy-classic-ec2.yml, deploy-ecs.yml,
-# deploy-eks.yml, deploy-serverless.yml (keep TERRAFORM_VERSION / NODE_VERSION in sync with their `with:`).
-name: pipeline
+# deploy-eks.yml (keep TERRAFORM_VERSION / NODE_VERSION in sync with their `with:`).
+#
+# Other deployment families have their own workflow file: serverless.yml.
+name: "AWS · EC2 + ECS + EKS"
+run-name: "AWS · EC2 + ECS + EKS · ${{ github.event.pull_request.title || github.ref_name }}"
 
 on:
   push:
@@ -18,9 +21,12 @@ on:
   pull_request:
   workflow_dispatch:
 
-concurrency:
-  group: pipeline-${{ github.ref }}
-  cancel-in-progress: true
+# Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.
+# Uncomment if you like: superseded runs of the same branch get cancelled (saves runner minutes,
+# but a new push can kill a run that is still in progress).
+# concurrency:
+#   group: pipeline-${{ github.ref }}
+#   cancel-in-progress: true
 
 permissions:
   contents: read
@@ -84,32 +90,6 @@ jobs:
       - name: Unit tests (Vitest)
         run: npm test
 
-  backend-serverless:
-    name: Lambda backend · vet + unit + integration
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: backend-serverless/go.mod
-          cache-dependency-path: backend-serverless/go.sum
-      - name: Start Postgres + Floci (integration test dependencies)
-        run: make up
-      - name: go vet
-        working-directory: backend-serverless
-        run: go vet ./...
-      - name: Unit + integration tests (race detector)
-        working-directory: backend-serverless
-        env:
-          TEST_DATABASE_URL: postgres://plant:plant@localhost:5432/plant_test?sslmode=disable
-          AWS_ENDPOINT_URL: http://localhost:4566
-          AWS_ACCESS_KEY_ID: test
-          AWS_SECRET_ACCESS_KEY: test
-          AWS_REGION: us-east-1
-          S3_BUCKET: plant-media
-        run: go test -race -count=1 ./...
-
   iac:
     name: IaC · ${{ matrix.stage }}
     runs-on: ubuntu-24.04
@@ -117,13 +97,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        stage: [classic-ec2, ecs, eks, serverless]
+        stage: [classic-ec2, ecs, eks]
     defaults:
       run:
-        working-directory: deployment/${{ matrix.stage }}
+        working-directory: deployment/aws/${{ matrix.stage }}
     env:
-      TF_VAR_image_tag: validate-only # stages without an image_tag variable ignore it
-      TF_VAR_lambda_zip: /dev/null # serverless: validate only needs the file to exist
+      TF_VAR_image_tag: validate-only
     steps:
       - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v4
@@ -139,18 +118,18 @@ jobs:
         env:
           # Authenticated plugin download: anonymous GitHub API calls get throttled on shared runners.
           GITHUB_TOKEN: ${{ github.token }}
-        run: tflint --config ../.tflint.hcl --init && tflint --config ../.tflint.hcl --format compact
+        run: tflint --config ../../.tflint.hcl --init && tflint --config ../../.tflint.hcl --format compact
       - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
-          scan-ref: deployment/${{ matrix.stage }}
+          scan-ref: deployment/aws/${{ matrix.stage }}
           severity: HIGH,CRITICAL
           trivyignores: deployment/.trivyignore
           exit-code: "1"
       - name: shellcheck
         working-directory: deployment
-        run: shellcheck smoke/*.sh classic-ec2/scripts/*.sh classic-ec2/templates/bootstrap.sh eks/scripts/*.sh
+        run: shellcheck smoke/*.sh aws/classic-ec2/scripts/*.sh aws/classic-ec2/templates/bootstrap.sh aws/eks/scripts/*.sh
 
   # ── Stage 2: build once (only after tests pass) ───────────────────────────
   build-ec2-artifacts:
@@ -170,13 +149,13 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Build Go binary (linux/arm64) + React bundle
-        run: make -C deployment/classic-ec2 artifacts
+        run: make -C deployment/aws/classic-ec2 artifacts
       - uses: actions/upload-artifact@v7
         with:
           name: ec2-artifacts
           path: |
-            deployment/classic-ec2/build/plant-api
-            deployment/classic-ec2/build/dist.tar.gz
+            deployment/aws/classic-ec2/build/plant-api
+            deployment/aws/classic-ec2/build/dist.tar.gz
             frontend/dist
           retention-days: 3
 
@@ -251,18 +230,10 @@ jobs:
       terraform_version: 1.14.6
       node_version: "22"
 
-  deploy-serverless:
-    name: serverless
-    needs: [backend-serverless, frontend, iac]
-    uses: ./.github/workflows/deploy-serverless.yml
-    with:
-      terraform_version: 1.14.6
-      node_version: "22"
-
   # ── Stage 4: one result for branch protection ─────────────────────────────
   summary:
     name: Pipeline summary
-    needs: [backend, backend-serverless, frontend, iac, build-ec2-artifacts, build-images, deploy-classic-ec2, deploy-ecs, deploy-eks, deploy-serverless]
+    needs: [backend, frontend, iac, build-ec2-artifacts, build-images, deploy-classic-ec2, deploy-ecs, deploy-eks]
     if: always()
     runs-on: ubuntu-24.04
     steps:

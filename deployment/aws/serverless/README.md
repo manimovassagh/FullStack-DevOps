@@ -2,7 +2,7 @@
 
 The Plant Parent app with no servers to run: the Go API is an AWS Lambda function, the React app is files in S3, and CloudFront is the single public entrance. Runs locally on [Floci](https://floci.io); the Terraform is real-AWS-shaped.
 
-The API code is its own project, [`backend-serverless/`](../../backend-serverless/): the same routes as `backend/`, with a Lambda entry point instead of a web server. This folder does not use `backend/`.
+The API code is its own project, [`backend-serverless/`](../../../backend-serverless/): the same routes as `backend/`, with a Lambda entry point instead of a web server. This folder does not use `backend/`.
 
 ```
                     ┌────────────── CloudFront (one hostname) ──────────────┐

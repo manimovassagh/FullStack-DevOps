@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 30
     defaults:
       run:
-        working-directory: deployment/ecs
+        working-directory: deployment/aws/ecs
     env:
       IMAGE_TAG: ${{ inputs.image_tag }}
     steps:
@@ -65,12 +65,12 @@ jobs:
         run: |
           make -s health || true
           make -s logs || true
-          docker compose -f ../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
-      - name: Upload UI test video + screenshots
+          docker compose -f ../../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
+      - name: Upload e2e recording (Playwright video, screenshots, report)
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: ui-video-ecs
+          name: e2e-recording-ecs
           path: |
             deployment/smoke/test-results
             deployment/smoke/playwright-report

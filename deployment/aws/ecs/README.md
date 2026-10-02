@@ -11,7 +11,7 @@ Browser ─► ALB localhost:8089
 ## Run it
 
     make up                  # repo root: Postgres + Floci
-    cd deployment/ecs
+    cd deployment/aws/ecs
     make init
     make apply               # build images → push to ECR → terraform apply
     make wait                # both target groups healthy

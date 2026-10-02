@@ -7,5 +7,10 @@ Shared by every deployment style. Each takes only the deployed base URL, so the 
 
 ```bash
 cd deployment/smoke && npm ci && npx playwright install chromium
-SMOKE_BASE_URL=http://localhost:8088 npm run browser
+SMOKE_STAGE=classic-ec2 SMOKE_BASE_URL=http://localhost:8088 npm run browser
 ```
+
+`SMOKE_STAGE` (`classic-ec2`, `ecs`, `eks` or `serverless`; each stage's `make smoke` sets it) tells you which deployment a recording belongs to:
+- the output folders are `test-results/<stage>/` and `playwright-report/<stage>/`, and each video's folder name ends with the stage;
+- every page in the recording carries a corner label such as `ecs · ECS Fargate · http://localhost:8089`;
+- CI uploads it as the artifact `e2e-recording-<stage>`.

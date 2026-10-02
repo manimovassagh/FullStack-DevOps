@@ -1,7 +1,7 @@
 # Serverless (Lambda + API Gateway + CloudFront + S3) deployment on Floci. Run from this directory.
 SHELL := /bin/bash
-ROOT  := $(abspath ../..)
-SMOKE := ../smoke
+ROOT  := $(abspath ../../..)
+SMOKE := ../../smoke
 
 export AWS_ACCESS_KEY_ID     ?= test
 export AWS_SECRET_ACCESS_KEY ?= test
@@ -9,7 +9,7 @@ export AWS_REGION            ?= us-east-1
 # This stage's own Floci, see compose.yaml.
 FLOCI := http://localhost:4567
 AWS   := aws --endpoint-url $(FLOCI)
-# Read by ../smoke/api-smoke.sh.
+# Read by ../../smoke/api-smoke.sh.
 export FLOCI_ENDPOINT := $(FLOCI)
 
 # Floci runs functions on the Docker host's architecture, so build for that one.
@@ -28,7 +28,7 @@ export TF_VAR_release := $(RELEASE)
 
 WAIT_TRIES ?= 60 # × 5 s
 
-.PHONY: floci init lambda frontend deploy up rollout plan check smoke wait logs destroy forget
+.PHONY: floci init lambda frontend deploy site up rollout plan check smoke wait logs destroy forget
 
 floci: ## start this stage's Floci (a nightly with CloudFront write-method support; see compose.yaml)
 	docker compose up -d --wait
@@ -45,10 +45,16 @@ lambda: ## build the function: one static Linux binary named `bootstrap`, zipped
 frontend: ## build the React app that is uploaded to the site bucket
 	cd $(ROOT)/frontend && npm ci --silent && npm run build
 
-deploy: ## terraform apply (needs build/lambda.zip and frontend/dist)
+deploy: ## terraform apply: the infrastructure (needs build/lambda.zip)
 	terraform apply -auto-approve -input=false
 
-up: floci init lambda frontend deploy wait
+site: ## deploy the React build (frontend/dist) to the site bucket and invalidate CloudFront
+	d=$(ROOT)/frontend/dist; b=$$(terraform output -raw site_bucket); \
+	$(AWS) s3 sync "$$d" "s3://$$b" --delete --exclude 'assets/*' --cache-control 'no-cache' --only-show-errors && \
+	$(AWS) s3 sync "$$d/assets" "s3://$$b/assets" --delete --cache-control 'public, max-age=31536000, immutable' --only-show-errors && \
+	$(AWS) cloudfront create-invalidation --distribution-id "$$(terraform output -raw distribution_id)" --paths '/*' --query Invalidation.Status --output text
+
+up: floci init lambda frontend deploy site wait
 
 apiurl = $$(terraform output -raw app_url)
 
@@ -78,7 +84,7 @@ smoke: export SMOKE_ALLOW_SPA_FALLBACK := 1
 smoke: ## API + browser smoke tests through CloudFront (shared with every deployment style)
 	$(SMOKE)/api-smoke.sh "$(apiurl)" "$$(terraform output -raw media_bucket)"
 	cd $(SMOKE) && npm ci --silent && npx playwright install chromium >/dev/null \
-		&& SMOKE_BASE_URL="$$(cd $(CURDIR) && terraform output -raw app_url)" npx playwright test
+		&& SMOKE_STAGE=serverless SMOKE_BASE_URL="$$(cd $(CURDIR) && terraform output -raw app_url)" npx playwright test
 
 logs: ## the function's recent output (Floci keeps it in CloudWatch Logs)
 	-@$(AWS) logs tail "/aws/lambda/$$(terraform output -raw function_name)" --since 15m 2>&1 | tail -40

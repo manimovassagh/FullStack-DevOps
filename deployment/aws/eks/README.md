@@ -16,7 +16,7 @@ Two tools, two layers, like most real EKS teams:
 ## Run it
 
     make up                  # repo root: Postgres + Floci
-    cd deployment/eks
+    cd deployment/aws/eks
     make init
     make up                  # images → ECR → terraform apply → kubeconfig → secrets → app → ALB targets → healthy
     make smoke               # API + browser smoke tests through the ALB

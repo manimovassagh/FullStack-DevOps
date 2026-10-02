@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 45
     defaults:
       run:
-        working-directory: deployment/classic-ec2
+        working-directory: deployment/aws/classic-ec2
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -62,12 +62,12 @@ jobs:
           for id in $(terraform output -raw backend_instance_id) $(terraform output -raw frontend_instance_id); do
             echo "::group::user-data $id"; docker exec "floci-ec2-$id" tail -60 /var/log/user-data.log || true; echo "::endgroup::"
           done
-          docker compose -f ../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
-      - name: Upload UI test video + screenshots
+          docker compose -f ../../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
+      - name: Upload e2e recording (Playwright video, screenshots, report)
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: ui-video-classic-ec2
+          name: e2e-recording-classic-ec2
           path: |
             deployment/smoke/test-results
             deployment/smoke/playwright-report

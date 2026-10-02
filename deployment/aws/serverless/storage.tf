@@ -1,5 +1,5 @@
 # Two buckets, two jobs: user uploads (written by the function) and the React build
-# (written by Terraform, read only by CloudFront).
+# (written by `make site`, read only by CloudFront).
 
 resource "aws_s3_bucket" "media" {
   bucket        = "${var.name}-media"
@@ -28,33 +28,8 @@ resource "aws_s3_bucket_public_access_block" "site" {
   restrict_public_buckets = true
 }
 
-locals {
-  content_types = {
-    html  = "text/html"
-    js    = "text/javascript"
-    css   = "text/css"
-    svg   = "image/svg+xml"
-    png   = "image/png"
-    ico   = "image/x-icon"
-    json  = "application/json"
-    txt   = "text/plain"
-    webp  = "image/webp"
-    woff  = "font/woff"
-    woff2 = "font/woff2"
-  }
-  site_files = fileset(var.frontend_dist, "**")
-}
-
-resource "aws_s3_object" "site" {
-  for_each     = local.site_files
-  bucket       = aws_s3_bucket.site.id
-  key          = each.value
-  source       = "${var.frontend_dist}/${each.value}"
-  etag         = filemd5("${var.frontend_dist}/${each.value}")
-  content_type = lookup(local.content_types, reverse(split(".", each.value))[0], "application/octet-stream")
-  # Vite fingerprints everything under assets/, so it can be cached for a year; index.html must not be.
-  cache_control = startswith(each.value, "assets/") ? "public, max-age=31536000, immutable" : "no-cache"
-}
+# The files themselves are not Terraform's job: the pipeline deploys the React build with
+# `make site` (aws s3 sync + a CloudFront invalidation), the way a real frontend release works.
 
 # Only this distribution may read the site (origin access control).
 data "aws_iam_policy_document" "site" {
