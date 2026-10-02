@@ -2,8 +2,8 @@
 #
 #   backend tests ─┐                 ┌─ build EC2 artifacts ─┐
 #                  ├─ (both green) ──┤                       ├─ deploy+verify classic-ec2 ─┐
-#   frontend tests ┘                 └─ build images ────────┤                             ├─ summary
-#   IaC checks (classic-ec2, ecs) ───────────────────────────┴─ deploy+verify ecs ─────────┘
+#   frontend tests ┘                 └─ build images ────────┼─ deploy+verify ecs ─────────┼─ summary
+#   IaC checks (classic-ec2, ecs, eks) ──────────────────────┴─ deploy+verify eks ─────────┘
 #
 # Builds happen once and are handed to the deploy jobs as artifacts, like a
 # real release pipeline. Every deployment runs on Floci on the runner (no AWS).
@@ -88,7 +88,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        stage: [classic-ec2, ecs]
+        stage: [classic-ec2, ecs, eks]
     defaults:
       run:
         working-directory: deployment/${{ matrix.stage }}
@@ -120,7 +120,7 @@ jobs:
           exit-code: "1"
       - name: shellcheck
         working-directory: deployment
-        run: shellcheck smoke/*.sh classic-ec2/scripts/*.sh classic-ec2/templates/bootstrap.sh
+        run: shellcheck smoke/*.sh classic-ec2/scripts/*.sh classic-ec2/templates/bootstrap.sh eks/scripts/*.sh
 
   # ── Stage 2: build once (only after tests pass) ───────────────────────────
   build-ec2-artifacts:
@@ -320,10 +320,79 @@ jobs:
           left=$(docker ps --format '{{.Names}}' | grep -E '^floci-(ecs|rds)' || true)
           [ -z "$left" ] || { echo "still running: $left"; exit 1; }
 
+  deploy-eks:
+    name: Deploy+verify · eks
+    needs: [build-images, iac]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: deployment/eks
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: deployment/smoke/package-lock.json
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.34.1
+      - uses: actions/download-artifact@v5
+        with:
+          name: images
+          path: .
+      - name: Load images from the build job
+        run: gunzip -c "$GITHUB_WORKSPACE/images.tar.gz" | docker load
+      - name: Start Floci
+        working-directory: .
+        run: docker compose up -d --wait floci
+      - name: "Deploy platform (push to ECR, terraform apply)"
+        run: make init && make push deploy
+      - name: "Deploy app (kubeconfig, secrets, kubectl apply -k, rollout status)"
+        run: make kubeconfig secrets app
+      - name: "Verify: ALB targets healthy"
+        run: make register wait
+      - name: "Verify: idempotent (plan shows no changes)"
+        run: make check
+      - name: "Verify: API + browser smoke tests"
+        env:
+          CI: "true"
+        run: make smoke
+      - name: "Verify: rolling update (new tag → new ReplicaSet, healthy, API smoke)"
+        run: make rollout
+      - name: Diagnostics
+        if: failure()
+        run: |
+          make -s health || true
+          kubectl get events -A --sort-by=.lastTimestamp 2>/dev/null | tail -40 || true
+          make -s logs || true
+          docker compose -f ../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
+      - name: Upload UI test video + screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-video-eks
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Destroy
+        if: always()
+        run: make destroy || true
+      - name: "Verify: teardown left nothing running"
+        run: |
+          left=$(docker ps --format '{{.Names}}' | grep -E '^floci-(eks|rds)' || true)
+          [ -z "$left" ] || { echo "still running: $left"; exit 1; }
+
   # ── Stage 4: one result for branch protection ─────────────────────────────
   summary:
     name: Pipeline summary
-    needs: [backend, frontend, iac, build-ec2-artifacts, build-images, deploy-classic-ec2, deploy-ecs]
+    needs: [backend, frontend, iac, build-ec2-artifacts, build-images, deploy-classic-ec2, deploy-ecs, deploy-eks]
     if: always()
     runs-on: ubuntu-latest
     steps:

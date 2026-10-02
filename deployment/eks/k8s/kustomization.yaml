@@ -1,0 +1,10 @@
+# Base manifests. `make app` renders an overlay in build/ that sets the ECR
+# images, the IRSA role and the ConfigMap values from Terraform outputs.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: plant
+resources:
+  - namespace.yaml
+  - backend.yaml
+  - frontend.yaml
+  - services.yaml

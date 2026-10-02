@@ -18,7 +18,7 @@ services:
       retries: 20
 
   # Local AWS emulator. The Docker socket lets Floci run EC2 instances, RDS and
-  # ECS tasks as real containers (deployment/ stages).
+  # ECS tasks and EKS clusters (k3s) as real containers (deployment/ stages).
   floci:
     # Pinned: deployment/classic-ec2 depends on 2.1.0 behaviour (see its FLOCI-NOTES.md).
     image: floci/floci:2.1.0
@@ -26,10 +26,14 @@ services:
       - "4566:4566"
       - "8088:80"   # ALB listener of deployment/classic-ec2 → http://localhost:8088
       - "8089:81"   # ALB listener of deployment/ecs         → http://localhost:8089
+      - "8090:82"   # ALB listener of deployment/eks         → http://localhost:8090
     environment:
       FLOCI_NETWORK_SECURITY_GROUP_ENFORCEMENT_ENABLED: "true"
       # ECS task containers join Floci's network, so the ALB and the RDS proxy reach them.
       FLOCI_SERVICES_ECS_DOCKER_NETWORK: fullstack-devops_default
+      # EKS clusters are k3s containers; on this network the ALB reaches NodePorts and pods reach RDS/S3.
+      FLOCI_SERVICES_EKS_DOCKER_NETWORK: fullstack-devops_default
+      FLOCI_SERVICES_EKS_DEFAULT_IMAGE: rancher/k3s:v1.34.12-k3s1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
