@@ -281,7 +281,7 @@ jobs:
           name: images
           path: .
       - name: Load images from the build job
-        run: gunzip -c images.tar.gz | docker load
+        run: gunzip -c "$GITHUB_WORKSPACE/images.tar.gz" | docker load
       - name: Start Floci
         working-directory: .
         run: docker compose up -d --wait floci
