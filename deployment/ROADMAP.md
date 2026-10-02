@@ -79,7 +79,7 @@ Each stage folder looks the same inside:
 | eks-gitops | http://localhost:8095 |
 | beanstalk | http://localhost:8096 |
 
-**CI:** one workflow file per deployment family. `pipeline.yml` covers the AWS stages that run servers or containers (classic-ec2, ecs, eks); `serverless.yml` covers serverless. Each later family (blue/green, GitOps, Azure, GCP …) adds its own file and shows up as its own pipeline in the Actions tab.
+**CI:** one workflow file per deployment family, each its own pipeline in the Actions tab and each run only when its paths change: [`ec2.yml`](../.github/workflows/ec2.yml) (classic-ec2: VMs, native artifacts), [`containers.yml`](../.github/workflows/containers.yml) (ecs + eks: both run the same images) and [`serverless.yml`](../.github/workflows/serverless.yml). Each later family (blue/green, GitOps, Azure, GCP …) adds its own file.
 
 ## Phases
 

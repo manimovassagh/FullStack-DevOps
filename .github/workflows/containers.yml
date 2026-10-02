@@ -1,31 +1,42 @@
-# Pipeline for the AWS stages that run servers or containers: classic-ec2, ecs, eks.
-# Each stage gates the next:
+# Pipeline for the containerised AWS stages: ecs and eks. Both run the same two images, so the
+# images are built once here and handed to both deploys. (classic-ec2 is not containerised and has
+# its own workflow, ec2.yml; serverless has serverless.yml.)
 #
-#   backend tests ─┐                 ┌─ build EC2 artifacts ─┐
-#                  ├─ (both green) ──┤                       ├─ deploy+verify classic-ec2 ─┐
-#   frontend tests ┘                 └─ build images ────────┼─ deploy+verify ecs ─────────┼─ summary
-#   IaC checks (classic-ec2, ecs, eks) ──────────────────────┴─ deploy+verify eks ─────────┘
+#   backend tests ─┐                 ┌─ deploy+verify ecs ─┐
+#                  ├─ build images ──┤                     ├─ summary
+#   frontend tests ┘                 └─ deploy+verify eks ─┘
+#   IaC checks (ecs, eks) ───────────┘
 #
-# Builds happen once and are handed to the deploy jobs as artifacts, like a
-# real release pipeline. Every deployment runs on Floci on the runner (no AWS).
-# The deploy stages are reusable workflows: deploy-classic-ec2.yml, deploy-ecs.yml,
-# deploy-eks.yml (keep TERRAFORM_VERSION / NODE_VERSION in sync with their `with:`).
-#
-# Other deployment families have their own workflow file: serverless.yml.
-name: "AWS · EC2 + ECS + EKS"
-run-name: "AWS · EC2 + ECS + EKS · ${{ github.event.pull_request.title || github.ref_name }}"
+# Builds happen once and are handed to the deploy jobs as artifacts, like a real release pipeline.
+# The deploys are reusable workflows (deploy-ecs.yml, deploy-eks.yml); every deployment runs on
+# Floci on the runner (no AWS). Keep TERRAFORM_VERSION / NODE_VERSION in sync with their `with:`.
+name: "AWS · ECS + EKS (containers)"
+run-name: "AWS · ECS + EKS · ${{ github.event.pull_request.title || github.ref_name }}"
 
 on:
   push:
     branches: [main]
+    paths: &paths
+      - backend/**
+      - frontend/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - deployment/aws/ecs/**
+      - deployment/aws/eks/**
+      - .github/workflows/containers.yml
+      - .github/workflows/deploy-ecs.yml
+      - .github/workflows/deploy-eks.yml
   pull_request:
+    paths: *paths
   workflow_dispatch:
 
 # Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.
 # Uncomment if you like: superseded runs of the same branch get cancelled (saves runner minutes,
 # but a new push can kill a run that is still in progress).
 # concurrency:
-#   group: pipeline-${{ github.ref }}
+#   group: containers-${{ github.ref }}
 #   cancel-in-progress: true
 
 permissions:
@@ -97,7 +108,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        stage: [classic-ec2, ecs, eks]
+        stage: [ecs, eks]
     defaults:
       run:
         working-directory: deployment/aws/${{ matrix.stage }}
@@ -129,36 +140,9 @@ jobs:
           exit-code: "1"
       - name: shellcheck
         working-directory: deployment
-        run: shellcheck smoke/*.sh aws/classic-ec2/scripts/*.sh aws/classic-ec2/templates/bootstrap.sh aws/eks/scripts/*.sh
+        run: shellcheck smoke/*.sh aws/eks/scripts/*.sh
 
   # ── Stage 2: build once (only after tests pass) ───────────────────────────
-  build-ec2-artifacts:
-    name: Build · EC2 artifacts
-    needs: [backend, frontend]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: ${{ env.GO_VERSION_FILE }}
-          cache-dependency-path: backend/go.sum
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Build Go binary (linux/arm64) + React bundle
-        run: make -C deployment/aws/classic-ec2 artifacts
-      - uses: actions/upload-artifact@v7
-        with:
-          name: ec2-artifacts
-          path: |
-            deployment/aws/classic-ec2/build/plant-api
-            deployment/aws/classic-ec2/build/dist.tar.gz
-            frontend/dist
-          retention-days: 3
-
   build-images:
     name: Build · container images
     needs: [backend, frontend]
@@ -201,17 +185,8 @@ jobs:
           retention-days: 3
 
   # ── Stage 3: deploy to Floci and verify (parallel per style) ──────────────
-  # Each style lives in its own reusable workflow (deploy-<style>.yml). It runs
-  # inside this run, so it reuses the artifacts built above and gates the summary.
-  # (`env` isn't available in `with:` of a reusable-workflow call, hence literals.)
-  deploy-classic-ec2:
-    name: classic-ec2
-    needs: [build-ec2-artifacts, iac]
-    uses: ./.github/workflows/deploy-classic-ec2.yml
-    with:
-      terraform_version: 1.14.6
-      node_version: "22"
-
+  # Each style lives in its own reusable workflow (deploy-<style>.yml). It runs inside this run, so it
+  # reuses the images built above. (`env` isn't available in `with:` of a call, hence literals.)
   deploy-ecs:
     name: ecs
     needs: [build-images, iac]
@@ -230,10 +205,10 @@ jobs:
       terraform_version: 1.14.6
       node_version: "22"
 
-  # ── Stage 4: one result for branch protection ─────────────────────────────
+  # ── Stage 4: one result for this workflow ────────────────────────────────
   summary:
-    name: Pipeline summary
-    needs: [backend, frontend, iac, build-ec2-artifacts, build-images, deploy-classic-ec2, deploy-ecs, deploy-eks]
+    name: Containers summary
+    needs: [backend, frontend, iac, build-images, deploy-ecs, deploy-eks]
     if: always()
     runs-on: ubuntu-24.04
     steps:
@@ -242,7 +217,7 @@ jobs:
           RESULTS: ${{ toJSON(needs) }}
         run: |
           {
-            echo "## Pipeline result"
+            echo "## Containers summary"
             echo "| job | result |"
             echo "|---|---|"
             echo "$RESULTS" | jq -r 'to_entries[] | "| \(.key) | \(if .value.result == "success" then "✅" else "❌" end) \(.value.result) |"'

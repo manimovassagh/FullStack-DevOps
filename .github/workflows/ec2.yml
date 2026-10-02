@@ -1,0 +1,191 @@
+# Pipeline for the classic EC2 stage: virtual machines, no containers.
+# It builds native artifacts (a Go binary and the React bundle), not images, so it has its own workflow.
+# Each stage gates the next:
+#
+#   backend tests ─┐
+#                  ├─ (both green) ─ build EC2 artifacts ─┐
+#   frontend tests ┘                                      ├─ deploy+verify classic-ec2 ─ summary
+#   IaC checks (classic-ec2) ─────────────────────────────┘
+#
+# The deploy is a reusable workflow (deploy-classic-ec2.yml) that downloads this run's artifacts and
+# runs on Floci on the runner (no AWS). Other families: containers.yml (ECS + EKS), serverless.yml.
+name: "AWS · Classic EC2 (VMs)"
+run-name: "AWS · Classic EC2 · ${{ github.event.pull_request.title || github.ref_name }}"
+
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - backend/**
+      - frontend/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - deployment/aws/classic-ec2/**
+      - .github/workflows/ec2.yml
+      - .github/workflows/deploy-classic-ec2.yml
+  pull_request:
+    paths: *paths
+  workflow_dispatch:
+
+# Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.
+# Uncomment if you like: superseded runs of the same branch get cancelled (saves runner minutes,
+# but a new push can kill a run that is still in progress).
+# concurrency:
+#   group: ec2-${{ github.ref }}
+#   cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION_FILE: backend/go.mod
+  NODE_VERSION: 22
+  TERRAFORM_VERSION: 1.14.6
+
+jobs:
+  # ── Stage 1: tests and static checks (parallel) ───────────────────────────
+  backend:
+    name: Backend · vet + unit + integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+          cache-dependency-path: backend/go.sum
+      - name: Start Postgres + Floci (integration test dependencies)
+        run: make up
+      - name: go vet
+        working-directory: backend
+        run: go vet ./...
+      - name: Unit + integration tests (race detector, coverage)
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgres://plant:plant@localhost:5432/plant_test?sslmode=disable
+          AWS_ENDPOINT_URL: http://localhost:4566
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_REGION: us-east-1
+          S3_BUCKET: plant-media
+        run: |
+          go test -race -count=1 -coverprofile=coverage.out ./...
+          echo "### Backend coverage" >> "$GITHUB_STEP_SUMMARY"
+          go tool cover -func=coverage.out | tail -1 >> "$GITHUB_STEP_SUMMARY"
+
+  frontend:
+    name: Frontend · lint + typecheck + unit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Lint (oxlint)
+        run: npm run lint
+      - name: Typecheck
+        run: npx tsc -b
+      - name: Unit tests (Vitest)
+        run: npm test
+
+  iac:
+    name: IaC · classic-ec2
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: deployment/aws/classic-ec2
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+      - name: terraform validate
+        run: terraform init -backend=false -input=false >/dev/null && terraform validate
+      - uses: terraform-linters/setup-tflint@v6
+      - name: tflint (terraform + aws rulesets)
+        env:
+          # Authenticated plugin download: anonymous GitHub API calls get throttled on shared runners.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tflint --config ../../.tflint.hcl --init && tflint --config ../../.tflint.hcl --format compact
+      - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: deployment/aws/classic-ec2
+          severity: HIGH,CRITICAL
+          trivyignores: deployment/.trivyignore
+          exit-code: "1"
+      - name: shellcheck
+        working-directory: deployment
+        run: shellcheck smoke/*.sh aws/classic-ec2/scripts/*.sh aws/classic-ec2/templates/bootstrap.sh
+
+  # ── Stage 2: build once (only after tests pass) ───────────────────────────
+  build-ec2-artifacts:
+    name: Build · EC2 artifacts
+    needs: [backend, frontend]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build Go binary (linux/arm64) + React bundle
+        run: make -C deployment/aws/classic-ec2 artifacts
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ec2-artifacts
+          path: |
+            deployment/aws/classic-ec2/build/plant-api
+            deployment/aws/classic-ec2/build/dist.tar.gz
+            frontend/dist
+          retention-days: 3
+
+  # ── Stage 3: deploy to Floci and verify ───────────────────────────────────
+  # The deploy lives in its own reusable workflow. It runs inside this run, so it reuses the
+  # artifacts built above. (`env` isn't available in `with:` of a call, hence literals.)
+  deploy-classic-ec2:
+    name: classic-ec2
+    needs: [build-ec2-artifacts, iac]
+    uses: ./.github/workflows/deploy-classic-ec2.yml
+    with:
+      terraform_version: 1.14.6
+      node_version: "22"
+
+  # ── Stage 4: one result for this workflow ────────────────────────────────
+  summary:
+    name: Classic EC2 summary
+    needs: [backend, frontend, iac, build-ec2-artifacts, deploy-classic-ec2]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          {
+            echo "## Classic EC2 summary"
+            echo "| job | result |"
+            echo "|---|---|"
+            echo "$RESULTS" | jq -r 'to_entries[] | "| \(.key) | \(if .value.result == "success" then "✅" else "❌" end) \(.value.result) |"'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' >/dev/null

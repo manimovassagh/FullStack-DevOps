@@ -17,6 +17,9 @@ on:
       - deployment/aws/serverless/**
       - deployment/smoke/**
       - frontend/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
       - .github/workflows/serverless.yml
   pull_request:
     paths: *paths
