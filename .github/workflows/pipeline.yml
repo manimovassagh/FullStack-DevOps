@@ -104,11 +104,11 @@ jobs:
         run: terraform fmt -check -recursive
       - name: terraform validate
         run: terraform init -backend=false -input=false >/dev/null && terraform validate
-      - uses: terraform-linters/setup-tflint@v5
+      - uses: terraform-linters/setup-tflint@v6
       - name: tflint (terraform + aws rulesets)
         run: tflint --config ../.tflint.hcl --init && tflint --config ../.tflint.hcl --format compact
       - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           scan-ref: deployment/${{ matrix.stage }}
@@ -164,7 +164,7 @@ jobs:
           done
           docker images --format 'table {{.Repository}}:{{.Tag}}\t{{.Size}}' | grep plant/ >> "$GITHUB_STEP_SUMMARY"
       - name: trivy image scan (fixable HIGH/CRITICAL)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
           image-ref: plant/backend:${{ env.IMAGE_TAG }}
@@ -172,7 +172,7 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
       - name: trivy image scan frontend
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
           image-ref: plant/frontend:${{ env.IMAGE_TAG }}

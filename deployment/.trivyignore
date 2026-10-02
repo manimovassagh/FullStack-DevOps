@@ -17,6 +17,11 @@ AWS-0087
 AWS-0091
 AWS-0093
 
+# Unencrypted root volume: Floci has no EBS root volume, and declaring root_block_device makes
+# the provider look up the AMI's root device, which Floci's alias AMI cannot answer.
+# On real AWS: root_block_device { encrypted = true } (or account-level EBS encryption by default).
+AWS-0131
+
 # S3 uses default SSE-S3 encryption; customer-managed KMS keys are out of scope here.
 AWS-0132
 
