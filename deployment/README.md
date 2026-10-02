@@ -8,7 +8,7 @@ The AWS stages run **locally on [Floci](https://floci.io)**, so no cloud account
 | Folder | Style | What you learn |
 |---|---|---|
 | [classic-ec2](classic-ec2/) | VPC + ALB + EC2 + RDS + S3 | public/private subnets, security groups, EC2 UserData + systemd, IAM instance profiles, Secrets Manager |
-| ecs (planned) | Elastic Container Service | images in ECR, task definitions, services |
+| [ecs](ecs/) | ECS Fargate + ALB + RDS + S3 | Docker images in ECR, task definitions, services, execution vs task roles, secrets injection |
 | eks (planned) | Elastic Kubernetes Service | Kubernetes on AWS |
 
 Later: Azure and Google Cloud equivalents in their own folders.
