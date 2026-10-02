@@ -6,8 +6,8 @@
 #   Lambda backend tests ─── Build function (zip) ─┐
 #   Frontend tests + build (React → dist) ─────────┼─ Deploy+verify: infrastructure → frontend to S3 → API smoke → UI
 #   IaC checks ────────────────────────────────────┘                                                      → rollout ─ summary
-name: serverless
-run-name: "serverless · ${{ github.event.pull_request.title || github.ref_name }}"
+name: "AWS · Serverless"
+run-name: "AWS · Serverless · ${{ github.event.pull_request.title || github.ref_name }}"
 
 on:
   push:

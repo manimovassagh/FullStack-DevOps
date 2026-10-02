@@ -12,8 +12,8 @@
 # deploy-eks.yml (keep TERRAFORM_VERSION / NODE_VERSION in sync with their `with:`).
 #
 # Other deployment families have their own workflow file: serverless.yml.
-name: pipeline
-run-name: "pipeline · ec2 / ecs / eks · ${{ github.event.pull_request.title || github.ref_name }}"
+name: "AWS · EC2 + ECS + EKS"
+run-name: "AWS · EC2 + ECS + EKS · ${{ github.event.pull_request.title || github.ref_name }}"
 
 on:
   push:
