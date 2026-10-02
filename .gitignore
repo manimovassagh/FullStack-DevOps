@@ -20,3 +20,4 @@ deployment/**/build/
 
 # local browser automation artifacts
 .playwright-mcp/
+.github/artifacts/
