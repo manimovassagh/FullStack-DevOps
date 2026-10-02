@@ -45,6 +45,15 @@ resource "aws_instance" "backend" {
     http_endpoint = "enabled"
   }
 
+  # Encrypted root volume on real AWS. Floci has no EBS root volume, and the block makes the
+  # provider look up the AMI's root device, which Floci's alias AMI can't answer.
+  dynamic "root_block_device" {
+    for_each = var.on_floci ? [] : [1]
+    content {
+      encrypted = true
+    }
+  }
+
   user_data = join("\n", [local.bootstrap, templatefile("${path.module}/templates/backend.sh.tftpl", merge(local.template_vars, {
     artifact_hash  = local.backend_hash
     media_bucket   = aws_s3_bucket.media.id
@@ -69,6 +78,15 @@ resource "aws_instance" "frontend" {
   metadata_options {
     http_tokens   = "required"
     http_endpoint = "enabled"
+  }
+
+  # Encrypted root volume on real AWS. Floci has no EBS root volume, and the block makes the
+  # provider look up the AMI's root device, which Floci's alias AMI can't answer.
+  dynamic "root_block_device" {
+    for_each = var.on_floci ? [] : [1]
+    content {
+      encrypted = true
+    }
   }
 
   user_data = join("\n", [local.bootstrap, templatefile("${path.module}/templates/frontend.sh.tftpl", merge(local.template_vars, {

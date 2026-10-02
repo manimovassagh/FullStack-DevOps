@@ -105,10 +105,6 @@ jobs:
       - name: terraform validate
         run: terraform init -backend=false -input=false >/dev/null && terraform validate
       - uses: terraform-linters/setup-tflint@v6
-      - uses: actions/cache@v4
-        with:
-          path: ~/.tflint.d/plugins
-          key: tflint-${{ hashFiles('deployment/.tflint.hcl') }}
       - name: tflint (terraform + aws rulesets)
         env:
           # Authenticated plugin download: anonymous GitHub API calls get throttled on shared runners.
@@ -244,12 +240,15 @@ jobs:
             echo "::group::user-data $id"; docker exec "floci-ec2-$id" tail -60 /var/log/user-data.log || true; echo "::endgroup::"
           done
           docker compose -f ../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
-      - uses: actions/upload-artifact@v4
-        if: failure()
+      - name: Upload UI test video + screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: playwright-report-classic-ec2
-          path: deployment/smoke/playwright-report
-          if-no-files-found: ignore
+          name: ui-video-classic-ec2
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
       - name: Destroy
         if: always()
         run: make destroy || true
@@ -304,12 +303,15 @@ jobs:
           make -s health || true
           make -s logs || true
           docker compose -f ../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
-      - uses: actions/upload-artifact@v4
-        if: failure()
+      - name: Upload UI test video + screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: playwright-report-ecs
-          path: deployment/smoke/playwright-report
-          if-no-files-found: ignore
+          name: ui-video-ecs
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
       - name: Destroy
         if: always()
         run: make destroy || true
