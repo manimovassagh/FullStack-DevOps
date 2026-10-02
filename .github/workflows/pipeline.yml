@@ -1,16 +1,19 @@
-# One pipeline for the whole repo. Each stage gates the next:
+# Pipeline for the AWS stages that run servers or containers: classic-ec2, ecs, eks.
+# Each stage gates the next:
 #
-#   backend tests ──────┐                 ┌─ build EC2 artifacts ─┐
-#                       ├─ (both green) ──┤                       ├─ deploy+verify classic-ec2 ─┐
-#   frontend tests ─────┘                 └─ build images ────────┼─ deploy+verify ecs ─────────┤
-#   IaC checks (classic-ec2, ecs, eks, serverless) ───────────────┼─ deploy+verify eks ─────────┼─ summary
-#   Lambda backend tests (backend-serverless) ────────────────────┴─ deploy+verify serverless ──┘
+#   backend tests ─┐                 ┌─ build EC2 artifacts ─┐
+#                  ├─ (both green) ──┤                       ├─ deploy+verify classic-ec2 ─┐
+#   frontend tests ┘                 └─ build images ────────┼─ deploy+verify ecs ─────────┼─ summary
+#   IaC checks (classic-ec2, ecs, eks) ──────────────────────┴─ deploy+verify eks ─────────┘
 #
 # Builds happen once and are handed to the deploy jobs as artifacts, like a
 # real release pipeline. Every deployment runs on Floci on the runner (no AWS).
 # The deploy stages are reusable workflows: deploy-classic-ec2.yml, deploy-ecs.yml,
-# deploy-eks.yml, deploy-serverless.yml (keep TERRAFORM_VERSION / NODE_VERSION in sync with their `with:`).
+# deploy-eks.yml (keep TERRAFORM_VERSION / NODE_VERSION in sync with their `with:`).
+#
+# Other deployment families have their own workflow file: serverless.yml.
 name: pipeline
+run-name: "pipeline · ec2 / ecs / eks · ${{ github.event.pull_request.title || github.ref_name }}"
 
 on:
   push:
@@ -84,32 +87,6 @@ jobs:
       - name: Unit tests (Vitest)
         run: npm test
 
-  backend-serverless:
-    name: Lambda backend · vet + unit + integration
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: backend-serverless/go.mod
-          cache-dependency-path: backend-serverless/go.sum
-      - name: Start Postgres + Floci (integration test dependencies)
-        run: make up
-      - name: go vet
-        working-directory: backend-serverless
-        run: go vet ./...
-      - name: Unit + integration tests (race detector)
-        working-directory: backend-serverless
-        env:
-          TEST_DATABASE_URL: postgres://plant:plant@localhost:5432/plant_test?sslmode=disable
-          AWS_ENDPOINT_URL: http://localhost:4566
-          AWS_ACCESS_KEY_ID: test
-          AWS_SECRET_ACCESS_KEY: test
-          AWS_REGION: us-east-1
-          S3_BUCKET: plant-media
-        run: go test -race -count=1 ./...
-
   iac:
     name: IaC · ${{ matrix.stage }}
     runs-on: ubuntu-24.04
@@ -117,13 +94,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        stage: [classic-ec2, ecs, eks, serverless]
+        stage: [classic-ec2, ecs, eks]
     defaults:
       run:
         working-directory: deployment/aws/${{ matrix.stage }}
     env:
-      TF_VAR_image_tag: validate-only # stages without an image_tag variable ignore it
-      TF_VAR_lambda_zip: /dev/null # serverless: validate only needs the file to exist
+      TF_VAR_image_tag: validate-only
     steps:
       - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v4
@@ -251,18 +227,10 @@ jobs:
       terraform_version: 1.14.6
       node_version: "22"
 
-  deploy-serverless:
-    name: serverless
-    needs: [backend-serverless, frontend, iac]
-    uses: ./.github/workflows/deploy-serverless.yml
-    with:
-      terraform_version: 1.14.6
-      node_version: "22"
-
   # ── Stage 4: one result for branch protection ─────────────────────────────
   summary:
     name: Pipeline summary
-    needs: [backend, backend-serverless, frontend, iac, build-ec2-artifacts, build-images, deploy-classic-ec2, deploy-ecs, deploy-eks, deploy-serverless]
+    needs: [backend, frontend, iac, build-ec2-artifacts, build-images, deploy-classic-ec2, deploy-ecs, deploy-eks]
     if: always()
     runs-on: ubuntu-24.04
     steps:
