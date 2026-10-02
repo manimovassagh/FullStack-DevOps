@@ -1,4 +1,4 @@
-# Deploy+verify the EKS stage on Floci. Called by pipeline.yml after the images
+# Deploy+verify the EKS stage on Floci. Called by containers.yml after the images
 # are built and the IaC checks pass; downloads the `images` artifact of that run.
 name: deploy-eks
 

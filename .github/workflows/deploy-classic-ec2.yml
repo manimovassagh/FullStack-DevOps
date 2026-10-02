@@ -1,4 +1,4 @@
-# Deploy+verify the classic-ec2 stage on Floci. Called by pipeline.yml after the
+# Deploy+verify the classic-ec2 stage on Floci. Called by ec2.yml after the
 # EC2 artifacts are built and the IaC checks pass; downloads `ec2-artifacts` of that run.
 name: deploy-classic-ec2
 
