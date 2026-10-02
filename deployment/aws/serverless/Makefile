@@ -28,7 +28,7 @@ export TF_VAR_release := $(RELEASE)
 
 WAIT_TRIES ?= 60 # × 5 s
 
-.PHONY: floci init lambda frontend deploy up rollout plan check smoke wait logs destroy forget
+.PHONY: floci init lambda frontend deploy site up rollout plan check smoke wait logs destroy forget
 
 floci: ## start this stage's Floci (a nightly with CloudFront write-method support; see compose.yaml)
 	docker compose up -d --wait
@@ -45,10 +45,16 @@ lambda: ## build the function: one static Linux binary named `bootstrap`, zipped
 frontend: ## build the React app that is uploaded to the site bucket
 	cd $(ROOT)/frontend && npm ci --silent && npm run build
 
-deploy: ## terraform apply (needs build/lambda.zip and frontend/dist)
+deploy: ## terraform apply: the infrastructure (needs build/lambda.zip)
 	terraform apply -auto-approve -input=false
 
-up: floci init lambda frontend deploy wait
+site: ## deploy the React build (frontend/dist) to the site bucket and invalidate CloudFront
+	d=$(ROOT)/frontend/dist; b=$$(terraform output -raw site_bucket); \
+	$(AWS) s3 sync "$$d" "s3://$$b" --delete --exclude 'assets/*' --cache-control 'no-cache' --only-show-errors && \
+	$(AWS) s3 sync "$$d/assets" "s3://$$b/assets" --delete --cache-control 'public, max-age=31536000, immutable' --only-show-errors && \
+	$(AWS) cloudfront create-invalidation --distribution-id "$$(terraform output -raw distribution_id)" --paths '/*' --query Invalidation.Status --output text
+
+up: floci init lambda frontend deploy site wait
 
 apiurl = $$(terraform output -raw app_url)
 
