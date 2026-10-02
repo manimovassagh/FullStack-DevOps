@@ -115,4 +115,9 @@ resource "aws_cloudfront_distribution" "main" {
   viewer_certificate {
     cloudfront_default_certificate = true
   }
+
+  # Floci does not store tags on distributions, so the provider's default_tags would show as a change on every plan.
+  lifecycle {
+    ignore_changes = [tags, tags_all]
+  }
 }
