@@ -15,12 +15,11 @@ resource "aws_vpc" "main" {
 
 # Public tier: only the ALB and the NAT gateway live here.
 resource "aws_subnet" "public" {
-  for_each                = local.azs
-  vpc_id                  = aws_vpc.main.id
-  availability_zone       = each.value.az
-  cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 8, 0 + each.value.n)
-  map_public_ip_on_launch = true
-  tags                    = { Name = "${var.name}-public-${each.key}", Tier = "public" }
+  for_each          = local.azs
+  vpc_id            = aws_vpc.main.id
+  availability_zone = each.value.az
+  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, 0 + each.value.n)
+  tags              = { Name = "${var.name}-public-${each.key}", Tier = "public" }
 }
 
 # Private app tier: EC2 instances, reachable only through the ALB.

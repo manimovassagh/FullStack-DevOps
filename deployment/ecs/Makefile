@@ -16,7 +16,7 @@ REGISTRY := 000000000000.dkr.ecr.$(AWS_REGION).localhost:4566
 
 WAIT_TRIES ?= 72 # × 5 s
 
-.PHONY: init repos images apply plan check smoke health wait logs destroy forget
+.PHONY: init repos images push deploy apply rollout plan check smoke health wait logs destroy forget
 
 init:
 	terraform init
@@ -24,15 +24,31 @@ init:
 repos: ## create the ECR repositories first, so images can be pushed before the services need them
 	terraform apply -auto-approve -target=aws_ecr_repository.app
 
-images: repos ## build both images and push them to ECR as :$(IMAGE_TAG)
+images: ## build both images locally as plant/<svc>:$(IMAGE_TAG) (CI builds them in a separate job)
+	for svc in backend frontend; do docker build -t plant/$$svc:$(IMAGE_TAG) $(ROOT)/$$svc || exit 1; done
+
+push: repos ## tag the local images for ECR and push them
 	$(AWS) ecr get-login-password | docker login --username AWS --password-stdin $(REGISTRY) >/dev/null
 	for svc in backend frontend; do \
-		docker build -t $(REGISTRY)/plant-ecs-$$svc:$(IMAGE_TAG) $(ROOT)/$$svc && \
+		docker tag plant/$$svc:$(IMAGE_TAG) $(REGISTRY)/plant-ecs-$$svc:$(IMAGE_TAG) && \
 		docker push -q $(REGISTRY)/plant-ecs-$$svc:$(IMAGE_TAG) || exit 1; \
 	done
 
-apply: images
-	terraform apply -auto-approve
+deploy: ## terraform apply for the pushed $(IMAGE_TAG)
+	terraform apply -auto-approve -input=false
+
+apply: images push deploy
+
+revisions = $$($(AWS) ecs describe-services --cluster plant-ecs --services backend frontend \
+	--query 'services[].taskDefinition' --output text | grep -o ':[0-9]*' | tr -d : | tr '\n' ' ')
+
+rollout: ## deployment test: ship the same images under a new tag; expect new revisions, healthy targets, passing API smoke
+	@before="$(revisions)"; echo "revisions before: $$before"; \
+	for svc in backend frontend; do docker tag plant/$$svc:$(IMAGE_TAG) plant/$$svc:$(IMAGE_TAG)-rollout; done; \
+	$(MAKE) -s push deploy IMAGE_TAG=$(IMAGE_TAG)-rollout >/dev/null && $(MAKE) -s wait IMAGE_TAG=$(IMAGE_TAG)-rollout >/dev/null || exit 1; \
+	after="$(revisions)"; echo "revisions after:  $$after"; \
+	[ "$$before" != "$$after" ] || { echo "FAIL: task-definition revisions did not change"; exit 1; }; \
+	$(SMOKE)/api-smoke.sh "$$(terraform output -raw app_url)" "$$(terraform output -raw media_bucket)" | tail -1
 
 plan:
 	terraform plan

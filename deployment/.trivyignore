@@ -1,0 +1,28 @@
+# Accepted IaC findings for the local learning stacks (trivy config --ignorefile).
+# Every entry says why; anything new fails the pipeline.
+
+# Public, plain-HTTP ALB: it is the app's front door; there is no ACM certificate locally.
+# On real AWS: HTTPS listener with an ACM cert and an HTTP→HTTPS redirect.
+AWS-0053
+AWS-0054
+
+# Unrestricted egress: instances run apt and download the AWS CLI; tasks pull from ECR.
+# On real AWS: VPC endpoints (S3, ECR, Secrets Manager, Logs) and narrow egress.
+AWS-0104
+
+# False positives: both stages block public access with aws_s3_bucket_public_access_block
+# (classic-ec2 via for_each, which the scanner does not resolve).
+AWS-0086
+AWS-0087
+AWS-0091
+AWS-0093
+
+# S3 uses default SSE-S3 encryption; customer-managed KMS keys are out of scope here.
+AWS-0132
+
+# ECR tags are mutable so a local `-dirty` tag can be rebuilt and pushed again.
+# CI uses unique commit tags.
+AWS-0031
+
+# The baked EC2 "AMI" image runs systemd as PID 1, which needs root (like a real VM).
+DS-0002
