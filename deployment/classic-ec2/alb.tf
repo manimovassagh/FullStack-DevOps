@@ -4,6 +4,8 @@ resource "aws_lb" "main" {
   internal           = false
   security_groups    = [aws_security_group.alb.id]
   subnets            = [for s in aws_subnet.public : s.id]
+
+  drop_invalid_header_fields = true # reject malformed headers (request smuggling)
 }
 
 resource "aws_lb_target_group" "frontend" {

@@ -7,7 +7,7 @@ locals {
 }
 
 resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
+  cidr_block           = "10.1.0.0/16"
   enable_dns_support   = true
   enable_dns_hostnames = true
   tags                 = { Name = var.name }
@@ -22,7 +22,7 @@ resource "aws_subnet" "public" {
   tags              = { Name = "${var.name}-public-${each.key}", Tier = "public" }
 }
 
-# Private app tier: EC2 instances, reachable only through the ALB.
+# Private app tier: ECS tasks (awsvpc), reachable only through the ALB.
 resource "aws_subnet" "app" {
   for_each          = local.azs
   vpc_id            = aws_vpc.main.id

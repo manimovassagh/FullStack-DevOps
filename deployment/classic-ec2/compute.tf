@@ -39,6 +39,21 @@ resource "aws_instance" "backend" {
   key_name                    = aws_key_pair.main.key_name
   user_data_replace_on_change = true # new artifact hash → new instance
 
+  # IMDSv2 only: credentials need a session token, which blocks SSRF-style metadata theft.
+  metadata_options {
+    http_tokens   = "required"
+    http_endpoint = "enabled"
+  }
+
+  # Encrypted root volume on real AWS. Floci has no EBS root volume, and the block makes the
+  # provider look up the AMI's root device, which Floci's alias AMI can't answer.
+  dynamic "root_block_device" {
+    for_each = var.on_floci ? [] : [1]
+    content {
+      encrypted = true
+    }
+  }
+
   user_data = join("\n", [local.bootstrap, templatefile("${path.module}/templates/backend.sh.tftpl", merge(local.template_vars, {
     artifact_hash  = local.backend_hash
     media_bucket   = aws_s3_bucket.media.id
@@ -58,6 +73,21 @@ resource "aws_instance" "frontend" {
   iam_instance_profile        = aws_iam_instance_profile.app["frontend"].name
   key_name                    = aws_key_pair.main.key_name
   user_data_replace_on_change = true
+
+  # IMDSv2 only: credentials need a session token, which blocks SSRF-style metadata theft.
+  metadata_options {
+    http_tokens   = "required"
+    http_endpoint = "enabled"
+  }
+
+  # Encrypted root volume on real AWS. Floci has no EBS root volume, and the block makes the
+  # provider look up the AMI's root device, which Floci's alias AMI can't answer.
+  dynamic "root_block_device" {
+    for_each = var.on_floci ? [] : [1]
+    content {
+      encrypted = true
+    }
+  }
 
   user_data = join("\n", [local.bootstrap, templatefile("${path.module}/templates/frontend.sh.tftpl", merge(local.template_vars, {
     artifact_hash = local.frontend_hash

@@ -13,7 +13,7 @@ AWS   := aws --endpoint-url $(FLOCI)
 # native on Apple Silicon, emulated with QEMU on amd64 hosts such as CI runners.
 GOARCH := arm64
 
-.PHONY: ami artifacts init plan apply smoke health wait ssh-backend ssh-frontend destroy forget
+.PHONY: ami artifacts init plan apply deploy check smoke health wait ssh-backend ssh-frontend destroy forget
 
 ami: ## bake the Ubuntu 24.04 + systemd image Floci uses for ami-ubuntu2404-cloud (see FLOCI-NOTES.md)
 	docker build --platform linux/arm64 -t floci/ami-ubuntu:24.04-arm64 ami
@@ -31,8 +31,13 @@ init:
 plan: artifacts
 	terraform plan
 
-apply: ami artifacts
-	terraform apply -auto-approve
+apply: artifacts deploy
+
+deploy: ami ## terraform apply with the artifacts already in build/ (CI downloads them from the build job)
+	terraform apply -auto-approve -input=false
+
+check: ## idempotency: after an apply, a plan must show no changes (exit 0)
+	terraform plan -detailed-exitcode -input=false
 
 SMOKE := ../smoke
 

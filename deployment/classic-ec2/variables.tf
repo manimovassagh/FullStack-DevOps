@@ -88,3 +88,9 @@ variable "floci_container" {
   type        = string
   default     = "fullstack-devops-floci-1"
 }
+
+variable "on_floci" {
+  description = "true for the local Floci stack. false on real AWS turns on what Floci can't emulate (encrypted root volumes)."
+  type        = bool
+  default     = true
+}

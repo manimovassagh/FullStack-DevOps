@@ -25,20 +25,14 @@ resource "aws_db_instance" "main" {
   skip_final_snapshot    = true
 }
 
-# The backend reads this at boot with its instance role; Terraform never puts
-# the password into UserData.
-resource "aws_secretsmanager_secret" "db" {
-  name                    = local.db_secret_name
+# The whole connection string in one secret: the backend task gets it as the
+# DATABASE_URL environment variable via `secrets.valueFrom`, injected by ECS.
+resource "aws_secretsmanager_secret" "database_url" {
+  name                    = "${var.name}/database-url"
   recovery_window_in_days = 0 # allow immediate re-create after destroy
 }
 
-resource "aws_secretsmanager_secret_version" "db" {
-  secret_id = aws_secretsmanager_secret.db.id
-  secret_string = jsonencode({
-    username = aws_db_instance.main.username
-    password = random_password.db.result
-    host     = var.db_host_override != "" ? var.db_host_override : aws_db_instance.main.address
-    port     = var.db_port_override != 0 ? var.db_port_override : aws_db_instance.main.port
-    dbname   = aws_db_instance.main.db_name
-  })
+resource "aws_secretsmanager_secret_version" "database_url" {
+  secret_id     = aws_secretsmanager_secret.database_url.id
+  secret_string = "postgres://${aws_db_instance.main.username}:${random_password.db.result}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/${aws_db_instance.main.db_name}?sslmode=disable"
 }

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# `check && pass … || fail …` is intended below: pass only prints, fail exits.
+# shellcheck disable=SC2015
 # End-to-end check through the ALB: the same journey a user takes in the browser.
 # Usage: smoke.sh <base_url> <media_bucket>
 set -euo pipefail
