@@ -120,7 +120,7 @@ jobs:
         stage: [classic-ec2, ecs, eks, serverless]
     defaults:
       run:
-        working-directory: deployment/${{ matrix.stage }}
+        working-directory: deployment/aws/${{ matrix.stage }}
     env:
       TF_VAR_image_tag: validate-only # stages without an image_tag variable ignore it
       TF_VAR_lambda_zip: /dev/null # serverless: validate only needs the file to exist
@@ -139,18 +139,18 @@ jobs:
         env:
           # Authenticated plugin download: anonymous GitHub API calls get throttled on shared runners.
           GITHUB_TOKEN: ${{ github.token }}
-        run: tflint --config ../.tflint.hcl --init && tflint --config ../.tflint.hcl --format compact
+        run: tflint --config ../../.tflint.hcl --init && tflint --config ../../.tflint.hcl --format compact
       - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
-          scan-ref: deployment/${{ matrix.stage }}
+          scan-ref: deployment/aws/${{ matrix.stage }}
           severity: HIGH,CRITICAL
           trivyignores: deployment/.trivyignore
           exit-code: "1"
       - name: shellcheck
         working-directory: deployment
-        run: shellcheck smoke/*.sh classic-ec2/scripts/*.sh classic-ec2/templates/bootstrap.sh eks/scripts/*.sh
+        run: shellcheck smoke/*.sh aws/classic-ec2/scripts/*.sh aws/classic-ec2/templates/bootstrap.sh aws/eks/scripts/*.sh
 
   # ── Stage 2: build once (only after tests pass) ───────────────────────────
   build-ec2-artifacts:
@@ -170,13 +170,13 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Build Go binary (linux/arm64) + React bundle
-        run: make -C deployment/classic-ec2 artifacts
+        run: make -C deployment/aws/classic-ec2 artifacts
       - uses: actions/upload-artifact@v7
         with:
           name: ec2-artifacts
           path: |
-            deployment/classic-ec2/build/plant-api
-            deployment/classic-ec2/build/dist.tar.gz
+            deployment/aws/classic-ec2/build/plant-api
+            deployment/aws/classic-ec2/build/dist.tar.gz
             frontend/dist
           retention-days: 3
 

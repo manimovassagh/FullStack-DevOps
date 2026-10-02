@@ -1,6 +1,6 @@
 # Classic EC2 deployment on Floci. Run from this directory.
 SHELL := /bin/bash
-ROOT  := $(abspath ../..)
+ROOT  := $(abspath ../../..)
 BUILD := build
 
 export AWS_ACCESS_KEY_ID     ?= test
@@ -39,7 +39,7 @@ deploy: ami ## terraform apply with the artifacts already in build/ (CI download
 check: ## idempotency: after an apply, a plan must show no changes (exit 0)
 	terraform plan -detailed-exitcode -input=false
 
-SMOKE := ../smoke
+SMOKE := ../../smoke
 
 smoke: ## API + browser smoke tests through the ALB (shared with every deployment style)
 	$(SMOKE)/api-smoke.sh "$$(terraform output -raw app_url)" "$$(terraform output -raw media_bucket)"

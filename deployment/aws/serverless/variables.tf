@@ -53,7 +53,7 @@ variable "release" {
 variable "frontend_dist" {
   description = "The built React app (`make frontend`), uploaded to the site bucket."
   type        = string
-  default     = "../../frontend/dist"
+  default     = "../../../frontend/dist"
 }
 
 variable "local_hostname" {

@@ -2,8 +2,8 @@
 # Terraform builds the platform (VPC, cluster, ECR, RDS, S3, ALB);
 # kubectl + kustomize ship the app into the cluster.
 SHELL := /bin/bash
-ROOT  := $(abspath ../..)
-SMOKE := ../smoke
+ROOT  := $(abspath ../../..)
+SMOKE := ../../smoke
 BUILD := build
 
 export AWS_ACCESS_KEY_ID     ?= test

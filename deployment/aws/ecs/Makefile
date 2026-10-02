@@ -1,7 +1,7 @@
 # ECS (Fargate) deployment on Floci. Run from this directory.
 SHELL := /bin/bash
-ROOT  := $(abspath ../..)
-SMOKE := ../smoke
+ROOT  := $(abspath ../../..)
+SMOKE := ../../smoke
 
 export AWS_ACCESS_KEY_ID     ?= test
 export AWS_SECRET_ACCESS_KEY ?= test

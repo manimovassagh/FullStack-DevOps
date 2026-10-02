@@ -1,4 +1,4 @@
-# Deploy+verify the serverless stage on its own Floci (deployment/serverless/compose.yaml).
+# Deploy+verify the serverless stage on its own Floci (deployment/aws/serverless/compose.yaml).
 # Called by pipeline.yml after the tests and IaC checks pass. It builds what it deploys
 # (a Go zip and the React bundle), so it needs no artifacts from the build jobs.
 name: deploy-serverless
@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 30
     defaults:
       run:
-        working-directory: deployment/serverless
+        working-directory: deployment/aws/serverless
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7

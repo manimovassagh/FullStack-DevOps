@@ -1,7 +1,7 @@
 # Serverless (Lambda + API Gateway + CloudFront + S3) deployment on Floci. Run from this directory.
 SHELL := /bin/bash
-ROOT  := $(abspath ../..)
-SMOKE := ../smoke
+ROOT  := $(abspath ../../..)
+SMOKE := ../../smoke
 
 export AWS_ACCESS_KEY_ID     ?= test
 export AWS_SECRET_ACCESS_KEY ?= test
@@ -9,7 +9,7 @@ export AWS_REGION            ?= us-east-1
 # This stage's own Floci, see compose.yaml.
 FLOCI := http://localhost:4567
 AWS   := aws --endpoint-url $(FLOCI)
-# Read by ../smoke/api-smoke.sh.
+# Read by ../../smoke/api-smoke.sh.
 export FLOCI_ENDPOINT := $(FLOCI)
 
 # Floci runs functions on the Docker host's architecture, so build for that one.

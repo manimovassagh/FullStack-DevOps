@@ -2,7 +2,7 @@
 # Keep each ALB target group in sync with the cluster's nodes: register every
 # node's InternalIP on the Service's NodePort, deregister nodes that are gone.
 # On real AWS the AWS Load Balancer Controller does this (TargetGroupBinding).
-# Usage: register-nodes.sh   (run from deployment/eks, needs KUBECONFIG + AWS env)
+# Usage: register-nodes.sh   (run from deployment/aws/eks, needs KUBECONFIG + AWS env)
 set -euo pipefail
 AWS=(aws --endpoint-url "${FLOCI_ENDPOINT:-http://localhost:4566}")
 
