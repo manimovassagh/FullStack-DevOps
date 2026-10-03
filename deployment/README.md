@@ -29,3 +29,11 @@ Runs on the [Floci GCP emulator](https://github.com/floci-io/floci-gcp) (its own
 | Folder | Style | What you learn |
 |---|---|---|
 | [gcp/cloud-run](gcp/cloud-run/) | Cloud Run + Cloud SQL + Cloud Storage | revisions, service accounts, Secret Manager, a gateway in front of three services, the client library against an emulator |
+
+## Azure
+
+Runs on the [Floci Azure emulator](https://github.com/floci-io/floci-az) (its own compose file in the stage). The repo's backend and frontend are deployed unchanged; photos go to an S3-compatible store because Azure Blob has no S3 interface.
+
+| Folder | Style | What you learn |
+|---|---|---|
+| [azure/container-apps](azure/container-apps/) | Container Apps + PostgreSQL Flexible Server | environments, apps and revisions, app secrets, ingress, the azurerm provider against a custom cloud |
