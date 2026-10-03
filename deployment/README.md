@@ -11,6 +11,7 @@ The AWS stages run **locally on [Floci](https://floci.io)**, so no cloud account
 | [ecs](aws/ecs/) | ECS Fargate + ALB + RDS + S3 | Docker images in ECR, task definitions, services, execution vs task roles, secrets injection |
 | [eks](aws/eks/) | EKS (Kubernetes) + ALB + RDS + S3 | cluster vs app layer (Terraform + kubectl/Kustomize), node groups, NodePort + ALB, IRSA, kubectl auth with `aws eks get-token` |
 | [eks-helm](aws/eks-helm/) | EKS + the app as a Helm chart | charts, values, releases and revisions, `helm upgrade --install`, `helm rollback`, templating vs patching |
+| [eks-gitops](aws/eks-gitops/) | EKS + Argo CD pulling from git | GitOps: the repo is the source of truth, a release is a commit, rollback is `git revert`, self-healing drift, no cluster credentials in CI |
 | [ecs-blue-green](aws/ecs-blue-green/) | ECS Fargate + weighted ALB (two environments) | blue/green and canary releases, weighted target groups, a preview listener, instant rollback, a release state machine |
 | [serverless](aws/serverless/) | Lambda + API Gateway + CloudFront + S3 | function packaging and cold starts, API Gateway events, versions and aliases, CloudFront origins and behaviors, a private S3 site with origin access control, secrets read by the function |
 

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: plant
+description: Plant Parent (React + Go API) for Kubernetes. Secrets (database, aws-local) are created outside the chart by `make secrets`.
+type: application
+version: 0.1.0
+appVersion: "0"
