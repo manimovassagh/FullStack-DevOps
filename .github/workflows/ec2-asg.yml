@@ -110,6 +110,10 @@ jobs:
         run: terraform fmt -check -recursive
       - name: terraform validate
         run: terraform init -backend=false -input=false >/dev/null && terraform validate
+      # The launch templates hash the build artifacts into the user data, and tflint evaluates that.
+      # The IaC job builds nothing, so give it empty placeholders of the right names.
+      - name: Placeholder artifacts (so tflint can evaluate the hashes)
+        run: mkdir -p build && touch build/plant-api build/dist.tar.gz
       - uses: terraform-linters/setup-tflint@v6
       - name: tflint (terraform + aws rulesets)
         env:
