@@ -11,6 +11,10 @@ locals {
     gateway  = "plant/azure-gateway:${var.image_tag}"
   }
 
+  # On Azure only the gateway is reachable from outside; the backend and frontend use internal ingress. floci-az rejects
+  # calls to internal-ingress apps even from another replica (404), so locally they are external too.
+  apps_external = var.on_floci
+
   # The unchanged backend reads these: the S3 API of the object store (endpoint + keys) and the bucket.
   s3_env = {
     AWS_ENDPOINT_URL = "http://${var.s3_address}:4566"
@@ -19,7 +23,7 @@ locals {
   }
 }
 
-# ── backend: the Go API (the repo's backend, unchanged), internal ingress only ──
+# ── backend: the Go API (the repo's backend, unchanged); internal ingress on Azure ──
 resource "azurerm_container_app" "backend" {
   name                         = "backend"
   container_app_environment_id = azurerm_container_app_environment.main.id
@@ -76,7 +80,7 @@ resource "azurerm_container_app" "backend" {
   }
 
   ingress {
-    external_enabled = false
+    external_enabled = local.apps_external # internal on Azure; see locals
     target_port      = 8080
     transport        = "http"
     traffic_weight {
@@ -88,7 +92,7 @@ resource "azurerm_container_app" "backend" {
   depends_on = [azurerm_postgresql_flexible_server_database.plant]
 }
 
-# ── frontend: nginx with the React build, internal ingress only ─────────────
+# ── frontend: nginx with the React build; internal ingress on Azure ─────────
 resource "azurerm_container_app" "frontend" {
   name                         = "frontend"
   container_app_environment_id = azurerm_container_app_environment.main.id
@@ -108,7 +112,7 @@ resource "azurerm_container_app" "frontend" {
   }
 
   ingress {
-    external_enabled = false
+    external_enabled = local.apps_external
     target_port      = 80
     transport        = "http"
     traffic_weight {
