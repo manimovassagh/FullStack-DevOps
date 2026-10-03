@@ -1,0 +1,244 @@
+# Pipeline for the EC2 Auto Scaling Group stage: the classic-ec2 recipe (native artifacts baked into the instances'
+# user data, no containers) with launch templates and Auto Scaling Groups instead of hand-made instances.
+# Own family, own workflow; it walks a whole roll + self-healing journey, which takes a while under QEMU.
+#
+#   backend tests ─┐
+#                  ├─ build EC2 artifacts ─┐
+#   frontend tests ┘                       ├─ deploy + verify + roll + self-heal ─ summary
+#   IaC checks ────────────────────────────┘
+name: "AWS · EC2 Auto Scaling"
+run-name: "AWS · EC2 Auto Scaling · ${{ github.event.pull_request.title || github.ref_name }}"
+
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - backend/**
+      - frontend/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - deployment/aws/ec2-asg/**
+      - .github/workflows/ec2-asg.yml
+  pull_request:
+    paths: *paths
+  workflow_dispatch:
+
+# Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.
+# Uncomment if you like: superseded runs of the same branch get cancelled (saves runner minutes,
+# but a new push can kill a run that is still in progress).
+# concurrency:
+#   group: ec2-asg-${{ github.ref }}
+#   cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION_FILE: backend/go.mod
+  NODE_VERSION: 22
+  TERRAFORM_VERSION: 1.14.6
+
+jobs:
+  # ── Stage 1: tests and static checks (parallel) ───────────────────────────
+  backend:
+    name: Backend · vet + unit + integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+          cache-dependency-path: backend/go.sum
+      - name: Start Postgres + Floci (integration test dependencies)
+        run: make up
+      - name: go vet
+        working-directory: backend
+        run: go vet ./...
+      - name: Unit + integration tests (race detector, coverage)
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgres://plant:plant@localhost:5432/plant_test?sslmode=disable
+          AWS_ENDPOINT_URL: http://localhost:4566
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_REGION: us-east-1
+          S3_BUCKET: plant-media
+        run: |
+          go test -race -count=1 -coverprofile=coverage.out ./...
+          echo "### Backend coverage" >> "$GITHUB_STEP_SUMMARY"
+          go tool cover -func=coverage.out | tail -1 >> "$GITHUB_STEP_SUMMARY"
+
+  frontend:
+    name: Frontend · lint + typecheck + unit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Lint (oxlint)
+        run: npm run lint
+      - name: Typecheck
+        run: npx tsc -b
+      - name: Unit tests (Vitest)
+        run: npm test
+
+  iac:
+    name: IaC · ec2-asg
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: deployment/aws/ec2-asg
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+      - name: terraform validate
+        run: terraform init -backend=false -input=false >/dev/null && terraform validate
+      - uses: terraform-linters/setup-tflint@v6
+      - name: tflint (terraform + aws rulesets)
+        env:
+          # Authenticated plugin download: anonymous GitHub API calls get throttled on shared runners.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tflint --config ../../.tflint.hcl --init && tflint --config ../../.tflint.hcl --format compact
+      - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: deployment/aws/ec2-asg
+          severity: HIGH,CRITICAL
+          trivyignores: deployment/.trivyignore
+          exit-code: "1"
+      - name: shellcheck
+        working-directory: deployment
+        run: shellcheck smoke/*.sh aws/ec2-asg/scripts/*.sh aws/ec2-asg/templates/bootstrap.sh
+
+  # ── Stage 2: build once (only after tests pass) ───────────────────────────
+  build-ec2-artifacts:
+    name: Build · EC2 artifacts
+    needs: [backend, frontend]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build Go binary (linux/arm64) + React bundle
+        run: make -C deployment/aws/ec2-asg artifacts
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ec2-artifacts
+          path: |
+            deployment/aws/ec2-asg/build/plant-api
+            deployment/aws/ec2-asg/build/dist.tar.gz
+            frontend/dist
+          retention-days: 3
+
+  # ── Stage 3: deploy to Floci, verify, then roll and self-heal ────────────
+  deploy:
+    name: Deploy+verify · ec2-asg
+    needs: [build-ec2-artifacts, iac]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: deployment/aws/ec2-asg
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: deployment/smoke/package-lock.json
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      # The AMI is arm64; runners are x86, so instance containers run under QEMU.
+      - uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+      - uses: actions/download-artifact@v8
+        with:
+          name: ec2-artifacts
+          path: .
+      - name: Start Floci
+        working-directory: .
+        run: docker compose up -d --wait floci
+      - name: "Deploy (bake AMI, terraform apply: launch templates + Auto Scaling Groups)"
+        run: make init && make deploy
+      - name: "Verify: ALB targets healthy (the groups launched and registered the instances)"
+        run: make wait WAIT_TRIES=240
+      - name: "Verify: idempotent (plan shows no changes)"
+        run: make check
+      - name: "Verify: API + browser smoke tests"
+        env:
+          CI: "true"
+        run: make smoke
+      - name: "Verify: new launch-template version → roll → instances replaced → self-healing"
+        env:
+          WAIT_TRIES: "240"
+        run: make rollout
+      - name: Diagnostics
+        if: failure()
+        run: |
+          make -s health || true
+          make -s instances || true
+          docker compose -f ../../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
+      - name: Upload e2e recording (Playwright video, screenshots, report)
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: e2e-recording-ec2-asg
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Destroy
+        if: always()
+        run: make destroy || true
+      - name: "Verify: teardown left nothing running"
+        run: |
+          left=$(docker ps --format '{{.Names}}' | grep -E '^floci-(ec2|rds)' || true)
+          [ -z "$left" ] || { echo "still running: $left"; exit 1; }
+
+  # ── Stage 4: one result for this workflow ────────────────────────────────
+  summary:
+    name: EC2 Auto Scaling summary
+    needs: [backend, frontend, iac, build-ec2-artifacts, deploy]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          {
+            echo "## EC2 Auto Scaling summary"
+            echo "| job | result |"
+            echo "|---|---|"
+            echo "$RESULTS" | jq -r 'to_entries[] | "| \(.key) | \(if .value.result == "success" then "✅" else "❌" end) \(.value.result) |"'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' >/dev/null

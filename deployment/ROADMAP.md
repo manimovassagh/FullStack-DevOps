@@ -27,12 +27,12 @@ deployment/
 │   ├── classic-ec2/          ✅ VMs: EC2 + ALB + UserData/systemd
 │   ├── ecs/                  ✅ containers: ECS Fargate + ALB
 │   ├── eks/                  ✅ Kubernetes: EKS + Kustomize + ALB
-│   ├── ec2-asg/              VMs done right: Launch Template + Auto Scaling Group
+│   ├── ec2-asg/              ✅ VMs done right: Launch Template + Auto Scaling Group
 │   ├── serverless/           ✅ Lambda + API Gateway + S3 + CloudFront (own Go project: /backend-serverless)
 │   ├── ecs-blue-green/       ✅ ECS with weighted target groups (blue/green + canary)
 │   ├── eks-helm/             ✅ same app as a Helm chart
 │   ├── eks-gitops/           ✅ Argo CD pulls the manifests from git
-│   └── beanstalk/            PaaS: Elastic Beanstalk (only if Floci supports it)
+│   └── beanstalk/            dropped: Floci only stores Beanstalk metadata (see phase 5)
 │
 ├── azure/                    later: same idea, Azure services
 └── gcp/                      later: same idea, Google Cloud services
@@ -113,17 +113,14 @@ Lambda (Go, `provided.al2023`) + API Gateway HTTP API (v2) + React build in a pr
 - **eks-gitops ✅:** Argo CD (core install) runs in the cluster and watches a git repo (a local bare repo served by a `git daemon` container, so it works offline); a release is a commit that bumps the image tag, rollback is `git revert`, and Argo CD's self-heal reverts manual changes. `make rollout` asserts all three.
 - Each is a full recipe: its own copy of the EKS platform Terraform (VPC, cluster, RDS, S3, ALB) plus its own delivery method. Neither one references or edits `aws/eks/`.
 
-### Phase 4: `aws/ec2-asg/`, VMs the production way
+### Phase 4: `aws/ec2-asg/`, VMs the production way ✅ done
 
-- A Launch Template plus an Auto Scaling Group behind the ALB.
-- **Instance refresh** for rollouts, and self-healing: the test kills an instance and the ASG replaces it.
-- Contrast with classic-ec2, which uses single hand-made instances.
-- **Floci check:** does `autoscaling` actually launch instances?
+- A Launch Template plus an Auto Scaling Group per tier behind the ALB (the classic-ec2 recipe with groups instead of hand-made instances). Floci's reconciler really launches, registers and replaces the instances.
+- **Self-healing and rolling replacement:** `make rollout` creates a new launch-template version (instances unchanged), rolls every instance (`scripts/roll.sh`, since Floci has no instance refresh), then kills one and watches the group heal.
 
-### Phase 5: `aws/beanstalk/`, PaaS (only if Floci really runs it)
+### Phase 5: `aws/beanstalk/`, PaaS (dropped)
 
-- Elastic Beanstalk with the Docker platform.
-- **Floci check:** if Floci only stores metadata and runs nothing, drop this stage and record why here.
+Floci's Elastic Beanstalk is stored state only: `CreateEnvironment` returns an immediately `Ready` environment and nothing runs. By this roadmap's own rule (a stage must really deploy and pass the shared smoke tests) it is dropped; revisit if Floci starts running environments.
 
 ### Phase 6: Cross-cutting upgrades (applied to every stage, not new stages)
 
