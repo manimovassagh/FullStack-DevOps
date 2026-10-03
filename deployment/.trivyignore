@@ -42,3 +42,9 @@ AWS-0012
 # serverless: no AWS WAF in front of CloudFront. Floci does not emulate WAF and it costs money on AWS.
 # For production attach an aws_wafv2_web_acl (managed rule groups, rate limiting).
 AWS-0011
+
+# gcp/cloud-run: Cloud SQL TLS and private address. database.tf enforces both (ssl_mode ENCRYPTED_ONLY,
+# optional private_network) when var.on_floci is false; the scanner reads the default (true), and the
+# emulator only serves plain TCP on a container address.
+GCP-0015
+GCP-0017

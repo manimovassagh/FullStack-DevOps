@@ -16,8 +16,16 @@ The AWS stages run **locally on [Floci](https://floci.io)**, so no cloud account
 | [ecs-blue-green](aws/ecs-blue-green/) | ECS Fargate + weighted ALB (two environments) | blue/green and canary releases, weighted target groups, a preview listener, instant rollback, a release state machine |
 | [serverless](aws/serverless/) | Lambda + API Gateway + CloudFront + S3 | function packaging and cold starts, API Gateway events, versions and aliases, CloudFront origins and behaviors, a private S3 site with origin access control, secrets read by the function |
 
-Next stages, the target folder structure and the rules for adding a stage: [ROADMAP.md](ROADMAP.md). Later: Azure and Google Cloud equivalents in their own folders.
+Google Cloud and Azure (one stage each, the most common container setup of each) have their own sections below. Next stages, the target folder structure and the rules for adding a stage: [ROADMAP.md](ROADMAP.md). Later: Azure and Google Cloud equivalents in their own folders.
 
 ## Prerequisites
 
 Docker, Terraform ≥ 1.14, AWS CLI v2, Go 1.26+, Node 22+, kubectl (eks). From the repo root, `make up` starts Postgres and Floci (Floci gets the Docker socket so it can run instances as containers).
+
+## Google Cloud
+
+Runs on the [Floci GCP emulator](https://github.com/floci-io/floci-gcp) (its own compose file in the stage). The API is a copy of the backend with Cloud Storage as photo storage ([`backend-gcp/`](../backend-gcp/)).
+
+| Folder | Style | What you learn |
+|---|---|---|
+| [gcp/cloud-run](gcp/cloud-run/) | Cloud Run + Cloud SQL + Cloud Storage | revisions, service accounts, Secret Manager, a gateway in front of three services, the client library against an emulator |

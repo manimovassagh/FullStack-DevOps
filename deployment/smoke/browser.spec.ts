@@ -14,6 +14,8 @@ const STAGES: Record<string, string> = {
   eks: 'EKS (Kubernetes)',
   'eks-helm': 'EKS + Helm',
   'eks-gitops': 'EKS + Argo CD (GitOps)',
+  'gcp-cloud-run': 'Google Cloud Run + Cloud SQL',
+  'azure-container-apps': 'Azure Container Apps + PostgreSQL',
   serverless: 'Lambda + API Gateway + CloudFront',
 }
 const stage = process.env.SMOKE_STAGE ?? 'local'

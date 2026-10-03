@@ -128,18 +128,9 @@ Floci's Elastic Beanstalk is stored state only: `CreateEnvironment` returns an i
 - **Observability:** CloudWatch log groups, metrics and alarms per stage. Later, an OpenTelemetry collector.
 - **Environments:** dev/prod from the same stage code (tfvars per environment), without copying folders.
 
-### Later: `azure/` and `gcp/`
+### Google Cloud and Azure: one stage each
 
-The same app and the same smoke tests, mapped to each cloud's equivalents (App Service / Container Apps / AKS; Cloud Run / GKE). Each needs a local emulator or a scoped real account; decide when we get there.
+AWS is the popular one, so the other two clouds get only the most common container deployment, not the full range. Both run on Floci's sibling emulators ([floci-gcp](https://github.com/floci-io/floci-gcp), [floci-az](https://github.com/floci-io/floci-az)), each with its own compose file in the stage.
 
-## Definition of done (every stage)
-
-- [ ] standalone: the folder deploys when copied alone (only `smoke/` and the app source are needed); no `../` paths into another stage
-- [ ] `make up` works from zero on a fresh Floci
-- [ ] `make check` exits 0 right after apply
-- [ ] `make smoke` passes (API steps + Playwright, video uploaded in CI)
-- [ ] `make rollout` passes (where the style has a rollout)
-- [ ] `make destroy` leaves no containers or resources behind
-- [ ] tflint + trivy + shellcheck clean (accepted findings documented in `.trivyignore`)
-- [ ] README (diagram, steps, comparison) and FLOCI-NOTES written
-- [ ] stage row added to [README.md](README.md) and its CI workflow is green
+- **`gcp/cloud-run/` ✅:** Cloud Run + Cloud SQL + Cloud Storage, behind an nginx gateway. The API is `backend-gcp/`, a copy of the backend with Cloud Storage as photo storage (the emulator's S3-style upload is broken, so the unchanged backend can't be used). Workflow `gcp-cloud-run.yml`.
+- **`azure/container-apps/`:** Container Apps + PostgreSQL Flexible Server (+ ACR), with the unchanged backend and an S3-compatible object store in the stage (Azure Blob has no S3 interface). Workflow `azure-container-apps.yml`.
