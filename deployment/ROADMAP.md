@@ -31,7 +31,7 @@ deployment/
 │   ├── serverless/           ✅ Lambda + API Gateway + S3 + CloudFront (own Go project: /backend-serverless)
 │   ├── ecs-blue-green/       ✅ ECS with weighted target groups (blue/green + canary)
 │   ├── eks-helm/             ✅ same app as a Helm chart
-│   ├── eks-gitops/           Argo CD pulls the manifests from git
+│   ├── eks-gitops/           ✅ Argo CD pulls the manifests from git
 │   └── beanstalk/            PaaS: Elastic Beanstalk (only if Floci supports it)
 │
 ├── azure/                    later: same idea, Azure services
@@ -107,10 +107,10 @@ Lambda (Go, `provided.al2023`) + API Gateway HTTP API (v2) + React build in a pr
 - **Test:** `make rollout` walks release → preview → canary → promote → rollback → promote → finalize and asserts after each step where the traffic goes (it counts requests in each environment's backend logs).
 - **Not done:** CodeDeploy's ECS blue/green deployment type (Floci lists `codedeploy`, untested here). The weights are moved explicitly so each step is visible.
 
-### Phase 3: how Kubernetes teams ship (`eks-helm` ✅, `eks-gitops` next)
+### Phase 3: how Kubernetes teams ship ✅ done (`eks-helm`, `eks-gitops`)
 
 - **eks-helm ✅:** the same app as a Helm chart (`helm/plant/`), delivered with `helm upgrade --install --wait`. The point is the comparison with eks's Kustomize: templating vs patching, values files, numbered releases, `helm rollback`. `make rollout` upgrades, rolls back and upgrades again, with an API smoke test after each.
-- **eks-gitops:** Argo CD installed in the cluster watches a manifest path in this repo, so a git change becomes a deploy. CI only builds and pushes images, then bumps the image tag.
+- **eks-gitops ✅:** Argo CD (core install) runs in the cluster and watches a git repo (a local bare repo served by a `git daemon` container, so it works offline); a release is a commit that bumps the image tag, rollback is `git revert`, and Argo CD's self-heal reverts manual changes. `make rollout` asserts all three.
 - Each is a full recipe: its own copy of the EKS platform Terraform (VPC, cluster, RDS, S3, ALB) plus its own delivery method. Neither one references or edits `aws/eks/`.
 
 ### Phase 4: `aws/ec2-asg/`, VMs the production way

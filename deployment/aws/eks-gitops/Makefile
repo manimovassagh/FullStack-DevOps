@@ -20,7 +20,7 @@ FLOCI_NETWORK ?= fullstack-devops_default
 REGISTRY  := 000000000000.dkr.ecr.$(AWS_REGION).localhost:4566
 K         := kubectl -n plant
 ARGO_VERSION := v3.5.3
-# The "git remote": a bare repo on disk, served read-only over HTTP by an nginx container on the compose network.
+# The "git remote": a bare repo on disk, served read-only over git:// by a git-daemon container on the compose network.
 GITSRV    := plant-gitops-git
 GITDIR    := $(BUILD)/git
 WORK      := $(BUILD)/work
@@ -28,7 +28,7 @@ GIT       := git -C $(WORK) -c user.name=gitops -c user.email=gitops@local
 
 WAIT_TRIES ?= 72 # × 5 s
 
-.PHONY: init repos images push deploy kubeconfig secrets gitserver gitrepo argocd app release revert refresh status register up rollout plan check smoke health wait logs destroy forget
+.PHONY: init repos images push deploy kubeconfig secrets lint gitserver gitrepo argocd app release revert refresh status register up rollout plan check smoke health wait logs destroy forget
 
 init:
 	terraform init
@@ -69,12 +69,20 @@ secrets: ## DATABASE_URL from Secrets Manager into a Kubernetes Secret (+ Floci-
 		--from-literal=AWS_ACCESS_KEY_ID=test --from-literal=AWS_SECRET_ACCESS_KEY=test \
 		| kubectl apply -f -
 
-gitserver: ## start the git remote: a bare repo (build/git/plant.git) served over HTTP on the compose network
+lint: ## helm lint + render the chart with the values the repo's env/values.yaml would provide
+	helm lint helm/plant --set backend.s3Bucket=lint,image.registry=lint
+	helm template plant helm/plant --set backend.s3Bucket=lint,image.registry=lint >/dev/null
+
+gitserver: ## start the git remote: a bare repo (build/git/plant.git) served over the git:// protocol on the compose network
 	@mkdir -p $(GITDIR)
-	@[ -d $(GITDIR)/plant.git ] || { git init -q --bare -b main $(GITDIR)/plant.git \
-		&& cp $(GITDIR)/plant.git/hooks/post-update.sample $(GITDIR)/plant.git/hooks/post-update; }
+	@[ -d $(GITDIR)/plant.git ] || git init -q --bare -b main $(GITDIR)/plant.git
 	@docker rm -f $(GITSRV) >/dev/null 2>&1 || true
-	docker run -d --name $(GITSRV) --network $(FLOCI_NETWORK) -v "$(CURDIR)/$(GITDIR):/usr/share/nginx/html:ro" nginx:alpine >/dev/null
+	@# Alpine's git-daemon package; safe.directory because the repo is owned by your host user, not by root in the container.
+	docker run -d --name $(GITSRV) --network $(FLOCI_NETWORK) -v "$(CURDIR)/$(GITDIR):/git:ro" alpine:3 sh -c \
+		"apk add --no-cache git git-daemon >/dev/null && git config --global --add safe.directory '*' \
+		&& exec git daemon --base-path=/git --export-all --reuseaddr --port=9418 --verbose /git" >/dev/null
+	@for i in $$(seq 1 60); do docker logs $(GITSRV) 2>&1 | grep -q 'Ready to rumble' && exit 0; sleep 1; done; \
+		echo "git daemon did not start:"; docker logs $(GITSRV); exit 1
 
 gitrepo: ## first commit: the chart plus env/values.yaml (image tags, bucket, role ARN from Terraform outputs)
 	rm -rf $(WORK) && git clone -q $(GITDIR)/plant.git $(WORK) 2>/dev/null
@@ -95,6 +103,17 @@ gitrepo: ## first commit: the chart plus env/values.yaml (image tags, bucket, ro
 argocd: ## install Argo CD (core: no UI, no SSO) and make it poll git every 20 s
 	kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 	kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/$(ARGO_VERSION)/manifests/core-install.yaml >/dev/null
+	@# The core install ships no `default` project; every Application needs one (this one may deploy anything from any repo, fine for a lab).
+	kubectl wait --for=condition=established --timeout=60s crd/appprojects.argoproj.io
+	@printf '%s\n' \
+		'apiVersion: argoproj.io/v1alpha1' \
+		'kind: AppProject' \
+		'metadata: { name: default, namespace: argocd }' \
+		'spec:' \
+		'  sourceRepos: ["*"]' \
+		'  destinations: [{ namespace: "*", server: "*" }]' \
+		'  clusterResourceWhitelist: [{ group: "*", kind: "*" }]' \
+		| kubectl apply -f -
 	kubectl -n argocd patch configmap argocd-cm --type merge -p '{"data":{"timeout.reconciliation":"20s"}}'
 	kubectl -n argocd rollout restart statefulset/argocd-application-controller >/dev/null
 	kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=300s
@@ -109,7 +128,7 @@ app: ## tell Argo CD to watch the repo (an Application with automated sync, prun
 		'spec:' \
 		'  project: default' \
 		'  source:' \
-		'    repoURL: http://$(shell docker inspect -f '{{(index .NetworkSettings.Networks "$(FLOCI_NETWORK)").IPAddress}}' $(GITSRV))/plant.git' \
+		'    repoURL: git://$(shell docker inspect -f '{{(index .NetworkSettings.Networks "$(FLOCI_NETWORK)").IPAddress}}' $(GITSRV))/plant.git' \
 		'    targetRevision: main' \
 		'    path: chart' \
 		'    helm: { valueFiles: [../env/values.yaml] }' \
