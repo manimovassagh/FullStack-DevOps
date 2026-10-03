@@ -1,0 +1,249 @@
+# Pipeline for the Google Cloud stage: Cloud Run + Cloud SQL + Cloud Storage on the Floci GCP emulator.
+# Its own family: its own emulator (compose file in the stage), its own backend project (backend-gcp, which
+# stores photos with the Cloud Storage client library) and a gateway image.
+#
+#   backend-gcp tests ─┐
+#                      ├─ build images ─┐
+#   frontend tests ────┘                ├─ deploy + verify + release ─ summary
+#   IaC checks ─────────────────────────┘
+name: "GCP · Cloud Run"
+run-name: "GCP · Cloud Run · ${{ github.event.pull_request.title || github.ref_name }}"
+
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - backend-gcp/**
+      - frontend/**
+      - deployment/gcp/cloud-run/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - .github/workflows/gcp-cloud-run.yml
+  pull_request:
+    paths: *paths
+  workflow_dispatch:
+
+# Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.
+# Uncomment if you like: superseded runs of the same branch get cancelled (saves runner minutes,
+# but a new push can kill a run that is still in progress).
+# concurrency:
+#   group: gcp-cloud-run-${{ github.ref }}
+#   cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22
+  TERRAFORM_VERSION: 1.14.6
+  IMAGE_TAG: ci-${{ github.sha }}
+
+jobs:
+  # ── Stage 1: tests and static checks (parallel) ───────────────────────────
+  backend:
+    name: Backend (GCP) · vet + unit + Cloud Storage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend-gcp/go.mod
+          cache-dependency-path: backend-gcp/go.sum
+      - name: Start Postgres (integration test dependency)
+        run: make up
+      - name: Start the Floci GCP emulator and create a bucket
+        run: |
+          docker compose -f deployment/gcp/cloud-run/compose.yaml up -d --wait
+          curl -sf -X POST "http://localhost:4588/storage/v1/b?project=test" -H 'content-type: application/json' -d '{"name":"plant-test"}' >/dev/null
+      - name: go vet
+        working-directory: backend-gcp
+        run: go vet ./...
+      - name: Unit + integration tests (race detector)
+        working-directory: backend-gcp
+        env:
+          TEST_DATABASE_URL: postgres://plant:plant@localhost:5432/plant_test?sslmode=disable
+          STORAGE_EMULATOR_HOST: localhost:4588
+          GCS_BUCKET: plant-test
+        run: go test -race -count=1 ./...
+
+  frontend:
+    name: Frontend · lint + typecheck + unit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Lint (oxlint)
+        run: npm run lint
+      - name: Typecheck
+        run: npx tsc -b
+      - name: Unit tests (Vitest)
+        run: npm test
+
+  iac:
+    name: IaC · gcp-cloud-run
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: deployment/gcp/cloud-run
+    env:
+      TF_VAR_image_tag: validate-only
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+      - name: terraform validate
+        run: terraform init -backend=false -input=false >/dev/null && terraform validate
+      - uses: terraform-linters/setup-tflint@v6
+      - name: tflint (terraform ruleset)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tflint --config ../../.tflint.hcl --init && tflint --config ../../.tflint.hcl --format compact
+      - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: deployment/gcp/cloud-run
+          severity: HIGH,CRITICAL
+          trivyignores: deployment/.trivyignore
+          exit-code: "1"
+      - name: shellcheck
+        working-directory: deployment
+        run: shellcheck smoke/*.sh gcp/cloud-run/scripts/*.sh
+
+  # ── Stage 2: build once (only after tests pass) ───────────────────────────
+  build-images:
+    name: Build · container images
+    needs: [backend, frontend]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build backend-gcp, frontend and gateway images
+        run: |
+          docker buildx build --load -t "plant/backend-gcp:${IMAGE_TAG}" backend-gcp
+          docker buildx build --load -t "plant/frontend:${IMAGE_TAG}" frontend
+          docker buildx build --load -t "plant/gcp-gateway:${IMAGE_TAG}" deployment/gcp/cloud-run/gateway
+          docker images --format 'table {{.Repository}}:{{.Tag}}\t{{.Size}}' | grep plant/ >> "$GITHUB_STEP_SUMMARY"
+      - name: trivy image scan backend-gcp (fixable HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: plant/backend-gcp:${{ env.IMAGE_TAG }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: trivy image scan gateway
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: plant/gcp-gateway:${{ env.IMAGE_TAG }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          skip-setup-trivy: true
+      - name: Save images
+        run: docker save "plant/backend-gcp:${IMAGE_TAG}" "plant/frontend:${IMAGE_TAG}" "plant/gcp-gateway:${IMAGE_TAG}" | gzip > images.tar.gz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: images
+          path: images.tar.gz
+          retention-days: 3
+
+  # ── Stage 3: deploy to the emulator and verify ────────────────────────────
+  deploy:
+    name: Deploy+verify · gcp-cloud-run
+    needs: [build-images, iac]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: deployment/gcp/cloud-run
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: deployment/smoke/package-lock.json
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: images
+          path: .
+      - name: Load images from the build job
+        run: gunzip -c "$GITHUB_WORKSPACE/images.tar.gz" | docker load
+      - name: Start the Floci GCP emulator
+        run: make floci
+      - name: "Deploy (terraform apply: Cloud SQL, Cloud Storage, three Cloud Run services)"
+        run: make init deploy
+      - name: "Verify: the app answers through the gateway"
+        run: make wait
+      - name: "Verify: idempotent (plan shows no changes)"
+        run: make check
+      - name: "Verify: API + browser smoke tests"
+        env:
+          CI: "true"
+        run: make smoke
+      - name: "Verify: new image tag → new revisions, old containers stopped, API smoke"
+        run: make rollout
+      - name: Diagnostics
+        if: failure()
+        run: |
+          make -s logs || true
+          docker logs plant-gcp-floci-gcp-1 2>&1 | tail -150
+      - name: Upload e2e recording (Playwright video, screenshots, report)
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: e2e-recording-gcp-cloud-run
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Destroy
+        if: always()
+        run: make destroy || true
+      - name: "Verify: teardown left nothing running"
+        run: |
+          left=$(docker ps --format '{{.Names}}' | grep -E '^floci-gcp-' || true)
+          [ -z "$left" ] || { echo "still running: $left"; exit 1; }
+
+  # ── Stage 4: one result for this workflow ─────────────────────────────────
+  summary:
+    name: GCP Cloud Run summary
+    needs: [backend, frontend, iac, build-images, deploy]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          {
+            echo "## GCP Cloud Run summary"
+            echo "| job | result |"
+            echo "|---|---|"
+            echo "$RESULTS" | jq -r 'to_entries[] | "| \(.key) | \(if .value.result == "success" then "✅" else "❌" end) \(.value.result) |"'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' >/dev/null

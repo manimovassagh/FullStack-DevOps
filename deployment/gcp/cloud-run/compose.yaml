@@ -1,0 +1,15 @@
+# This stage's own Floci GCP emulator (the AWS stages use Floci's AWS emulator on other ports).
+# It runs Cloud Run services and Cloud SQL instances as real Docker containers, so it gets the Docker socket.
+name: plant-gcp
+
+services:
+  floci-gcp:
+    image: floci/floci-gcp:0.9.0
+    ports:
+      - "4588:4588"
+    environment:
+      # The containers it starts (Cloud Run revisions, Cloud SQL Postgres) join this compose network,
+      # so the gateway reaches the backend and the backend reaches Cloud SQL and the storage API.
+      FLOCI_GCP_SERVICES_DOCKER_NETWORK: plant-gcp_default
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
