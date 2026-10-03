@@ -1,0 +1,31 @@
+# This stage's own Floci Azure emulator, plus an S3-compatible object store (Floci's S3) for the photos.
+# Both use Docker's default bridge network on purpose: the emulator starts the Container Apps replicas and the
+# PostgreSQL server as plain containers on that network, where containers reach each other by IP (not by name).
+name: plant-azure
+
+services:
+  floci-az:
+    image: floci/floci-az:0.13.0
+    container_name: plant-azure-floci-az
+    network_mode: bridge
+    ports:
+      - "4577:4577"
+    environment:
+      # The azurerm provider discovers the cloud over HTTPS, so the emulator must serve TLS (a self-signed certificate,
+      # fetched and trusted by `make tls`). HTTP and HTTPS share port 4577.
+      FLOCI_AZ_TLS_ENABLED: "true"
+      # Run the Container Apps revisions as real containers (the default is metadata only)...
+      FLOCI_AZ_SERVICES_CONTAINER_APPS_MOCKED: "false"
+      # ...and give the apps hostnames that open in a browser: *.localhost.floci.io resolves to 127.0.0.1.
+      FLOCI_AZ_SERVICES_CONTAINER_APPS_DNS_SUFFIX: localhost.floci.io
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # The S3-compatible object store for photos: the backend only speaks the S3 API and Azure Blob has no S3 interface.
+  # Floci's S3 (the emulator the AWS stages use) is used as that store; published on 4569 so it does not clash with a Floci on 4566.
+  s3:
+    image: floci/floci:2.1.0
+    container_name: plant-azure-s3
+    network_mode: bridge
+    ports:
+      - "4569:4566"
