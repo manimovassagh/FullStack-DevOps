@@ -63,8 +63,9 @@ smoke: ## API + browser smoke tests through the gateway (shared with every deplo
 	cd $(SMOKE) && npm ci --silent && npx playwright install chromium >/dev/null \
 		&& SMOKE_STAGE=gcp-cloud-run SMOKE_BASE_URL="$$(cd $(CURDIR) && terraform output -raw app_url)" npx playwright test
 
-logs: ## recent output of the Cloud Run containers (Floci keeps it in Docker, not Cloud Logging)
-	@for c in $$(docker ps --format '{{.Names}}' | grep -i -E 'floci.*(run|backend|frontend|gateway)'); do echo "== $$c"; docker logs --tail 15 $$c 2>&1; done
+logs: ## output of the Cloud Run containers, including ones that exited (Floci keeps it in Docker, not Cloud Logging)
+	@docker ps -a --format '{{.Names}}\t{{.Status}}' | grep -i 'floci-gcp-'
+	@for c in $$(docker ps -a --format '{{.Names}}' | grep -i -E 'floci-gcp-(cloudrun|cloudsql)'); do echo "== $$c"; docker logs --tail 30 $$c 2>&1; done
 
 destroy: ## empty the bucket first, then terraform destroy, then stop the emulator
 	-@scripts/empty-bucket.sh "$$(terraform output -raw media_bucket 2>/dev/null)" 2>/dev/null
