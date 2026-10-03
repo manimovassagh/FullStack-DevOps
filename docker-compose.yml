@@ -31,6 +31,7 @@ services:
       - "8092:84"   # ALB preview (green only) listener of ecs-blue-green  → http://localhost:8092
       - "8094:85"   # ALB listener of deployment/aws/eks-helm   → http://localhost:8094
       - "8095:86"   # ALB listener of deployment/aws/eks-gitops → http://localhost:8095
+      - "8093:87"   # ALB listener of deployment/aws/ec2-asg    → http://localhost:8093
     environment:
       FLOCI_NETWORK_SECURITY_GROUP_ENFORCEMENT_ENABLED: "true"
       # ECS task containers join Floci's network, so the ALB and the RDS proxy reach them.
