@@ -89,6 +89,11 @@ resource "azurerm_container_app" "backend" {
     }
   }
 
+  # floci-az returns the secrets in a different order than they were sent, which the provider would try to "fix" on every plan.
+  lifecycle {
+    ignore_changes = [secret]
+  }
+
   depends_on = [azurerm_postgresql_flexible_server_database.plant]
 }
 

@@ -1,0 +1,237 @@
+# Pipeline for the Azure stage: Container Apps + PostgreSQL Flexible Server on the Floci Azure emulator.
+# Own family: its own emulator (compose file in the stage), Terraform runs in a container that trusts the emulator's
+# certificate, and the unchanged backend stores photos in an S3-compatible store (Azure Blob has no S3 interface).
+#
+#   backend tests ─┐
+#                  ├─ build images ─┐
+#   frontend tests ┘                ├─ deploy + verify + release ─ summary
+#   IaC checks ─────────────────────┘
+name: "Azure · Container Apps"
+run-name: "Azure · Container Apps · ${{ github.event.pull_request.title || github.ref_name }}"
+
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - backend/**
+      - frontend/**
+      - deployment/azure/container-apps/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - .github/workflows/azure-container-apps.yml
+  pull_request:
+    paths: *paths
+  workflow_dispatch:
+
+# Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.
+# Uncomment if you like: superseded runs of the same branch get cancelled (saves runner minutes,
+# but a new push can kill a run that is still in progress).
+# concurrency:
+#   group: azure-container-apps-${{ github.ref }}
+#   cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION_FILE: backend/go.mod
+  NODE_VERSION: 22
+  TERRAFORM_VERSION: 1.14.6
+  IMAGE_TAG: ci-${{ github.sha }}
+
+jobs:
+  # ── Stage 1: tests and static checks (parallel) ───────────────────────────
+  backend:
+    name: Backend · vet + unit + integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+          cache-dependency-path: backend/go.sum
+      - name: Start Postgres + Floci (integration test dependencies)
+        run: make up
+      - name: go vet
+        working-directory: backend
+        run: go vet ./...
+      - name: Unit + integration tests (race detector, coverage)
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgres://plant:plant@localhost:5432/plant_test?sslmode=disable
+          AWS_ENDPOINT_URL: http://localhost:4566
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_REGION: us-east-1
+          S3_BUCKET: plant-media
+        run: |
+          go test -race -count=1 -coverprofile=coverage.out ./...
+          echo "### Backend coverage" >> "$GITHUB_STEP_SUMMARY"
+          go tool cover -func=coverage.out | tail -1 >> "$GITHUB_STEP_SUMMARY"
+
+  frontend:
+    name: Frontend · lint + typecheck + unit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Lint (oxlint)
+        run: npm run lint
+      - name: Typecheck
+        run: npx tsc -b
+      - name: Unit tests (Vitest)
+        run: npm test
+
+  iac:
+    name: IaC · azure-container-apps
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: deployment/azure/container-apps
+    env:
+      TF_VAR_image_tag: validate-only
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+      - name: terraform validate
+        run: terraform init -backend=false -input=false >/dev/null && terraform validate
+      - uses: terraform-linters/setup-tflint@v6
+      - name: tflint (terraform ruleset)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tflint --config ../../.tflint.hcl --init && tflint --config ../../.tflint.hcl --format compact
+      - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: deployment/azure/container-apps
+          severity: HIGH,CRITICAL
+          trivyignores: deployment/.trivyignore
+          exit-code: "1"
+      - name: shellcheck
+        working-directory: deployment
+        run: shellcheck smoke/*.sh azure/container-apps/scripts/*.sh
+
+  # ── Stage 2: build once (only after tests pass) ───────────────────────────
+  build-images:
+    name: Build · container images
+    needs: [backend, frontend]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build backend, frontend and gateway images
+        run: |
+          docker buildx build --load -t "plant/backend:${IMAGE_TAG}" backend
+          docker buildx build --load -t "plant/frontend:${IMAGE_TAG}" frontend
+          docker buildx build --load -t "plant/azure-gateway:${IMAGE_TAG}" deployment/azure/container-apps/gateway
+          docker images --format 'table {{.Repository}}:{{.Tag}}\t{{.Size}}' | grep plant/ >> "$GITHUB_STEP_SUMMARY"
+      - name: trivy image scan gateway (fixable HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: plant/azure-gateway:${{ env.IMAGE_TAG }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Save images
+        run: docker save "plant/backend:${IMAGE_TAG}" "plant/frontend:${IMAGE_TAG}" "plant/azure-gateway:${IMAGE_TAG}" | gzip > images.tar.gz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: images
+          path: images.tar.gz
+          retention-days: 3
+
+  # ── Stage 3: deploy to the emulator and verify ────────────────────────────
+  deploy:
+    name: Deploy+verify · azure-container-apps
+    needs: [build-images, iac]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: deployment/azure/container-apps
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: deployment/smoke/package-lock.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: images
+          path: .
+      - name: Load images from the build job
+        run: gunzip -c "$GITHUB_WORKSPACE/images.tar.gz" | docker load
+      - name: "Start the Floci Azure emulator (TLS) and the object store; trust the emulator's certificate"
+        run: make tls init
+      - name: "Deploy (terraform in a container: PostgreSQL Flexible Server first, then the three container apps)"
+        run: make deploy wait
+      - name: "Verify: idempotent (plan shows no changes)"
+        run: make check
+      - name: "Verify: API + browser smoke tests"
+        env:
+          CI: "true"
+        run: make smoke
+      - name: "Verify: new image tag → new revisions, API smoke"
+        run: make rollout
+      - name: Diagnostics
+        if: failure()
+        run: |
+          make -s logs || true
+          docker logs plant-azure-floci-az 2>&1 | tail -150
+      - name: Upload e2e recording (Playwright video, screenshots, report)
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: e2e-recording-azure-container-apps
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Destroy
+        if: always()
+        run: make destroy || true
+      - name: "Verify: teardown left nothing running"
+        run: |
+          left=$(docker ps --format '{{.Names}}' | grep -E '^(floci-az-|plant-azure-)' || true)
+          [ -z "$left" ] || { echo "still running: $left"; exit 1; }
+
+  # ── Stage 4: one result for this workflow ─────────────────────────────────
+  summary:
+    name: Azure Container Apps summary
+    needs: [backend, frontend, iac, build-images, deploy]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          {
+            echo "## Azure Container Apps summary"
+            echo "| job | result |"
+            echo "|---|---|"
+            echo "$RESULTS" | jq -r 'to_entries[] | "| \(.key) | \(if .value.result == "success" then "✅" else "❌" end) \(.value.result) |"'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' >/dev/null

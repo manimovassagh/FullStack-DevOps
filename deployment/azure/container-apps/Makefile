@@ -55,8 +55,8 @@ deploy: bucket ## terraform apply: the database first (its container's address i
 
 up: floci init images deploy wait
 
-# `terraform output` needs no addresses, but the container needs the same flags.
-apiurl = $$($(TF) output -raw app_url)
+# Where to open the app: the gateway replica's published port (see scripts/app-url.sh for why not the emulator's ingress URL).
+apiurl = $$(scripts/app-url.sh)
 
 wait: ## block until the app answers through the gateway (page + API)
 	@for i in $$(seq 1 $(WAIT_TRIES)); do \
@@ -64,7 +64,7 @@ wait: ## block until the app answers through the gateway (page + API)
 		sleep 5; \
 	done; echo "not healthy after $(WAIT_TRIES) tries: $(apiurl)"; $(MAKE) -s logs; exit 1
 
-revisions = $(TF) output -json latest_revisions | jq -c .
+revisions = scripts/revisions.sh
 
 rollout: ## release test: same images under a new tag; every app moves to a new revision, replicas keep running, the API smoke test passes
 	@set -e; before=$$($(revisions)); echo "revisions before: $$before"; \
@@ -83,7 +83,7 @@ check: ## idempotency: after an apply, a plan must show no changes (exit 0)
 smoke: ## API + browser smoke tests through the gateway (shared with every deployment style)
 	$(SMOKE)/api-smoke.sh "$(apiurl)" plant-media
 	cd $(SMOKE) && npm ci --silent && npx playwright install chromium >/dev/null \
-		&& SMOKE_STAGE=azure-container-apps SMOKE_BASE_URL="$$(cd $(CURDIR) && $(TF) output -raw app_url)" npx playwright test
+		&& SMOKE_STAGE=azure-container-apps SMOKE_BASE_URL="$$(cd $(CURDIR) && scripts/app-url.sh)" npx playwright test
 
 logs: ## recent output of the app replicas and the database (Floci keeps them in Docker, not Log Analytics)
 	@for c in $$(docker ps --format '{{.Names}}' | grep -E 'floci-az-(ca|pg)-'); do echo "== $$c"; docker logs --tail 15 $$c 2>&1; done
