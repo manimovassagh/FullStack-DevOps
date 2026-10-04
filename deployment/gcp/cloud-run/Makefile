@@ -41,7 +41,8 @@ wait: ## block until the app answers through the gateway (page + API)
 		sleep 5; \
 	done; echo "not healthy after $(WAIT_TRIES) tries: $(apiurl)"; $(MAKE) -s logs; exit 1
 
-revisions = terraform output -json latest_ready_revisions | jq -c .
+# Refresh first: the provider records a service right after the update, before the new revision is reported ready.
+revisions = terraform apply -refresh-only -auto-approve -input=false >/dev/null && terraform output -json latest_ready_revisions | jq -c .
 
 rollout: ## release test: same images under a new tag; every service moves to a new revision, the old container stops, the API smoke test passes
 	@set -e; before=$$($(revisions)); echo "revisions before: $$before"; \
