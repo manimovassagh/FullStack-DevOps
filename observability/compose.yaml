@@ -1,0 +1,52 @@
+# Observability for the local stacks: what is running, how many containers / ECS tasks / EKS pods, and how
+# they behave.  Prometheus + Grafana (the standard pair) fed by a small exporter that reads Docker, the Floci
+# AWS API and the EKS (k3s) clusters.   `make -C observability up`  →  http://localhost:3400
+name: plant-observability
+
+services:
+  exporter:
+    build: ./exporter
+    user: root # reads the Docker socket (container list, stats, `kubectl` inside the k3s nodes)
+    environment:
+      FLOCI_ENDPOINT: ${FLOCI_ENDPOINT:-http://host.docker.internal:4566}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=2d
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9091:9090"
+    depends_on: [exporter]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.2.0
+    environment:
+      # A local, loopback-only tool: open the dashboard without a login. Do not expose this port.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/overview.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3400:3000"
+    depends_on: [prometheus]
+    restart: unless-stopped
+
+volumes:
+  prometheus-data:
+  grafana-data:
