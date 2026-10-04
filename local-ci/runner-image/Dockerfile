@@ -13,3 +13,6 @@ ARG TRIVY_VERSION=0.70.0
 RUN arch="$(uname -m | sed 's/x86_64/64bit/;s/aarch64/ARM64/')" \
  && curl -sfL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-${arch}.tar.gz" | tar -xz -C /usr/local/bin trivy \
  && trivy --version | head -1
+# The shared Playwright suite downloads Chromium at run time; the system libraries it needs are part of
+# GitHub's hosted image but not of this one.
+RUN npx --yes playwright@1.63.0 install-deps chromium && rm -rf /var/lib/apt/lists/* /root/.npm
