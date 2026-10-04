@@ -21,3 +21,7 @@ deployment/**/build/
 # local browser automation artifacts
 .playwright-mcp/
 .github/artifacts/
+
+# control panel runtime data
+control-panel/.history.json
+control-panel/.logs/
