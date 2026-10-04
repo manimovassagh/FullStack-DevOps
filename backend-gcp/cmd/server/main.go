@@ -46,9 +46,14 @@ func run() error {
 		return fmt.Errorf("postgres pool: %w", err)
 	}
 	defer pool.Close()
-	if err := store.Migrate(ctx, pool); err != nil {
+	// Fail fast with a message instead of hanging silently when the database is unreachable.
+	slog.Info("connecting to the database")
+	migrateCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+	if err := store.Migrate(migrateCtx, pool); err != nil {
 		return fmt.Errorf("migrate: %w", err)
 	}
+	slog.Info("database ready")
 
 	files, err := storage.NewGCS(ctx, cfg.GCSBucket)
 	if err != nil {
