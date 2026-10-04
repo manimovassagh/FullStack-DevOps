@@ -125,6 +125,7 @@ jobs:
       - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
+          token-setup-trivy: ${{ github.server_url == 'https://github.com' && github.token || '' }}
           scan-type: config
           scan-ref: deployment/aws/ecs-cognito
           severity: HIGH,CRITICAL
@@ -151,6 +152,7 @@ jobs:
       - name: trivy image scan backend-auth (fixable HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
+          token-setup-trivy: ${{ github.server_url == 'https://github.com' && github.token || '' }}
           scan-type: image
           image-ref: plant/backend-auth:${{ env.IMAGE_TAG }}
           severity: HIGH,CRITICAL
@@ -159,6 +161,7 @@ jobs:
       - name: trivy image scan frontend-auth
         uses: aquasecurity/trivy-action@v0.36.0
         with:
+          token-setup-trivy: ${{ github.server_url == 'https://github.com' && github.token || '' }}
           scan-type: image
           image-ref: plant/frontend-auth:${{ env.IMAGE_TAG }}
           severity: HIGH,CRITICAL
