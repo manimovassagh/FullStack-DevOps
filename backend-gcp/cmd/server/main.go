@@ -46,12 +46,22 @@ func run() error {
 		return fmt.Errorf("postgres pool: %w", err)
 	}
 	defer pool.Close()
-	// Fail fast with a message instead of hanging silently when the database is unreachable.
+	// Cloud Run may start the container before its network to Cloud SQL is attached. A connection
+	// attempt made in that window hangs, so retry with a short timeout per attempt, then give up.
 	slog.Info("connecting to the database")
-	migrateCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
-	defer cancel()
-	if err := store.Migrate(migrateCtx, pool); err != nil {
-		return fmt.Errorf("migrate: %w", err)
+	deadline := time.Now().Add(75 * time.Second)
+	for attempt := 1; ; attempt++ {
+		attemptCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		err := store.Migrate(attemptCtx, pool)
+		cancel()
+		if err == nil {
+			break
+		}
+		if time.Now().After(deadline) || ctx.Err() != nil {
+			return fmt.Errorf("migrate: %w", err)
+		}
+		slog.Warn("database not reachable yet, retrying", "attempt", attempt, "err", err)
+		time.Sleep(time.Second)
 	}
 	slog.Info("database ready")
 
