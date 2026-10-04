@@ -12,7 +12,7 @@ run-name: "AWS · Serverless · ${{ github.event.pull_request.title || github.re
 on:
   push:
     branches: [main]
-    paths: &paths
+    paths:
       - backend-serverless/**
       - deployment/aws/serverless/**
       - deployment/smoke/**
@@ -22,7 +22,15 @@ on:
       - dev/**
       - .github/workflows/serverless.yml
   pull_request:
-    paths: *paths
+    paths:
+      - backend-serverless/**
+      - deployment/aws/serverless/**
+      - deployment/smoke/**
+      - frontend/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - .github/workflows/serverless.yml
   workflow_dispatch:
 
 # Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.

@@ -15,7 +15,7 @@ run-name: "AWS · Classic EC2 · ${{ github.event.pull_request.title || github.r
 on:
   push:
     branches: [main]
-    paths: &paths
+    paths:
       - backend/**
       - frontend/**
       - deployment/smoke/**
@@ -26,7 +26,16 @@ on:
       - .github/workflows/ec2.yml
       - .github/workflows/deploy-classic-ec2.yml
   pull_request:
-    paths: *paths
+    paths:
+      - backend/**
+      - frontend/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - deployment/aws/classic-ec2/**
+      - .github/workflows/ec2.yml
+      - .github/workflows/deploy-classic-ec2.yml
   workflow_dispatch:
 
 # Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.

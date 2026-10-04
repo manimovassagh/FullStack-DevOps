@@ -12,7 +12,7 @@ run-name: "GCP · Cloud Run · ${{ github.event.pull_request.title || github.ref
 on:
   push:
     branches: [main]
-    paths: &paths
+    paths:
       - backend-gcp/**
       - frontend/**
       - deployment/gcp/cloud-run/**
@@ -22,7 +22,15 @@ on:
       - dev/**
       - .github/workflows/gcp-cloud-run.yml
   pull_request:
-    paths: *paths
+    paths:
+      - backend-gcp/**
+      - frontend/**
+      - deployment/gcp/cloud-run/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - .github/workflows/gcp-cloud-run.yml
   workflow_dispatch:
 
 # Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.

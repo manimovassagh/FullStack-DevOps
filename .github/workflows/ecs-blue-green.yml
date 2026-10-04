@@ -12,7 +12,7 @@ run-name: "AWS · ECS Blue/Green · ${{ github.event.pull_request.title || githu
 on:
   push:
     branches: [main]
-    paths: &paths
+    paths:
       - backend/**
       - frontend/**
       - deployment/aws/ecs-blue-green/**
@@ -22,7 +22,15 @@ on:
       - dev/**
       - .github/workflows/ecs-blue-green.yml
   pull_request:
-    paths: *paths
+    paths:
+      - backend/**
+      - frontend/**
+      - deployment/aws/ecs-blue-green/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - .github/workflows/ecs-blue-green.yml
   workflow_dispatch:
 
 # Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.

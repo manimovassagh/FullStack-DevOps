@@ -12,7 +12,7 @@ run-name: "Azure · Container Apps · ${{ github.event.pull_request.title || git
 on:
   push:
     branches: [main]
-    paths: &paths
+    paths:
       - backend/**
       - frontend/**
       - deployment/azure/container-apps/**
@@ -22,7 +22,15 @@ on:
       - dev/**
       - .github/workflows/azure-container-apps.yml
   pull_request:
-    paths: *paths
+    paths:
+      - backend/**
+      - frontend/**
+      - deployment/azure/container-apps/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - .github/workflows/azure-container-apps.yml
   workflow_dispatch:
 
 # Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.

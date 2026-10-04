@@ -11,7 +11,7 @@ run-name: "AWS · EKS + Helm · ${{ github.event.pull_request.title || github.re
 on:
   push:
     branches: [main]
-    paths: &paths
+    paths:
       - backend/**
       - frontend/**
       - deployment/aws/eks-helm/**
@@ -21,7 +21,15 @@ on:
       - dev/**
       - .github/workflows/eks-helm.yml
   pull_request:
-    paths: *paths
+    paths:
+      - backend/**
+      - frontend/**
+      - deployment/aws/eks-helm/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - .github/workflows/eks-helm.yml
   workflow_dispatch:
 
 # Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.

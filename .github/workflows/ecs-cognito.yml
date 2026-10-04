@@ -12,7 +12,7 @@ run-name: "AWS · ECS + Cognito · ${{ github.event.pull_request.title || github
 on:
   push:
     branches: [main]
-    paths: &paths
+    paths:
       - backend-auth/**
       - frontend-auth/**
       - deployment/aws/ecs-cognito/**
@@ -22,7 +22,15 @@ on:
       - dev/**
       - .github/workflows/ecs-cognito.yml
   pull_request:
-    paths: *paths
+    paths:
+      - backend-auth/**
+      - frontend-auth/**
+      - deployment/aws/ecs-cognito/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - .github/workflows/ecs-cognito.yml
   workflow_dispatch:
 
 # Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.
