@@ -35,7 +35,7 @@ push: ## create the repo in Gitea (once) and push the current branch of this rep
 
 status: ## runner state and recent runs
 	@$(COMPOSE) ps
-	@echo; $(COMPOSE) exec -T gitea sqlite3 -header -column /data/gitea/gitea.db \
+	@echo; $(COMPOSE) exec -T gitea sqlite3 -cmd '.timeout 5000' -header -column /data/gitea/gitea.db \
 		"SELECT r.id AS run, r.workflow_id AS workflow, j.name AS job, CASE j.status WHEN 1 THEN 'success' WHEN 2 THEN 'FAILED' WHEN 3 THEN 'cancelled' WHEN 4 THEN 'skipped' WHEN 5 THEN 'waiting' WHEN 6 THEN 'running' WHEN 7 THEN 'blocked' ELSE j.status END AS state \
 		 FROM action_run_job j JOIN action_run r ON r.id = j.run_id ORDER BY r.id DESC, j.id"
 
