@@ -18,8 +18,8 @@ type Config struct {
 	MaxUploadBytes int64
 
 	// Amazon Cognito. Issuer is the exact "iss" value of the tokens, e.g.
-	// https://cognito-idp.<region>.amazonaws.com/<pool id>. JWKSURL defaults to <issuer>/.well-known/jwks.json;
-	// set it only when the API reaches the pool by another address than the one in the token (Floci).
+	// https://cognito-idp.<region>.amazonaws.com/<pool id>. JWKSURL defaults to <issuer>/.well-known/jwks.json,
+	// or to <AWS_ENDPOINT_URL>/<pool id>/.well-known/jwks.json behind an emulator; set it to override.
 	CognitoIssuer   string
 	CognitoJWKSURL  string
 	CognitoClientID string
@@ -42,6 +42,12 @@ func Load() (Config, error) {
 	}
 	if cfg.CognitoJWKSURL == "" && cfg.CognitoIssuer != "" {
 		cfg.CognitoJWKSURL = cfg.CognitoIssuer + "/.well-known/jwks.json"
+		if cfg.AWSEndpointURL != "" {
+			// Behind an emulator the tokens name the emulator as seen from the host (http://localhost:4566/<pool>),
+			// which is not reachable from inside a container. The keys are at <endpoint>/<pool>/.well-known/jwks.json.
+			pool := cfg.CognitoIssuer[strings.LastIndex(cfg.CognitoIssuer, "/")+1:]
+			cfg.CognitoJWKSURL = strings.TrimRight(cfg.AWSEndpointURL, "/") + "/" + pool + "/.well-known/jwks.json"
+		}
 	}
 
 	if v := os.Getenv("MAX_UPLOAD_BYTES"); v != "" {

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/MicahParks/keyfunc/v3"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 	"github.com/golang-jwt/jwt/v5"
@@ -187,6 +188,10 @@ func (f *fakeIDP) InitiateAuth(_ context.Context, in *cognitoidentityprovider.In
 	return f.out, f.err
 }
 
+func (f *fakeIDP) GetUser(context.Context, *cognitoidentityprovider.GetUserInput, ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.GetUserOutput, error) {
+	return &cognitoidentityprovider.GetUserOutput{UserAttributes: []types.AttributeType{{Name: aws.String("email"), Value: aws.String("alice@plant.example")}}}, nil
+}
+
 func (f *fakeIDP) RevokeToken(_ context.Context, in *cognitoidentityprovider.RevokeTokenInput, _ ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.RevokeTokenOutput, error) {
 	f.revoked = *in.Token
 	return &cognitoidentityprovider.RevokeTokenOutput{}, nil
@@ -283,5 +288,19 @@ func TestLogoutRevokesAndClears(t *testing.T) {
 	}
 	if ck := rec.Result().Cookies(); len(ck) != 1 || ck[0].MaxAge >= 0 {
 		t.Errorf("cookie not cleared: %+v", ck)
+	}
+}
+
+func TestMeShowsTheEmailFromCognito(t *testing.T) {
+	s := newSigner(t)
+	e := echo.New()
+	l := &Login{IDP: &fakeIDP{}, ClientID: clientID}
+	e.GET("/me", l.Me, s.verifier(t).Require)
+	req := httptest.NewRequest(http.MethodGet, "/me", nil)
+	req.Header.Set("Authorization", "Bearer "+s.token(t, jwt.MapClaims{"username": "0b1c-uuid"}))
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"username":"alice@plant.example"`) {
+		t.Fatalf("status %d, body %s", rec.Code, rec.Body.String())
 	}
 }

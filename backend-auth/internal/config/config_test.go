@@ -96,3 +96,13 @@ func TestCognitoIsRequired(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestJWKSComesFromTheEmulatorEndpoint(t *testing.T) {
+	setRequired(t)
+	t.Setenv("COGNITO_ISSUER", "http://localhost:4566/us-east-1_abc")
+	t.Setenv("AWS_ENDPOINT_URL", "http://172.21.0.2:4566/")
+	cfg, _ := Load()
+	if cfg.CognitoJWKSURL != "http://172.21.0.2:4566/us-east-1_abc/.well-known/jwks.json" {
+		t.Errorf("JWKS URL = %q", cfg.CognitoJWKSURL)
+	}
+}

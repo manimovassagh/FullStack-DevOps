@@ -14,6 +14,7 @@ const STAGES: Record<string, string> = {
   eks: 'EKS (Kubernetes)',
   'eks-helm': 'EKS + Helm',
   'eks-gitops': 'EKS + Argo CD (GitOps)',
+  'ecs-cognito': 'ECS Fargate + Amazon Cognito sign-in',
   'gcp-cloud-run': 'Google Cloud Run + Cloud SQL',
   'azure-container-apps': 'Azure Container Apps + PostgreSQL',
   serverless: 'Lambda + API Gateway + CloudFront',
@@ -42,6 +43,13 @@ test(`[${stage}] a user can manage a plant end to end`, async ({ page }) => {
   const name = `Smoke Fern ${Date.now()}`
 
   await page.goto('/')
+  // Stages with sign-in (SMOKE_LOGIN_USER / SMOKE_LOGIN_PASSWORD): the page starts at the login form.
+  if (process.env.SMOKE_LOGIN_USER) {
+    await page.getByLabel('Email').fill(process.env.SMOKE_LOGIN_USER)
+    await page.getByLabel('Password').fill(process.env.SMOKE_LOGIN_PASSWORD ?? '')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByTestId('whoami')).toContainText(process.env.SMOKE_LOGIN_USER)
+  }
   await page.getByRole('button', { name: 'Add plant' }).first().click()
   await page.getByLabel('Name').fill(name)
   await page.getByLabel('Species').fill('Nephrolepis exaltata')

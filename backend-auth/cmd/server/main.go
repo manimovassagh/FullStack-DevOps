@@ -77,8 +77,9 @@ func run() error {
 		},
 	}))
 	public := handler.New(store.New(pool), files, cfg.MaxUploadBytes).Register(e, verifier.Require)
-	(&auth.Login{IDP: idp, ClientID: cfg.CognitoClientID, SecureCookie: cfg.SecureCookie}).Register(public)
-	e.GET("/api/auth/me", auth.Me, verifier.Require)
+	login := &auth.Login{IDP: idp, ClientID: cfg.CognitoClientID, SecureCookie: cfg.SecureCookie}
+	login.Register(public)
+	e.GET("/api/auth/me", login.Me, verifier.Require)
 
 	errCh := make(chan error, 1)
 	go func() {
