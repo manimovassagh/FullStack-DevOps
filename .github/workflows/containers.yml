@@ -16,7 +16,7 @@ run-name: "AWS · ECS + EKS · ${{ github.event.pull_request.title || github.ref
 on:
   push:
     branches: [main]
-    paths: &paths
+    paths:
       - backend/**
       - frontend/**
       - deployment/smoke/**
@@ -29,7 +29,18 @@ on:
       - .github/workflows/deploy-ecs.yml
       - .github/workflows/deploy-eks.yml
   pull_request:
-    paths: *paths
+    paths:
+      - backend/**
+      - frontend/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - deployment/aws/ecs/**
+      - deployment/aws/eks/**
+      - .github/workflows/containers.yml
+      - .github/workflows/deploy-ecs.yml
+      - .github/workflows/deploy-eks.yml
   workflow_dispatch:
 
 # Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.
@@ -128,7 +139,7 @@ jobs:
       - name: tflint (terraform + aws rulesets)
         env:
           # Authenticated plugin download: anonymous GitHub API calls get throttled on shared runners.
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.server_url == 'https://github.com' && github.token || '' }}
         run: tflint --config ../../.tflint.hcl --init && tflint --config ../../.tflint.hcl --format compact
       - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
         uses: aquasecurity/trivy-action@v0.36.0

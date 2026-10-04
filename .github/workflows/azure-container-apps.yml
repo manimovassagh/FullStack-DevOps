@@ -12,7 +12,7 @@ run-name: "Azure · Container Apps · ${{ github.event.pull_request.title || git
 on:
   push:
     branches: [main]
-    paths: &paths
+    paths:
       - backend/**
       - frontend/**
       - deployment/azure/container-apps/**
@@ -22,7 +22,15 @@ on:
       - dev/**
       - .github/workflows/azure-container-apps.yml
   pull_request:
-    paths: *paths
+    paths:
+      - backend/**
+      - frontend/**
+      - deployment/azure/container-apps/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - .github/workflows/azure-container-apps.yml
   workflow_dispatch:
 
 # Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.
@@ -116,7 +124,7 @@ jobs:
       - uses: terraform-linters/setup-tflint@v6
       - name: tflint (terraform ruleset)
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.server_url == 'https://github.com' && github.token || '' }}
         run: tflint --config ../../.tflint.hcl --init && tflint --config ../../.tflint.hcl --format compact
       - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
         uses: aquasecurity/trivy-action@v0.36.0

@@ -12,6 +12,7 @@ func setRequired(t *testing.T) {
 	t.Setenv("COGNITO_CLIENT_ID", "client")
 	t.Setenv("COGNITO_JWKS_URL", "")
 	t.Setenv("COOKIE_SECURE", "")
+	t.Setenv("AWS_ENDPOINT_URL", "") // CI sets it for the integration tests; it changes where the keys are fetched from
 }
 
 func TestLoadDefaults(t *testing.T) {

@@ -1,0 +1,51 @@
+# A local GitHub-like CI: Gitea (git hosting + web UI) and an Actions runner that executes the
+# repo's own .github/workflows unchanged, on this machine's Docker. Nothing here touches GitHub or
+# the stages: it is a second place to run the same pipelines.  `make -C local-ci up`
+name: plant-ci
+
+services:
+  gitea:
+    image: gitea/gitea:1.24
+    environment:
+      USER_UID: "1000"
+      USER_GID: "1000"
+      GITEA__database__DB_TYPE: sqlite3
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__server__ROOT_URL: http://localhost:3300/
+      GITEA__service__DISABLE_REGISTRATION: "true"
+      GITEA__actions__ENABLED: "true"
+      GITEA__actions__DEFAULT_ACTIONS_URL: github # actions/checkout@v7 and friends come from github.com
+      GITEA__log__LEVEL: warn
+    ports:
+      - "127.0.0.1:3300:3000" # loopback only: this instance has throwaway credentials and its runner controls your Docker
+    volumes:
+      - gitea-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/api/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  runner:
+    image: gitea/act_runner:0.2.13
+    profiles: ["runner"] # started by `make up` once it has a registration token
+    # Host network, like its job containers (runner-config.yaml): both reach Gitea at localhost:3300.
+    network_mode: host
+    depends_on:
+      gitea:
+        condition: service_healthy
+    environment:
+      CONFIG_FILE: /config.yaml
+      GITEA_INSTANCE_URL: http://localhost:3300
+      GITEA_RUNNER_REGISTRATION_TOKEN: ${RUNNER_TOKEN:-}
+      GITEA_RUNNER_NAME: local-docker
+      # The workflows say `runs-on: ubuntu-24.04`; this label maps it to local-ci/runner-image (Node, git, docker, aws, shellcheck...); `make image` builds it.
+      GITEA_RUNNER_LABELS: ubuntu-24.04:docker://plant-ci-ubuntu:24.04,ubuntu-latest:docker://plant-ci-ubuntu:24.04
+    volumes:
+      - ./runner-config.yaml:/config.yaml:ro
+      - runner-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  gitea-data:
+  runner-data:
