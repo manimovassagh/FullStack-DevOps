@@ -3,151 +3,489 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Deployments · control panel</title>
+<title>Deployments · Plant Parent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f6f7f4; --card: #fff; --ink: #1c2420; --muted: #66726b; --line: #e1e6e1;
-    --up: #1f9d55; --down: #9aa5a0; --busy: #d98a00; --bad: #d64545; --accent: #2f7d57; --log: #101512; --logink: #cfe8d8;
+    --bg: #0b0f0d; --bg2: #101613; --card: #141b17; --card2: #18211c; --line: #222c26; --line2: #2c3831;
+    --ink: #e8f0eb; --ink2: #b4c2ba; --muted: #7d8c84;
+    --green: #3ccf7e; --green-d: #1e8f54; --amber: #f5b13d; --red: #ff5f5f; --blue: #5aa9ff;
+    --aws: #ff9a3c; --gcp: #4f8df5; --azure: #34b4ff;
+    --radius: 14px; --shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 8px 30px rgba(0,0,0,.25);
   }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #0f1411; --card: #171e1a; --ink: #e6eee9; --muted: #8a9890; --line: #26302a; --accent: #4cb883; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f3f5f2; --bg2: #eaeee9; --card: #ffffff; --card2: #f7f9f6; --line: #e1e7e2; --line2: #d3dbd5;
+      --ink: #15201a; --ink2: #3b4a42; --muted: #6c7b73; --shadow: 0 1px 2px rgba(0,0,0,.05), 0 6px 20px rgba(0,0,0,.05); }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 ui-sans-serif, system-ui, sans-serif; padding-bottom: 300px; }
-  header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; padding: 18px 24px; border-bottom: 1px solid var(--line); background: var(--card); position: sticky; top: 0; z-index: 5; }
-  h1 { font-size: 19px; margin: 0; letter-spacing: -.01em; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  body { background-image: radial-gradient(1200px 500px at 15% -10%, color-mix(in srgb, var(--green) 9%, transparent), transparent 60%),
+                           radial-gradient(900px 400px at 100% 0%, color-mix(in srgb, var(--blue) 7%, transparent), transparent 60%); background-attachment: fixed; }
+  button { font: inherit; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; }
+
+  header { position: sticky; top: 0; z-index: 20; backdrop-filter: blur(14px); background: color-mix(in srgb, var(--bg) 78%, transparent); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1380px; margin: 0 auto; padding: 14px 28px; display: flex; align-items: center; gap: 14px; }
+  .brand { display: flex; align-items: center; gap: 11px; font-weight: 700; font-size: 16px; letter-spacing: -.01em; }
+  .logo { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(135deg, #2fd17f, #17744a); box-shadow: 0 6px 18px rgba(47,209,127,.35); }
+  .brand small { display: block; font-weight: 500; font-size: 12px; color: var(--muted); }
   .grow { flex: 1; }
-  .stat { color: var(--muted); font-size: 13px; } .stat b { color: var(--ink); font-size: 15px; }
-  header a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 13px; }
-  #banner { margin: 16px 24px 0; padding: 10px 14px; border-radius: 10px; background: #fff3d6; color: #6b4a00; display: none; font-size: 14px; }
-  main { padding: 8px 24px; max-width: 1280px; margin: 0 auto; }
-  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); margin: 26px 0 10px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
-  .card.up { border-color: color-mix(in srgb, var(--up) 55%, var(--line)); }
-  .top { display: flex; align-items: center; gap: 10px; }
-  .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--down); flex: none; }
-  .up .dot { background: var(--up); box-shadow: 0 0 0 4px color-mix(in srgb, var(--up) 22%, transparent); }
-  .partial .dot { background: var(--bad); }
-  .busy .dot { background: var(--busy); animation: pulse 1s infinite; }
-  @keyframes pulse { 50% { opacity: .3; } }
-  .title { font-weight: 650; flex: 1; }
-  .pill { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: color-mix(in srgb, var(--down) 22%, transparent); color: var(--muted); }
-  .up .pill { background: color-mix(in srgb, var(--up) 18%, transparent); color: var(--up); }
-  .partial .pill { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
-  .busy .pill { background: color-mix(in srgb, var(--busy) 20%, transparent); color: var(--busy); }
-  .note { color: var(--muted); font-size: 13px; min-height: 2.6em; }
-  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  button { font: inherit; font-size: 13px; font-weight: 600; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 5px 12px; border-radius: 8px; cursor: pointer; }
-  button:hover:not(:disabled) { border-color: var(--accent); }
-  button:disabled { opacity: .4; cursor: not-allowed; }
-  button.go { background: var(--accent); color: #fff; border-color: var(--accent); }
-  button.stop { color: var(--bad); }
-  a.open { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; }
-  #logbar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--log); color: var(--logink); border-top: 3px solid var(--accent); height: 270px; display: flex; flex-direction: column; z-index: 6; }
-  #loghead { display: flex; gap: 12px; align-items: center; padding: 7px 16px; font-size: 13px; background: #0b0f0d; color: #9fb8a9; }
-  #loghead b { color: #fff; } #loghead .grow { flex: 1; }
-  #loghead button { background: transparent; color: #cfe8d8; border-color: #34423a; padding: 2px 10px; }
-  #log { margin: 0; padding: 10px 16px; overflow: auto; flex: 1; font: 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
+  .clock { font-size: 12px; color: var(--muted); }
+  .tool { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink2); text-decoration: none; font-weight: 500; font-size: 13px; background: var(--card); }
+  .tool:hover { border-color: var(--line2); color: var(--ink); }
+  .led { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }
+  .led.on { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 25%, transparent); }
+
+  main { max-width: 1380px; margin: 0 auto; padding: 22px 28px 90px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); min-height: 116px; }
+  .kpi h3 { margin: 0 0 8px; font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .big { font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .big small { font-size: 15px; color: var(--muted); font-weight: 500; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+  .chip { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: var(--card2); border: 1px solid var(--line); color: var(--ink2); }
+  .meter { height: 8px; border-radius: 99px; background: var(--card2); border: 1px solid var(--line); overflow: hidden; margin-top: 12px; }
+  .meter > i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--green), #8be0ad); transition: width .6s; }
+  .meter.warn > i { background: linear-gradient(90deg, var(--amber), #ffd27a); } .meter.hot > i { background: linear-gradient(90deg, var(--red), #ff9a9a); }
+  .ring { display: flex; align-items: center; gap: 14px; }
+  .activity { font-size: 13px; color: var(--ink2); margin-top: 6px; }
+
+  .emus { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+  .emu { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--card) 70%, transparent); border: 1px solid var(--line); }
+  .emu .t { font-weight: 600; font-size: 13px; } .emu .s { font-size: 12px; color: var(--muted); }
+
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 28px 0 4px; }
+  .filter { padding: 6px 13px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink2); cursor: pointer; font-weight: 500; font-size: 13px; }
+  .filter:hover { border-color: var(--line2); }
+  .filter.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .filter .n { opacity: .55; margin-left: 5px; font-variant-numeric: tabular-nums; }
+  .search { margin-left: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; color: var(--ink); padding: 7px 12px; width: 260px; font: inherit; }
+  .search:focus { outline: none; border-color: var(--green-d); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent); }
+
+  h2 { display: flex; align-items: center; gap: 9px; margin: 28px 0 12px; font-size: 12.5px; font-weight: 600; color: var(--ink2); text-transform: uppercase; letter-spacing: .09em; }
+  h2 .cloud { width: 9px; height: 9px; border-radius: 3px; }
+  h2 .count { color: var(--muted); font-weight: 500; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+  .card { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 16px 14px;
+    display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow); transition: border-color .2s, transform .2s, box-shadow .2s; overflow: hidden; }
+  .card:hover { border-color: var(--line2); transform: translateY(-1px); }
+  .card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--line2); }
+  .card.up::before { background: var(--green); } .card.partial::before { background: var(--red); } .card.busy::before { background: var(--amber); }
+  .card.up { border-color: color-mix(in srgb, var(--green) 30%, var(--line)); }
+  .card.busy { border-color: color-mix(in srgb, var(--amber) 35%, var(--line)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--amber) 12%, transparent), var(--shadow); }
+  .head { display: flex; align-items: center; gap: 11px; }
+  .icon { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: var(--card2); border: 1px solid var(--line); color: var(--ink2); flex: none; }
+  .up .icon { color: var(--green); }
+  .icon svg { width: 19px; height: 19px; }
+  .name { font-weight: 650; font-size: 15px; letter-spacing: -.005em; }
+  .sub { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .badge { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+    background: var(--card2); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
+  .badge i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .up .badge { color: var(--green); background: color-mix(in srgb, var(--green) 12%, transparent); border-color: color-mix(in srgb, var(--green) 30%, transparent); }
+  .partial .badge { color: var(--red); background: color-mix(in srgb, var(--red) 12%, transparent); border-color: color-mix(in srgb, var(--red) 30%, transparent); }
+  .busy .badge { color: var(--amber); background: color-mix(in srgb, var(--amber) 12%, transparent); border-color: color-mix(in srgb, var(--amber) 30%, transparent); }
+  .busy .badge i { animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+  .note { color: var(--ink2); font-size: 13px; }
+  .login { font-size: 12px; padding: 6px 9px; border-radius: 8px; background: var(--card2); border: 1px dashed var(--line2); color: var(--ink2); display: flex; gap: 8px; align-items: center; }
+  .login button { margin-left: auto; }
+  .progress { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 10px; background: var(--bg2); border: 1px solid var(--line); }
+  .progress .meter { margin: 0; height: 6px; }
+  .progress .meter > i { background: linear-gradient(90deg, var(--amber), #ffd98f); position: relative; overflow: hidden; }
+  .progress .meter > i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent); animation: shimmer 1.4s infinite; }
+  @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+  .progress .row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .step { font-size: 11.5px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .last { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .ok { color: var(--green); } .bad { color: var(--red); }
+  .actions { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 9px; border: 1px solid var(--line2); background: var(--card2);
+    color: var(--ink); font-weight: 600; font-size: 13px; cursor: pointer; text-decoration: none; transition: background .15s, border-color .15s, filter .15s; }
+  .btn:hover:not(:disabled) { border-color: var(--muted); }
+  .btn:disabled { opacity: .38; cursor: not-allowed; }
+  .btn svg { width: 14px; height: 14px; }
+  .btn.primary { background: linear-gradient(180deg, #34c878, #23a05d); border-color: #23a05d; color: #fff; box-shadow: 0 4px 14px rgba(35,160,93,.3); }
+  .btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+  .btn.open { background: color-mix(in srgb, var(--blue) 14%, var(--card2)); border-color: color-mix(in srgb, var(--blue) 45%, transparent); color: var(--blue); }
+  .btn.danger { color: var(--red); }
+  .btn.sm { padding: 5px 9px; font-size: 12px; }
+  .ibtn { width: 32px; height: 32px; padding: 0; justify-content: center; }
+  .ibtn svg { width: 15px; height: 15px; }
+  .spacer { flex: 1; }
+  .empty { color: var(--muted); padding: 30px; text-align: center; border: 1px dashed var(--line2); border-radius: var(--radius); }
+  .banner { margin-top: 14px; display: flex; gap: 10px; align-items: center; padding: 11px 14px; border-radius: 12px; font-size: 13.5px;
+    background: color-mix(in srgb, var(--amber) 13%, var(--card)); border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent); }
+  .offline { background: color-mix(in srgb, var(--red) 13%, var(--card)); border-color: color-mix(in srgb, var(--red) 40%, transparent); }
+
+  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 30; }
+  .scrim.on { opacity: 1; pointer-events: auto; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(880px, 96vw); background: var(--bg); border-left: 1px solid var(--line2);
+    transform: translateX(100%); transition: transform .25s ease; z-index: 31; display: flex; flex-direction: column; box-shadow: -20px 0 60px rgba(0,0,0,.35); }
+  .drawer.on { transform: none; }
+  .dhead { padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; }
+  .dhead .name { font-size: 17px; }
+  .tabs { display: flex; gap: 4px; padding: 10px 20px 0; border-bottom: 1px solid var(--line); }
+  .tab { padding: 8px 14px; border: none; background: none; color: var(--muted); font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab.on { color: var(--ink); border-bottom-color: var(--green); }
+  .dbody { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .dbody[hidden] { display: none; }
+  .logtools { display: flex; gap: 10px; padding: 10px 20px; align-items: center; border-bottom: 1px solid var(--line); background: var(--bg2); font-size: 12.5px; color: var(--muted); }
+  .logtools input[type=text] { background: var(--card); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 5px 10px; width: 220px; font: inherit; }
+  pre.log { margin: 0; padding: 14px 20px 40px; overflow: auto; flex: 1; background: #070a08; color: #c9dccf; font: 12.5px/1.55 "JetBrains Mono", ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-word; }
+  pre.log .cmd { color: #7ee2a8; font-weight: 600; margin-top: 6px; }
+  pre.log .err { color: #ff8a8a; } pre.log .okl { color: #6be39b; }
+  .a1 { font-weight: 700; } .a31 { color: #ff7b7b; } .a32 { color: #6be39b; } .a33 { color: #ffd166; } .a34 { color: #7fb2ff; } .a35 { color: #d39cff; } .a36 { color: #6fd6e8; } .a90 { color: #7b8a82; }
+  .hist { overflow: auto; padding: 8px 20px 30px; }
+  .hrow { display: grid; grid-template-columns: 22px 110px 1fr 90px 120px; gap: 10px; align-items: center; padding: 10px 6px; border-bottom: 1px solid var(--line); font-size: 13px; cursor: pointer; border-radius: 8px; }
+  .hrow:hover { background: var(--card); }
+
+  .toasts { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 40; }
+  .toast { padding: 11px 16px; border-radius: 12px; background: var(--card); border: 1px solid var(--line2); box-shadow: var(--shadow); font-weight: 500;
+    display: flex; gap: 10px; align-items: center; animation: rise .25s ease; min-width: 320px; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+  @media (max-width: 1080px) { .kpis, .emus { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 640px) { .bar, main { padding-left: 16px; padding-right: 16px; } .kpis, .emus { grid-template-columns: 1fr; } .search { width: 100%; margin-left: 0; } .clock { display: none; } }
 </style>
 </head>
 <body>
 <header>
-  <h1>Deployments</h1>
-  <span class="stat"><b id="up-count">–</b> of <b id="total">–</b> up</span>
-  <span class="stat"><b id="containers">–</b> containers running</span>
-  <span class="grow"></span>
-  <a href="http://localhost:3400/d/stacks-overview" target="_blank">Dashboard (Grafana)</a>
-  <a href="http://localhost:3300/ci/FullStack-DevOps/actions" target="_blank">Pipelines (Gitea)</a>
+  <div class="bar">
+    <div class="brand">
+      <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg></div>
+      <div>Deployments<small>Plant Parent · local cloud lab</small></div>
+    </div>
+    <div class="grow"></div>
+    <span class="clock mono" id="clock"></span>
+    <a class="tool" id="tool-grafana" href="http://localhost:3400/d/stacks-overview" target="_blank"><span class="led"></span>Grafana</a>
+    <a class="tool" id="tool-gitea" href="http://localhost:3300/ci/FullStack-DevOps/actions" target="_blank"><span class="led"></span>Pipelines</a>
+  </div>
 </header>
-<div id="banner"></div>
-<main id="main"></main>
 
-<div id="logbar">
-  <div id="loghead"><span>Log</span><b id="logtitle">nothing started yet</b><span class="grow"></span><button id="cancel" hidden>Cancel</button></div>
-  <pre id="log">Start or stop a deployment above; the command's output appears here.</pre>
-</div>
+<main>
+  <section class="kpis">
+    <div class="kpi"><h3>Deployments up</h3><div class="ring"><svg id="ring" width="58" height="58" viewBox="0 0 36 36"></svg><div><div class="big" id="k-up">–</div><div class="activity" id="k-up-sub"></div></div></div></div>
+    <div class="kpi"><h3>Containers</h3><div class="big" id="k-cont">–</div><div class="chips" id="k-groups"></div></div>
+    <div class="kpi"><h3>Docker memory</h3><div class="big" id="k-mem">–</div><div class="meter" id="k-mem-bar"><i style="width:0"></i></div></div>
+    <div class="kpi"><h3>Activity</h3><div class="big" id="k-act" style="font-size:20px">Idle</div><div class="activity" id="k-act-sub">Nothing running</div></div>
+  </section>
+  <section class="emus" id="emus"></section>
+  <div id="banner"></div>
+  <div class="toolbar" id="filters"></div>
+  <div id="sections"></div>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="dhead"><div class="icon" id="d-icon"></div><div><div class="name" id="d-title"></div><div class="sub" id="d-sub"></div></div><div class="grow"></div>
+    <button class="btn sm danger" id="d-cancel" hidden>Cancel run</button><button class="btn sm" id="d-close">Close ✕</button></div>
+  <div class="tabs"><button class="tab on" data-tab="log">Live log</button><button class="tab" data-tab="hist">History</button></div>
+  <div class="dbody" id="d-log">
+    <div class="logtools"><input type="text" id="d-filter" placeholder="Filter lines…"><label><input type="checkbox" id="d-follow" checked> follow</label>
+      <span class="grow"></span><span id="d-meta" class="mono"></span><button class="btn sm" id="d-copy">Copy</button></div>
+    <pre class="log" id="log"></pre>
+  </div>
+  <div class="dbody" id="d-hist" hidden><div class="hist" id="hist"></div></div>
+</aside>
+<div class="toasts" id="toasts"></div>
 
 <script>
+// ── helpers ───────────────────────────────────────────────────────────────────────────────────
 const $ = (s) => document.querySelector(s)
-let data = { stages: [], busy: {} }
-let watching = null // { id, offset }
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag)
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue
+    if (k === 'class') el.className = v
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v)
+    else if (k === 'icon') el.insertAdjacentHTML('afterbegin', ICONS[v]) // fixed SVG constants only, never data
+    else el.setAttribute(k, v === true ? '' : v)
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(String(kid)))
+  return el
+}
+const now = () => Date.now() / 1000
+const ago = (t) => { const s = Math.max(0, now() - t); return s < 60 ? 'just now' : s < 3600 ? `${Math.floor(s / 60)} min ago` : s < 86400 ? `${Math.floor(s / 3600)} h ago` : `${Math.floor(s / 86400)} d ago` }
+const dur = (s) => { s = Math.max(0, Math.round(s)); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s` }
+const upFor = (t) => { const s = now() - t; return s < 60 ? 'up a moment' : s < 3600 ? `up ${Math.floor(s / 60)} min` : `up ${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min` }
+const gib = (b) => (b / 1024 ** 3).toFixed(1)
+
+const ICONS = {
+  vm: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+  container: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>',
+  k8s: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 8.5 4.1 2.1 9.2-5.9 7.4H7.3l-5.9-7.4L3.5 6.1z"/><circle cx="12" cy="12" r="3"/></svg>',
+  serverless: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
+  play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  stop: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+  test: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/></svg>',
+  release: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>',
+  log: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
+  ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+}
+const FAMILY = { aws: ['Amazon Web Services', 'var(--aws)'], gcp: ['Google Cloud', 'var(--gcp)'], azure: ['Microsoft Azure', 'var(--azure)'] }
+const KIND = { vm: 'Virtual machines', container: 'Containers', k8s: 'Kubernetes', serverless: 'Serverless' }
+const VERB = { start: 'Starting', stop: 'Stopping', smoke: 'Testing', rollout: 'Releasing', forget: 'Clearing state', 'emu-start': 'Starting', 'emu-stop': 'Stopping' }
+const DONE = { start: 'is up', stop: 'stopped', smoke: 'tests passed', rollout: 'new version released', forget: 'state cleared', 'emu-start': 'emulator started', 'emu-stop': 'emulator stopped' }
+
+// ── state ─────────────────────────────────────────────────────────────────────────────────────
+let S = null, offline = false
+let filter = localStorage.getItem('panel-filter') || 'all'
+let query = ''
+let drawer = null // { target, title, job, offset }
+const watching = new Map() // job id → { target, action, title } to announce when it ends
 
 async function post(path) {
   const r = await fetch(path, { method: 'POST', headers: { 'X-Panel': '1' } })
   return { ok: r.ok, body: await r.json() }
 }
 
-async function act(stage, action) {
-  if (action === 'stop' && !confirm(`Stop ${stage.title}? This destroys its resources.`)) return
-  if (action === 'forget' && !confirm(`Forget ${stage.title}'s Terraform state? Use this when its emulator was restarted and lost everything.`)) return
-  const { ok, body } = await post(`/api/stages/${stage.id}/${action}`)
-  if (!ok) { alert(body.error); if (body.job) watch(body.job); return }
-  watch(body.job); refresh()
+async function act(target, action, title) {
+  const ask = {
+    stop: `Stop ${title}?\n\nIts cloud resources are destroyed (terraform destroy).`,
+    forget: `Forget ${title}'s Terraform state?\n\nUse this after its emulator was restarted and lost everything.`,
+    'emu-stop': `Stop the ${title} emulator?\n\nEvery deployment on it is lost; their state files stay behind ("Clear state" afterwards).`,
+  }[action]
+  if (ask && !confirm(ask)) return
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission()
+  const path = action.startsWith('emu-') ? `/api/emulators/${target.slice(4)}/${action.slice(4)}` : `/api/stages/${target}/${action}`
+  const { ok, body } = await post(path)
+  if (!ok) { toast(body.error, 'bad'); return }
+  watching.set(body.job, { target, action, title })
+  openDrawer(target, title, body.job)
+  refresh()
 }
 
-function watch(id) { watching = { id, offset: 0 }; $('#log').textContent = ''; poll() }
-
-async function poll() {
-  if (!watching) return
-  const r = await fetch(`/api/jobs/${watching.id}/log?from=${watching.offset}`)
-  if (!r.ok) return
-  const j = await r.json()
-  const log = $('#log'), atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 30
-  if (j.lines.length) log.textContent += j.lines.join('\n') + '\n'
-  if (atEnd) log.scrollTop = log.scrollHeight
-  watching.offset = j.next
-  $('#logtitle').textContent = `${j.stage} · ${j.action}` + (j.rc === null ? ' · running' : j.rc === 0 ? ' · done' : ` · failed (${j.rc})`)
-  $('#cancel').hidden = j.rc !== null
-  $('#cancel').onclick = () => post(`/api/jobs/${watching.id}/cancel`)
-  if (j.rc === null) setTimeout(poll, 1000); else refresh()
-}
-
+// ── cards ─────────────────────────────────────────────────────────────────────────────────────
 function card(s) {
-  const busy = s.op
-  const sharedBusy = !!data.busy[s.emulator]
-  const cls = busy ? 'busy' : s.state
-  const label = busy ? s.op : s.state === 'up' ? 'up' : s.state === 'partial' ? 'partly deployed' : 'down'
-  const el = document.createElement('div')
-  el.className = `card ${cls}`
-  const mk = (tag, cls2, text) => { const n = document.createElement(tag); if (cls2) n.className = cls2; if (text !== undefined) n.textContent = text; return n }
-  const top = mk('div', 'top')
-  top.append(mk('span', 'dot'), mk('span', 'title', s.title), mk('span', 'pill', label))
-  el.append(top, mk('div', 'note', s.note), mk('div', 'row'))
-  const row = el.querySelector('.row')
-  const btn = (text, cls2, fn, disabled) => { const b = document.createElement('button'); b.textContent = text; b.className = cls2 || ''; b.disabled = disabled; b.onclick = fn; row.append(b) }
-  const running = s.state === 'up'
-  btn('Start', 'go', () => act(s, 'start'), sharedBusy || running)
-  btn('Stop', 'stop', () => act(s, 'stop'), sharedBusy || (s.state === 'down'))
-  btn('Test', '', () => act(s, 'smoke'), sharedBusy || !running)
-  btn('Release', '', () => act(s, 'rollout'), sharedBusy || !running)
-  if (s.state === 'partial' && !busy) btn('Clear state', '', () => act(s, 'forget'), sharedBusy)
-  if (s.job) btn('Log', '', () => watch(s.job), false)
-  if (s.url) { const a = document.createElement('a'); a.className = 'open'; a.href = s.url; a.target = '_blank'; a.textContent = 'Open ↗'; row.append(a) }
+  const emu = S.emulators.find((e) => e.id === s.emulator)
+  const blocked = S.ci_running || emu?.busy
+  const cls = s.job ? 'busy' : s.state
+  const label = s.job ? VERB[s.job.action] : { up: 'Running', partial: 'Partly deployed', down: 'Stopped' }[s.state]
+  const where = s.url ? s.url.replace(/^https?:\/\//, '').replace(/\/$/, '') : `on ${emu?.title || s.emulator}`
+  const el = h('article', { class: `card ${cls}` },
+    h('div', { class: 'head' },
+      h('div', { class: 'icon', icon: s.kind }),
+      h('div', {}, h('div', { class: 'name' }, s.title),
+        h('div', { class: 'sub' }, h('span', { class: 'mono' }, where),
+          s.state === 'up' && !s.job ? h('span', {}, '· ' + upFor(s.since)) : null,
+          s.resources ? h('span', {}, `· ${s.resources} resources`) : null)),
+      h('span', { class: 'badge' }, h('i'), label)),
+    h('div', { class: 'note' }, s.note))
+
+  if (s.login && s.state === 'up' && !s.job) {
+    const [user, pass] = s.login.split(' · ')
+    el.append(h('div', { class: 'login mono' }, `🔑 ${user}`,
+      h('button', { class: 'btn sm', onclick: () => { navigator.clipboard.writeText(pass); toast('Password copied', 'ok') } }, 'Copy password')))
+  }
+  if (!emu?.up && !s.job && s.state !== 'up' && s.emulator !== 'aws') {
+    el.append(h('div', { class: 'last' }, '◌ Its emulator is off; Start brings it up.'))
+  }
+
+  if (s.job) {
+    const t = now() - s.job.started, pct = Math.min(97, (t / (s.job.expected || 300)) * 100)
+    el.append(h('div', { class: 'progress' },
+      h('div', { class: 'row' }, h('span', {}, `${VERB[s.job.action]} · ${dur(t)}`), h('span', {}, t > s.job.expected ? 'taking longer than usual' : `about ${dur(s.job.expected - t)} left`)),
+      h('div', { class: 'meter' }, h('i', { style: `width:${pct}%` })),
+      h('div', { class: 'step mono', title: s.job.step }, s.job.step || 'working…')))
+  } else if (s.last) {
+    const ok = s.last.rc === 0
+    el.append(h('div', { class: 'last' }, h('span', { class: ok ? 'ok' : 'bad' }, ok ? '✓' : '✗'),
+      `${s.last.action}${ok ? '' : ' failed'} · took ${dur(s.last.ended - s.last.started)} · ${ago(s.last.ended)}`))
+  }
+
+  const ib = (icon, title, fn, disabled, extra = '') => h('button', { class: `btn ibtn ${extra}`, title, 'aria-label': title, onclick: fn, disabled, icon })
+  const a = h('div', { class: 'actions' })
+  if (s.job) a.append(h('button', { class: 'btn', onclick: () => openDrawer(s.id, s.title, s.job.id) }, 'Watch live log'))
+  else if (s.state === 'up') a.append(h('a', { class: 'btn open', href: s.url, target: '_blank', icon: 'ext' }, 'Open app'))
+  else if (s.state === 'partial') a.append(
+    h('button', { class: 'btn primary', onclick: () => act(s.id, 'start', s.title), disabled: blocked, icon: 'play' }, 'Retry'),
+    h('button', { class: 'btn', onclick: () => act(s.id, 'forget', s.title), disabled: blocked, title: 'The emulator lost it: drop the stale Terraform state' }, 'Clear state'))
+  else a.append(h('button', { class: 'btn primary', onclick: () => act(s.id, 'start', s.title), disabled: blocked, icon: 'play' }, 'Start'))
+  a.append(h('span', { class: 'spacer' }))
+  if (!s.job) a.append(
+    ib('test', 'Run the smoke tests', () => act(s.id, 'smoke', s.title), blocked || s.state !== 'up'),
+    ib('release', 'Release a new version (rollout)', () => act(s.id, 'rollout', s.title), blocked || s.state !== 'up'),
+    ib('stop', 'Stop (terraform destroy)', () => act(s.id, 'stop', s.title), blocked || s.state === 'down', 'danger'))
+  a.append(ib('log', 'Logs and history', () => openDrawer(s.id, s.title, s.job?.id || s.last?.id), false))
+  el.append(a)
+  if (blocked && !s.job && emu?.busy) el.title = 'Another operation is running on the same emulator'
   return el
 }
 
-function render() {
-  const main = $('#main'); main.textContent = ''
-  const families = [...new Set(data.stages.map((s) => s.family))]
-  for (const f of families) {
-    const h = document.createElement('h2'); h.textContent = f
-    const g = document.createElement('div'); g.className = 'grid'
-    data.stages.filter((s) => s.family === f).forEach((s) => g.append(card(s)))
-    main.append(h, g)
+// ── page ──────────────────────────────────────────────────────────────────────────────────────
+function renderKpis() {
+  const ups = S.stages.filter((s) => s.state === 'up'), total = S.stages.length
+  $('#k-up').replaceChildren(String(ups.length), h('small', {}, ` / ${total}`))
+  $('#k-up-sub').textContent = ups.length ? ups.map((s) => s.title).join(', ') : 'Nothing deployed'
+  const c = 2 * Math.PI * 15.9, frac = total ? ups.length / total : 0
+  $('#ring').innerHTML = `<circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--line2)" stroke-width="3.4"/><circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--green)" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="${(frac * c).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 18 18)"/>`
+  const sys = S.system || {}
+  $('#k-cont').textContent = sys.containers ?? '–'
+  $('#k-groups').replaceChildren(...Object.entries(sys.groups || {}).sort((a, b) => b[1] - a[1]).map(([g, n]) => h('span', { class: 'chip' }, `${g} · ${n}`)))
+  if (sys.mem_total) {
+    const pct = (sys.mem_used / sys.mem_total) * 100
+    $('#k-mem').replaceChildren(gib(sys.mem_used), h('small', {}, ` / ${gib(sys.mem_total)} GiB`))
+    const bar = $('#k-mem-bar'); bar.className = 'meter' + (pct > 85 ? ' hot' : pct > 65 ? ' warn' : ''); bar.firstChild.style.width = `${pct.toFixed(1)}%`
   }
-  $('#up-count').textContent = data.stages.filter((s) => s.state === 'up').length
-  $('#total').textContent = data.stages.length
-  $('#containers').textContent = data.containers
-  const b = $('#banner')
-  b.style.display = data.ci_running ? 'block' : 'none'
-  b.textContent = data.ci_running ? 'A CI job is running on this Docker and uses the same ports: starting deployments is paused until it finishes.' : ''
+  const running = [...S.stages.filter((s) => s.job).map((s) => [s.title, s.job]), ...S.emulators.filter((e) => e.job).map((e) => [e.title, e.job])]
+  if (running.length) {
+    const [title, job] = running[0]
+    $('#k-act').textContent = `${VERB[job.action]} ${title}`
+    $('#k-act-sub').textContent = `${dur(now() - job.started)} of ~${dur(job.expected)}${running.length > 1 ? ` · +${running.length - 1} more` : ''}`
+  } else {
+    $('#k-act').textContent = 'Idle'
+    const last = S.stages.map((s) => s.last).filter(Boolean).sort((a, b) => b.ended - a.ended)[0]
+    $('#k-act-sub').textContent = last ? `Last: ${last.target} · ${last.action} ${last.rc === 0 ? '✓' : '✗'} · ${ago(last.ended)}` : 'Nothing has run yet'
+  }
+  for (const [id, on] of Object.entries(S.tools)) document.querySelector(`#tool-${id} .led`).className = 'led' + (on ? ' on' : '')
 }
 
-async function refresh() {
-  try { data = await (await fetch('/api/stages')).json(); render() } catch (e) { /* server restarting */ }
+function renderEmus() {
+  $('#emus').replaceChildren(...S.emulators.map((e) => h('div', { class: 'emu' },
+    h('span', { class: 'led' + (e.up ? ' on' : '') }),
+    h('div', {}, h('div', { class: 't' }, e.title), h('div', { class: 's' }, `:${e.port} · ${e.used_by}`)),
+    h('span', { class: 'spacer' }),
+    e.job ? h('span', { class: 's', style: 'color:var(--amber)' }, VERB[e.job.action] + '…')
+      : h('button', { class: 'btn sm', disabled: e.busy || S.ci_running, onclick: () => act('emu:' + e.id, e.up ? 'emu-stop' : 'emu-start', e.title) }, e.up ? 'Stop' : 'Start'))))
+  const banners = []
+  if (offline) banners.push(h('div', { class: 'banner offline' }, '⚠', h('span', {}, 'The panel server is not answering. Is `make -C control-panel run` still running?')))
+  if (S.ci_running) banners.push(h('div', { class: 'banner' }, '⏳', h('span', {}, 'A pipeline is running on this Docker (local CI) and uses the same ports. Start and stop are paused until it finishes.')))
+  $('#banner').replaceChildren(...banners)
 }
-refresh(); setInterval(refresh, 4000)
+
+function match(s, f) {
+  if (f === 'up') return s.state === 'up' || !!s.job
+  if (f === 'down') return s.state !== 'up' && !s.job
+  if (['aws', 'gcp', 'azure'].includes(f)) return s.family === f
+  return true
+}
+
+function renderFilters() {
+  const defs = [['all', 'All'], ['up', 'Running'], ['down', 'Stopped'], ['aws', 'AWS'], ['gcp', 'Google Cloud'], ['azure', 'Azure']]
+  const search = $('#search') || h('input', { class: 'search', id: 'search', placeholder: 'Search deployments…   /', oninput: (e) => { query = e.target.value; renderSections() } })
+  $('#filters').replaceChildren(...defs.map(([id, label]) => h('button', { class: 'filter' + (filter === id ? ' on' : ''), onclick: () => { filter = id; localStorage.setItem('panel-filter', id); render() } },
+    label, h('span', { class: 'n' }, S.stages.filter((s) => match(s, id)).length))), search)
+}
+
+function renderSections() {
+  const q = query.trim().toLowerCase()
+  const list = S.stages.filter((s) => match(s, filter) && (!q || `${s.title} ${s.note} ${s.id}`.toLowerCase().includes(q)))
+  const out = []
+  for (const fam of ['aws', 'gcp', 'azure']) {
+    for (const k of fam === 'aws' ? ['vm', 'container', 'k8s', 'serverless'] : ['container']) {
+      const items = list.filter((s) => s.family === fam && s.kind === k)
+      if (!items.length) continue
+      const up = items.filter((s) => s.state === 'up').length
+      out.push(h('h2', {}, h('span', { class: 'cloud', style: `background:${FAMILY[fam][1]}` }), fam === 'aws' ? `${FAMILY[fam][0]} · ${KIND[k]}` : FAMILY[fam][0],
+        h('span', { class: 'count' }, `· ${up}/${items.length} up`)), h('div', { class: 'grid' }, items.map(card)))
+    }
+  }
+  $('#sections').replaceChildren(...(out.length ? out : [h('div', { class: 'empty' }, 'No deployment matches.')]))
+}
+
+function render() { if (S) { renderKpis(); renderEmus(); renderFilters(); renderSections() } }
+
+// ── drawer ────────────────────────────────────────────────────────────────────────────────────
+function openDrawer(target, title, job) {
+  drawer = { target, title, job, offset: 0 }
+  const s = S?.stages.find((x) => x.id === target)
+  $('#d-icon').replaceChildren(); $('#d-icon').insertAdjacentHTML('afterbegin', ICONS[s ? s.kind : 'container'])
+  $('#d-title').textContent = title
+  $('#d-sub').textContent = s ? s.note : 'Emulator'
+  $('#log').replaceChildren(job ? '' : 'Nothing has run here yet. Press Start.')
+  $('#d-meta').textContent = ''; $('#d-cancel').hidden = true
+  showTab('log')
+  $('#drawer').classList.add('on'); $('#scrim').classList.add('on'); $('#drawer').setAttribute('aria-hidden', 'false')
+  if (job) pollLog()
+}
+function closeDrawer() { drawer = null; $('#drawer').classList.remove('on'); $('#scrim').classList.remove('on'); $('#drawer').setAttribute('aria-hidden', 'true') }
+
+function ansi(line) {
+  // make/terraform output carries ANSI colours: turned into spans; the text itself is never parsed as HTML
+  const frag = document.createDocumentFragment()
+  let cls = []
+  for (const part of line.split(/(\x1b\[[0-9;]*m)/)) {
+    const m = part.match(/^\x1b\[([0-9;]*)m$/)
+    if (m) { const codes = m[1].split(';').filter(Boolean); cls = !codes.length || codes.includes('0') ? [] : [...cls, ...codes.map((c) => 'a' + c)]; continue }
+    if (part) frag.append(cls.length ? h('span', { class: cls.join(' ') }, part) : part)
+  }
+  return frag
+}
+function lineEl(l) {
+  const plain = l.replace(/\x1b\[[0-9;]*m/g, '')
+  const cls = l.startsWith('$ ') ? 'cmd' : /\b(error|failed|FAIL)\b/i.test(plain) || plain.startsWith('[failed') ? 'err'
+    : /(^\s*ok\s)|PASSED|Apply complete|\bhealthy\b|^\[done\]/.test(plain) ? 'okl' : ''
+  const div = h('div', { class: cls }); div.append(ansi(l)); return div
+}
+function applyFilter() {
+  const f = $('#d-filter').value.toLowerCase()
+  for (const el of $('#log').children) el.hidden = !!f && !el.textContent.toLowerCase().includes(f)
+}
+async function pollLog() {
+  if (!drawer?.job) return
+  const job = drawer.job
+  let j
+  try { const r = await fetch(`/api/jobs/${job}/log?from=${drawer.offset}`); if (!r.ok) return; j = await r.json() } catch { setTimeout(pollLog, 2000); return }
+  if (drawer?.job !== job) return
+  const log = $('#log')
+  if (drawer.offset === 0) log.replaceChildren()
+  for (const l of j.lines) log.append(lineEl(l))
+  drawer.offset = j.next
+  applyFilter()
+  if ($('#d-follow').checked) log.scrollTop = log.scrollHeight
+  const running = j.rc === null, t = (j.ended || now()) - j.started
+  $('#d-meta').textContent = `${j.action} · ${running ? 'running ' + dur(t) : (j.rc === 0 ? '✓ done in ' : '✗ failed after ') + dur(t)}`
+  $('#d-cancel').hidden = !running
+  $('#d-cancel').onclick = async () => { if (confirm('Cancel this run?\n\nTerraform may leave resources half-created; Stop or Retry afterwards.')) { await post(`/api/jobs/${job}/cancel`); toast('Cancelling…') } }
+  if (running) setTimeout(pollLog, 1000)
+}
+async function showTab(t) {
+  document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('on', b.dataset.tab === t))
+  $('#d-log').hidden = t !== 'log'; $('#d-hist').hidden = t !== 'hist'
+  if (t !== 'hist' || !drawer) return
+  const mine = (await (await fetch('/api/history')).json()).filter((x) => x.target === drawer.target)
+  $('#hist').replaceChildren(...(mine.length ? mine.map((x) => h('div', { class: 'hrow', onclick: () => { drawer.job = x.id; drawer.offset = 0; showTab('log'); pollLog() } },
+    h('span', { class: x.rc === 0 ? 'ok' : 'bad' }, x.rc === 0 ? '✓' : '✗'), h('b', {}, x.action),
+    h('span', { class: 'mono', style: 'color:var(--muted)' }, new Date(x.started * 1000).toLocaleString()),
+    h('span', {}, dur(x.ended - x.started)), h('span', { style: 'color:var(--muted)' }, ago(x.ended)))) : [h('div', { class: 'empty' }, 'No runs yet.')]))
+}
+
+// ── toasts + notifications ────────────────────────────────────────────────────────────────────
+function toast(text, kind = '') {
+  const t = h('div', { class: 'toast' }, h('span', { class: kind }, kind === 'ok' ? '✓' : kind === 'bad' ? '✗' : '•'), text)
+  $('#toasts').append(t); setTimeout(() => t.remove(), 6000)
+}
+async function announceFinished() {
+  const live = new Set([...S.stages.filter((s) => s.job).map((s) => s.job.id), ...S.emulators.filter((e) => e.job).map((e) => e.job.id)])
+  for (const s of S.stages) if (s.job && !watching.has(s.job.id)) watching.set(s.job.id, { target: s.id, action: s.job.action, title: s.title })
+  for (const [job, info] of [...watching]) {
+    if (live.has(job)) continue
+    watching.delete(job)
+    let ok = true
+    try { ok = (await (await fetch(`/api/jobs/${job}/log?from=999999`)).json()).rc === 0 } catch { /* keep ok */ }
+    const text = `${info.title}: ${ok ? DONE[info.action] : info.action + ' failed — open the log'}`
+    toast(text, ok ? 'ok' : 'bad')
+    if ('Notification' in window && Notification.permission === 'granted' && document.hidden) new Notification('Deployments', { body: text })
+  }
+}
+
+// ── loop ──────────────────────────────────────────────────────────────────────────────────────
+async function refresh() {
+  try { S = await (await fetch('/api/status')).json(); offline = false; await announceFinished() } catch { offline = true }
+  render()
+}
+$('#d-close').onclick = closeDrawer; $('#scrim').onclick = closeDrawer
+document.querySelectorAll('.tab').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)))
+$('#d-filter').oninput = applyFilter
+$('#d-copy').onclick = () => { navigator.clipboard.writeText([...$('#log').children].map((d) => d.textContent).join('\n')); toast('Log copied', 'ok') }
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeDrawer()
+  if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) { e.preventDefault(); $('#search')?.focus() }
+})
+setInterval(() => { $('#clock').textContent = new Date().toLocaleTimeString() }, 1000)
+refresh(); setInterval(refresh, 3000)
 </script>
 </body>
 </html>
