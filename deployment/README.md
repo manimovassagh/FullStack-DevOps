@@ -13,6 +13,7 @@ The AWS stages run **locally on [Floci](https://floci.io)**, so no cloud account
 | [eks-helm](aws/eks-helm/) | EKS + the app as a Helm chart | charts, values, releases and revisions, `helm upgrade --install`, `helm rollback`, templating vs patching |
 | [ec2-asg](aws/ec2-asg/) | EC2 behind Auto Scaling Groups | launch templates and versions, Auto Scaling Groups, ALB registration by the group, self-healing, rolling replacement (instance refresh), target-tracking policies |
 | [eks-gitops](aws/eks-gitops/) | EKS + Argo CD pulling from git | GitOps: the repo is the source of truth, a release is a commit, rollback is `git revert`, self-healing drift, no cluster credentials in CI |
+| [ecs-cognito](aws/ecs-cognito/) | ECS Fargate + ALB + RDS + S3 + Amazon Cognito | user pools and app clients, JWT verification with the pool's JWKS, per-user data, an admin group, a backend-for-frontend sign-in with an HttpOnly refresh cookie; own app copies `backend-auth/`, `frontend-auth/` |
 | [ecs-blue-green](aws/ecs-blue-green/) | ECS Fargate + weighted ALB (two environments) | blue/green and canary releases, weighted target groups, a preview listener, instant rollback, a release state machine |
 | [serverless](aws/serverless/) | Lambda + API Gateway + CloudFront + S3 | function packaging and cold starts, API Gateway events, versions and aliases, CloudFront origins and behaviors, a private S3 site with origin access control, secrets read by the function |
 
