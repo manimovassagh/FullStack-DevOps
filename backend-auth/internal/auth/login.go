@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -17,6 +18,7 @@ import (
 // IdentityProvider is the part of the Cognito client the sign-in endpoints use.
 type IdentityProvider interface {
 	InitiateAuth(ctx context.Context, in *cognitoidentityprovider.InitiateAuthInput, opts ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.InitiateAuthOutput, error)
+	GetUser(ctx context.Context, in *cognitoidentityprovider.GetUserInput, opts ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.GetUserOutput, error)
 	RevokeToken(ctx context.Context, in *cognitoidentityprovider.RevokeTokenInput, opts ...func(*cognitoidentityprovider.Options)) (*cognitoidentityprovider.RevokeTokenOutput, error)
 }
 
@@ -148,8 +150,21 @@ func NewCognitoClient(ctx context.Context, region, endpoint string) (*cognitoide
 	}), nil
 }
 
-// Me tells the page who it is signed in as.
-func Me(c echo.Context) error {
+// Me tells the page who it is signed in as. The access token only carries the user's id, so the
+// email comes from Cognito's GetUser (called with the caller's own token); without it the id is shown.
+func (l *Login) Me(c echo.Context) error {
 	cl, _ := ClaimsFrom(c)
-	return c.JSON(http.StatusOK, map[string]any{"id": cl.Subject, "username": cl.Username, "admin": cl.Admin})
+	name := cl.Username
+	if raw, ok := strings.CutPrefix(c.Request().Header.Get("Authorization"), "Bearer "); ok {
+		if out, err := l.IDP.GetUser(c.Request().Context(), &cognitoidentityprovider.GetUserInput{AccessToken: aws.String(raw)}); err == nil {
+			for _, a := range out.UserAttributes {
+				if aws.ToString(a.Name) == "email" {
+					name = aws.ToString(a.Value)
+				}
+			}
+		} else {
+			slog.Warn("could not read the user's profile", "err", err)
+		}
+	}
+	return c.JSON(http.StatusOK, map[string]any{"id": cl.Subject, "username": name, "admin": cl.Admin})
 }
