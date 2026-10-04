@@ -166,6 +166,13 @@ jobs:
       - name: Save images
         run: docker save "plant/backend:${IMAGE_TAG}" "plant/frontend:${IMAGE_TAG}" "plant/azure-gateway:${IMAGE_TAG}" | gzip > images.tar.gz
       - uses: actions/upload-artifact@v7
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: images
+          path: images.tar.gz
+          retention-days: 3
+      - uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
         with:
           name: images
           path: images.tar.gz
@@ -188,6 +195,12 @@ jobs:
           cache: npm
           cache-dependency-path: deployment/smoke/package-lock.json
       - uses: actions/download-artifact@v8
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: images
+          path: .
+      - uses: christopherhx/gitea-download-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
         with:
           name: images
           path: .
@@ -212,7 +225,16 @@ jobs:
           docker logs plant-azure-floci-az 2>&1 | tail -150
       - name: Upload e2e recording (Playwright video, screenshots, report)
         uses: actions/upload-artifact@v7
-        if: always()
+        if: ${{ always() && github.server_url == 'https://github.com' }}
+        with:
+          name: e2e-recording-azure-container-apps
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Upload e2e recording (Playwright video, screenshots, report)
+        uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ always() && github.server_url != 'https://github.com' }}
         with:
           name: e2e-recording-azure-container-apps
           path: |

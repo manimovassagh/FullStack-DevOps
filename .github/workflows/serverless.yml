@@ -99,6 +99,13 @@ jobs:
       - name: Build the static site (what gets uploaded to S3)
         run: npm run build
       - uses: actions/upload-artifact@v7
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 3
+      - uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
         with:
           name: frontend-dist
           path: frontend/dist
@@ -153,6 +160,13 @@ jobs:
       - name: Compile the bootstrap binary and zip it
         run: make -C deployment/aws/serverless lambda
       - uses: actions/upload-artifact@v7
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: lambda-zip
+          path: deployment/aws/serverless/build/lambda.zip
+          retention-days: 3
+      - uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
         with:
           name: lambda-zip
           path: deployment/aws/serverless/build/lambda.zip
@@ -179,10 +193,22 @@ jobs:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
       - uses: actions/download-artifact@v8
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: lambda-zip
+          path: deployment/aws/serverless/build
+      - uses: christopherhx/gitea-download-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
         with:
           name: lambda-zip
           path: deployment/aws/serverless/build
       - uses: actions/download-artifact@v8
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - uses: christopherhx/gitea-download-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
         with:
           name: frontend-dist
           path: frontend/dist
@@ -209,7 +235,16 @@ jobs:
           docker compose logs floci | grep -v ContainerLogStreamer | tail -150
       - name: Upload e2e recording (Playwright video, screenshots, report)
         uses: actions/upload-artifact@v7
-        if: always()
+        if: ${{ always() && github.server_url == 'https://github.com' }}
+        with:
+          name: e2e-recording-serverless
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Upload e2e recording (Playwright video, screenshots, report)
+        uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ always() && github.server_url != 'https://github.com' }}
         with:
           name: e2e-recording-serverless
           path: |

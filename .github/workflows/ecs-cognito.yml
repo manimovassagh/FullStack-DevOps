@@ -170,6 +170,13 @@ jobs:
       - name: Save images
         run: docker save "plant/backend-auth:${IMAGE_TAG}" "plant/frontend-auth:${IMAGE_TAG}" | gzip > images.tar.gz
       - uses: actions/upload-artifact@v7
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: images
+          path: images.tar.gz
+          retention-days: 3
+      - uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
         with:
           name: images
           path: images.tar.gz
@@ -196,6 +203,12 @@ jobs:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
       - uses: actions/download-artifact@v8
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: images
+          path: .
+      - uses: christopherhx/gitea-download-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
         with:
           name: images
           path: .
@@ -224,7 +237,16 @@ jobs:
           docker compose -f ../../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
       - name: Upload e2e recording (Playwright video, screenshots, report)
         uses: actions/upload-artifact@v7
-        if: always()
+        if: ${{ always() && github.server_url == 'https://github.com' }}
+        with:
+          name: e2e-recording-ecs-cognito
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Upload e2e recording (Playwright video, screenshots, report)
+        uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ always() && github.server_url != 'https://github.com' }}
         with:
           name: e2e-recording-ecs-cognito
           path: |
