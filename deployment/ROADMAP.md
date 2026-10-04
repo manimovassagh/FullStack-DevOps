@@ -32,6 +32,7 @@ deployment/
 │   ├── ecs-blue-green/       ✅ ECS with weighted target groups (blue/green + canary)
 │   ├── eks-helm/             ✅ same app as a Helm chart
 │   ├── eks-gitops/           ✅ Argo CD pulls the manifests from git
+│   ├── ecs-cognito/          ✅ ECS + Amazon Cognito sign-in (own app copies: /backend-auth, /frontend-auth)
 │   └── beanstalk/            dropped: Floci only stores Beanstalk metadata (see phase 5)
 │
 ├── azure/                    later: same idea, Azure services
@@ -77,7 +78,8 @@ Each stage folder looks the same inside:
 | serverless | http://plant.localhost:4567 (its own Floci, via a CloudFront alias) |
 | eks-helm | http://localhost:8094 |
 | eks-gitops | http://localhost:8095 |
-| beanstalk | http://localhost:8096 |
+| ecs-cognito | http://localhost:8096 |
+| beanstalk (dropped) | – |
 
 **CI:** one workflow file per deployment family, each its own pipeline in the Actions tab and each run only when its paths change: [`ec2.yml`](../.github/workflows/ec2.yml) (classic-ec2: VMs, native artifacts), [`containers.yml`](../.github/workflows/containers.yml) (ecs + eks: both run the same images) and [`serverless.yml`](../.github/workflows/serverless.yml). Each later family (blue/green, GitOps, Azure, GCP …) adds its own file.
 
@@ -134,3 +136,7 @@ AWS is the popular one, so the other two clouds get only the most common contain
 
 - **`gcp/cloud-run/` ✅:** Cloud Run + Cloud SQL + Cloud Storage, behind an nginx gateway. The API is `backend-gcp/`, a copy of the backend with Cloud Storage as photo storage (the emulator's S3-style upload is broken, so the unchanged backend can't be used). Workflow `gcp-cloud-run.yml`.
 - **`azure/container-apps/` ✅:** Container Apps + PostgreSQL Flexible Server, with the repo's backend and frontend unchanged and an S3-compatible object store in the stage (Azure Blob has no S3 interface). Terraform runs in a container that trusts the emulator's TLS certificate. Workflow `azure-container-apps.yml`.
+
+### Authentication and authorization: `aws/ecs-cognito/` ✅
+
+The ecs recipe plus Amazon Cognito (user pool, app client, `admin` group, demo users). The app gets its own copies, `backend-auth/` (JWT verification against the pool's JWKS, owner-scoped queries, sign-in endpoints) and `frontend-auth/` (login page, in-memory access token, HttpOnly refresh cookie); the shared `backend/` and `frontend/` are untouched. Workflow `ecs-cognito.yml`. The shared smoke tests got two optional hooks (`SMOKE_AUTH_TOKEN`, `SMOKE_LOGIN_USER`), and the Playwright suite was reorganised into page objects, fixtures and one spec per feature.
