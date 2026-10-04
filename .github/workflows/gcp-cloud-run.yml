@@ -195,6 +195,10 @@ jobs:
         run: gunzip -c "$GITHUB_WORKSPACE/images.tar.gz" | docker load
       - name: Start the Floci GCP emulator
         run: make floci
+      # Cloud Run containers of a failed revision are deleted by the emulator, so keep copying their logs from the start.
+      - name: Capture container logs in the background
+        run: |
+          nohup bash -c 'while :; do for c in $(docker ps -a --format "{{.Names}}" | grep -E "floci-gcp-cloudrun"); do echo "== $(date -u +%T) $c ($(docker inspect -f "{{.State.Status}}" "$c" 2>/dev/null))"; docker logs --tail 25 "$c" 2>&1; done; sleep 5; done' > "$RUNNER_TEMP/containers.log" 2>&1 &
       - name: "Deploy (terraform apply: Cloud SQL, Cloud Storage, three Cloud Run services)"
         run: make init deploy
       - name: "Verify: the app answers through the gateway"
@@ -205,10 +209,6 @@ jobs:
         env:
           CI: "true"
         run: make smoke
-      # Cloud Run containers of a failed revision are deleted by the emulator, so keep copying their logs while the rollout runs.
-      - name: Capture container logs in the background
-        run: |
-          nohup bash -c 'while :; do for c in $(docker ps -a --format "{{.Names}}" | grep -E "floci-gcp-cloudrun"); do echo "== $(date -u +%T) $c ($(docker inspect -f "{{.State.Status}}" "$c" 2>/dev/null))"; docker logs --tail 25 "$c" 2>&1; done; sleep 5; done' > "$RUNNER_TEMP/containers.log" 2>&1 &
       - name: "Verify: new image tag → new revisions, old containers stopped, API smoke"
         run: make rollout
       - name: Diagnostics
