@@ -162,6 +162,16 @@ jobs:
       - name: Build Go binary (linux/arm64) + React bundle
         run: make -C deployment/aws/classic-ec2 artifacts
       - uses: actions/upload-artifact@v7
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: ec2-artifacts
+          path: |
+            deployment/aws/classic-ec2/build/plant-api
+            deployment/aws/classic-ec2/build/dist.tar.gz
+            frontend/dist
+          retention-days: 3
+      - uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
         with:
           name: ec2-artifacts
           path: |

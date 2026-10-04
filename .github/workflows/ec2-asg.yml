@@ -161,6 +161,16 @@ jobs:
       - name: Build Go binary (linux/arm64) + React bundle
         run: make -C deployment/aws/ec2-asg artifacts
       - uses: actions/upload-artifact@v7
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: ec2-artifacts
+          path: |
+            deployment/aws/ec2-asg/build/plant-api
+            deployment/aws/ec2-asg/build/dist.tar.gz
+            frontend/dist
+          retention-days: 3
+      - uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
         with:
           name: ec2-artifacts
           path: |
@@ -194,6 +204,12 @@ jobs:
         with:
           platforms: arm64
       - uses: actions/download-artifact@v8
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: ec2-artifacts
+          path: .
+      - uses: christopherhx/gitea-download-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
         with:
           name: ec2-artifacts
           path: .
@@ -222,7 +238,16 @@ jobs:
           docker compose -f ../../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
       - name: Upload e2e recording (Playwright video, screenshots, report)
         uses: actions/upload-artifact@v7
-        if: always()
+        if: ${{ always() && github.server_url == 'https://github.com' }}
+        with:
+          name: e2e-recording-ec2-asg
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Upload e2e recording (Playwright video, screenshots, report)
+        uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ always() && github.server_url != 'https://github.com' }}
         with:
           name: e2e-recording-ec2-asg
           path: |

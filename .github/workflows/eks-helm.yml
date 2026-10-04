@@ -179,6 +179,13 @@ jobs:
       - name: Save images
         run: docker save "plant/backend:${IMAGE_TAG}" "plant/frontend:${IMAGE_TAG}" | gzip > images.tar.gz
       - uses: actions/upload-artifact@v7
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: images
+          path: images.tar.gz
+          retention-days: 3
+      - uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
         with:
           name: images
           path: images.tar.gz
@@ -209,6 +216,12 @@ jobs:
           version: v1.34.1
       - uses: azure/setup-helm@v5
       - uses: actions/download-artifact@v8
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: images
+          path: .
+      - uses: christopherhx/gitea-download-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
         with:
           name: images
           path: .
@@ -240,7 +253,16 @@ jobs:
           docker compose -f ../../../docker-compose.yml logs floci | grep -v ContainerLogStreamer | tail -150
       - name: Upload e2e recording (Playwright video, screenshots, report)
         uses: actions/upload-artifact@v7
-        if: always()
+        if: ${{ always() && github.server_url == 'https://github.com' }}
+        with:
+          name: e2e-recording-eks-helm
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Upload e2e recording (Playwright video, screenshots, report)
+        uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ always() && github.server_url != 'https://github.com' }}
         with:
           name: e2e-recording-eks-helm
           path: |

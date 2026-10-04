@@ -192,6 +192,13 @@ jobs:
       - name: Save images
         run: docker save "plant/backend:${IMAGE_TAG}" "plant/frontend:${IMAGE_TAG}" | gzip > images.tar.gz
       - uses: actions/upload-artifact@v7
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: images
+          path: images.tar.gz
+          retention-days: 3
+      - uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
         with:
           name: images
           path: images.tar.gz
