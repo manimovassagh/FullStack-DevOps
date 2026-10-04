@@ -129,6 +129,7 @@ jobs:
       - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
+          token-setup-trivy: ${{ github.server_url == 'https://github.com' && github.token || '' }}
           scan-type: config
           scan-ref: deployment/azure/container-apps
           severity: HIGH,CRITICAL
@@ -156,6 +157,7 @@ jobs:
       - name: trivy image scan gateway (fixable HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
+          token-setup-trivy: ${{ github.server_url == 'https://github.com' && github.token || '' }}
           scan-type: image
           image-ref: plant/azure-gateway:${{ env.IMAGE_TAG }}
           severity: HIGH,CRITICAL
