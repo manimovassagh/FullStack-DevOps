@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deployments · control panel</title>
+<style>
+  :root {
+    --bg: #f6f7f4; --card: #fff; --ink: #1c2420; --muted: #66726b; --line: #e1e6e1;
+    --up: #1f9d55; --down: #9aa5a0; --busy: #d98a00; --bad: #d64545; --accent: #2f7d57; --log: #101512; --logink: #cfe8d8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1411; --card: #171e1a; --ink: #e6eee9; --muted: #8a9890; --line: #26302a; --accent: #4cb883; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 ui-sans-serif, system-ui, sans-serif; padding-bottom: 300px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; padding: 18px 24px; border-bottom: 1px solid var(--line); background: var(--card); position: sticky; top: 0; z-index: 5; }
+  h1 { font-size: 19px; margin: 0; letter-spacing: -.01em; }
+  .grow { flex: 1; }
+  .stat { color: var(--muted); font-size: 13px; } .stat b { color: var(--ink); font-size: 15px; }
+  header a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 13px; }
+  #banner { margin: 16px 24px 0; padding: 10px 14px; border-radius: 10px; background: #fff3d6; color: #6b4a00; display: none; font-size: 14px; }
+  main { padding: 8px 24px; max-width: 1280px; margin: 0 auto; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); margin: 26px 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .card.up { border-color: color-mix(in srgb, var(--up) 55%, var(--line)); }
+  .top { display: flex; align-items: center; gap: 10px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--down); flex: none; }
+  .up .dot { background: var(--up); box-shadow: 0 0 0 4px color-mix(in srgb, var(--up) 22%, transparent); }
+  .partial .dot { background: var(--bad); }
+  .busy .dot { background: var(--busy); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .title { font-weight: 650; flex: 1; }
+  .pill { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: color-mix(in srgb, var(--down) 22%, transparent); color: var(--muted); }
+  .up .pill { background: color-mix(in srgb, var(--up) 18%, transparent); color: var(--up); }
+  .partial .pill { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
+  .busy .pill { background: color-mix(in srgb, var(--busy) 20%, transparent); color: var(--busy); }
+  .note { color: var(--muted); font-size: 13px; min-height: 2.6em; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  button { font: inherit; font-size: 13px; font-weight: 600; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 5px 12px; border-radius: 8px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button.go { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.stop { color: var(--bad); }
+  a.open { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; }
+  #logbar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--log); color: var(--logink); border-top: 3px solid var(--accent); height: 270px; display: flex; flex-direction: column; z-index: 6; }
+  #loghead { display: flex; gap: 12px; align-items: center; padding: 7px 16px; font-size: 13px; background: #0b0f0d; color: #9fb8a9; }
+  #loghead b { color: #fff; } #loghead .grow { flex: 1; }
+  #loghead button { background: transparent; color: #cfe8d8; border-color: #34423a; padding: 2px 10px; }
+  #log { margin: 0; padding: 10px 16px; overflow: auto; flex: 1; font: 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Deployments</h1>
+  <span class="stat"><b id="up-count">–</b> of <b id="total">–</b> up</span>
+  <span class="stat"><b id="containers">–</b> containers running</span>
+  <span class="grow"></span>
+  <a href="http://localhost:3400/d/stacks-overview" target="_blank">Dashboard (Grafana)</a>
+  <a href="http://localhost:3300/ci/FullStack-DevOps/actions" target="_blank">Pipelines (Gitea)</a>
+</header>
+<div id="banner"></div>
+<main id="main"></main>
+
+<div id="logbar">
+  <div id="loghead"><span>Log</span><b id="logtitle">nothing started yet</b><span class="grow"></span><button id="cancel" hidden>Cancel</button></div>
+  <pre id="log">Start or stop a deployment above; the command's output appears here.</pre>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s)
+let data = { stages: [], busy: {} }
+let watching = null // { id, offset }
+
+async function post(path) {
+  const r = await fetch(path, { method: 'POST', headers: { 'X-Panel': '1' } })
+  return { ok: r.ok, body: await r.json() }
+}
+
+async function act(stage, action) {
+  if (action === 'stop' && !confirm(`Stop ${stage.title}? This destroys its resources.`)) return
+  if (action === 'forget' && !confirm(`Forget ${stage.title}'s Terraform state? Use this when its emulator was restarted and lost everything.`)) return
+  const { ok, body } = await post(`/api/stages/${stage.id}/${action}`)
+  if (!ok) { alert(body.error); if (body.job) watch(body.job); return }
+  watch(body.job); refresh()
+}
+
+function watch(id) { watching = { id, offset: 0 }; $('#log').textContent = ''; poll() }
+
+async function poll() {
+  if (!watching) return
+  const r = await fetch(`/api/jobs/${watching.id}/log?from=${watching.offset}`)
+  if (!r.ok) return
+  const j = await r.json()
+  const log = $('#log'), atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 30
+  if (j.lines.length) log.textContent += j.lines.join('\n') + '\n'
+  if (atEnd) log.scrollTop = log.scrollHeight
+  watching.offset = j.next
+  $('#logtitle').textContent = `${j.stage} · ${j.action}` + (j.rc === null ? ' · running' : j.rc === 0 ? ' · done' : ` · failed (${j.rc})`)
+  $('#cancel').hidden = j.rc !== null
+  $('#cancel').onclick = () => post(`/api/jobs/${watching.id}/cancel`)
+  if (j.rc === null) setTimeout(poll, 1000); else refresh()
+}
+
+function card(s) {
+  const busy = s.op
+  const sharedBusy = !!data.busy[s.emulator]
+  const cls = busy ? 'busy' : s.state
+  const label = busy ? s.op : s.state === 'up' ? 'up' : s.state === 'partial' ? 'partly deployed' : 'down'
+  const el = document.createElement('div')
+  el.className = `card ${cls}`
+  const mk = (tag, cls2, text) => { const n = document.createElement(tag); if (cls2) n.className = cls2; if (text !== undefined) n.textContent = text; return n }
+  const top = mk('div', 'top')
+  top.append(mk('span', 'dot'), mk('span', 'title', s.title), mk('span', 'pill', label))
+  el.append(top, mk('div', 'note', s.note), mk('div', 'row'))
+  const row = el.querySelector('.row')
+  const btn = (text, cls2, fn, disabled) => { const b = document.createElement('button'); b.textContent = text; b.className = cls2 || ''; b.disabled = disabled; b.onclick = fn; row.append(b) }
+  const running = s.state === 'up'
+  btn('Start', 'go', () => act(s, 'start'), sharedBusy || running)
+  btn('Stop', 'stop', () => act(s, 'stop'), sharedBusy || (s.state === 'down'))
+  btn('Test', '', () => act(s, 'smoke'), sharedBusy || !running)
+  btn('Release', '', () => act(s, 'rollout'), sharedBusy || !running)
+  if (s.state === 'partial' && !busy) btn('Clear state', '', () => act(s, 'forget'), sharedBusy)
+  if (s.job) btn('Log', '', () => watch(s.job), false)
+  if (s.url) { const a = document.createElement('a'); a.className = 'open'; a.href = s.url; a.target = '_blank'; a.textContent = 'Open ↗'; row.append(a) }
+  return el
+}
+
+function render() {
+  const main = $('#main'); main.textContent = ''
+  const families = [...new Set(data.stages.map((s) => s.family))]
+  for (const f of families) {
+    const h = document.createElement('h2'); h.textContent = f
+    const g = document.createElement('div'); g.className = 'grid'
+    data.stages.filter((s) => s.family === f).forEach((s) => g.append(card(s)))
+    main.append(h, g)
+  }
+  $('#up-count').textContent = data.stages.filter((s) => s.state === 'up').length
+  $('#total').textContent = data.stages.length
+  $('#containers').textContent = data.containers
+  const b = $('#banner')
+  b.style.display = data.ci_running ? 'block' : 'none'
+  b.textContent = data.ci_running ? 'A CI job is running on this Docker and uses the same ports: starting deployments is paused until it finishes.' : ''
+}
+
+async function refresh() {
+  try { data = await (await fetch('/api/stages')).json(); render() } catch (e) { /* server restarting */ }
+}
+refresh(); setInterval(refresh, 4000)
+</script>
+</body>
+</html>
