@@ -131,7 +131,7 @@ jobs:
       - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          token-setup-trivy: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+          skip-setup-trivy: ${{ github.server_url != 'https://github.com' }}
           scan-type: config
           scan-ref: deployment/aws/serverless
           severity: HIGH,CRITICAL
