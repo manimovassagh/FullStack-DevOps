@@ -11,5 +11,7 @@ services:
       # The containers it starts (Cloud Run revisions, Cloud SQL Postgres) join this compose network,
       # so the gateway reaches the backend and the backend reaches Cloud SQL and the storage API.
       FLOCI_GCP_SERVICES_DOCKER_NETWORK: plant-gcp_default
+      # Give a revision 90 s (default 240 s) to open its port; a stuck one then fails fast, and CI still has its container's logs.
+      FLOCI_GCP_SERVICES_CLOUDRUN_EXECUTION_STARTUP_TIMEOUT: 90s
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
