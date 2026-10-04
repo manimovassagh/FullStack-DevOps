@@ -124,7 +124,7 @@ jobs:
       - uses: terraform-linters/setup-tflint@v6
       - name: tflint (terraform + aws rulesets)
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.server_url == 'https://github.com' && github.token || '' }}
         run: tflint --config ../../.tflint.hcl --init && tflint --config ../../.tflint.hcl --format compact
       - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
         uses: aquasecurity/trivy-action@v0.36.0

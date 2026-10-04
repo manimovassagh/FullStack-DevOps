@@ -7,9 +7,12 @@ REPO       ?= FullStack-DevOps
 URL        := http://localhost:3300
 ROOT       := $(abspath ..)
 
-.PHONY: up admin runner push status logs down reset
+.PHONY: image up admin runner push status logs down reset
 
-up: ## start Gitea, create the admin user, register the runner
+image: ## build the job image the runner uses
+	docker build -t plant-ci-ubuntu:24.04 runner-image
+
+up: image ## start Gitea, create the admin user, register the runner
 	$(COMPOSE) up -d --wait gitea
 	$(MAKE) -s admin
 	$(MAKE) -s runner
@@ -20,6 +23,7 @@ admin: ## the admin user (idempotent)
 		--email $(ADMIN_USER)@local.test --must-change-password=false 2>&1 | grep -v "already exists" || true
 
 runner: ## register the runner with a fresh token and start it
+	@$(COMPOSE) --profile runner rm -sf runner >/dev/null; docker volume rm -f plant-ci_runner-data >/dev/null
 	@token=$$($(COMPOSE) exec -T -u git gitea gitea actions generate-runner-token | tr -d '\r\n'); \
 	RUNNER_TOKEN=$$token $(COMPOSE) --profile runner up -d runner
 
@@ -31,8 +35,9 @@ push: ## create the repo in Gitea (once) and push the current branch of this rep
 
 status: ## runner state and recent runs
 	@$(COMPOSE) ps
-	@curl -s -u $(ADMIN_USER):$(ADMIN_PASS) "$(URL)/api/v1/repos/$(ADMIN_USER)/$(REPO)/actions/runs?limit=15" \
-		| jq -r '.workflow_runs[] | "\(.id)\t\(.status)\t\(.conclusion // "-")\t\(.name // .display_title)"'
+	@echo; $(COMPOSE) exec -T gitea sqlite3 -header -column /data/gitea/gitea.db \
+		"SELECT r.id AS run, r.workflow_id AS workflow, j.name AS job, CASE j.status WHEN 1 THEN 'success' WHEN 2 THEN 'FAILED' WHEN 3 THEN 'cancelled' WHEN 4 THEN 'skipped' WHEN 5 THEN 'waiting' WHEN 6 THEN 'running' WHEN 7 THEN 'blocked' ELSE j.status END AS state \
+		 FROM action_run_job j JOIN action_run r ON r.id = j.run_id ORDER BY r.id DESC, j.id"
 
 logs: ## runner output
 	$(COMPOSE) logs -f runner
