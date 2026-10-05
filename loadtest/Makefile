@@ -16,16 +16,29 @@ PORT_ecs-cognito    := 8096
 PORT    := $(PORT_$(STAGE))
 AUTH    := $(if $(filter ecs-cognito,$(STAGE)),true,false)
 
-.PHONY: smoke load spike stress check
+# breakpoint (up to MAX_VUS=1000 users) runs k6 natively when it is installed (brew install k6): a thousand
+# virtual users need more memory than the Docker VM has left next to the app.
+.PHONY: smoke load spike stress breakpoint check
 
-smoke load spike stress: check
+breakpoint: check
+	@if command -v k6 >/dev/null; then \
+		BASE_URL=http://localhost:$(PORT) AUTH=$(AUTH) PROFILE=$@ STAGE=$(STAGE) MAX_VUS=$${MAX_VUS:-1000} \
+		K6_PROMETHEUS_RW_SERVER_URL=http://localhost:9091/api/v1/write K6_PROMETHEUS_RW_TREND_STATS="p(50),p(95),p(99),avg,max" \
+		K6_PROMETHEUS_RW_PUSH_INTERVAL=5s \
+		k6 run -o experimental-prometheus-rw --tag testid=$(STAGE)-$@-$$(date +%H%M%S) plant-journey.js; \
+	else $(MAKE) -s _docker PROFILE=$@; fi
+
+smoke load spike stress:
+	@$(MAKE) -s _docker PROFILE=$@
+
+_docker: check
 	docker run --rm -i --network plant-observability_default --add-host host.docker.internal:host-gateway \
 		-v "$(CURDIR)":/scripts:ro \
-		-e BASE_URL=http://host.docker.internal:$(PORT) -e AUTH=$(AUTH) -e PROFILE=$@ -e STAGE=$(STAGE) \
+		-e BASE_URL=http://host.docker.internal:$(PORT) -e AUTH=$(AUTH) -e PROFILE=$(PROFILE) -e STAGE=$(STAGE) -e MAX_VUS=$${MAX_VUS:-1000} \
 		-e K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write \
 		-e K6_PROMETHEUS_RW_TREND_STATS="p(50),p(95),p(99),avg,max" \
 		-e K6_PROMETHEUS_RW_PUSH_INTERVAL=5s \
-		$(K6) run -o experimental-prometheus-rw --tag testid=$(STAGE)-$@-$$(date +%H%M%S) /scripts/plant-journey.js
+		$(K6) run -o experimental-prometheus-rw --tag testid=$(STAGE)-$(PROFILE)-$$(date +%H%M%S) /scripts/plant-journey.js
 
 check: ## the stage must answer and the observability stack must be running
 	@[ -n "$(PORT)" ] || { echo "unknown STAGE=$(STAGE)"; exit 1; }

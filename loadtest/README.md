@@ -18,6 +18,7 @@ open http://localhost:3400/d/load-test      # live dashboard, 5 s refresh
 | `load` | 0 → 20 users in 1 min, hold 3 min | normal busy day: stable latency, no errors? |
 | `spike` | 5 → 50 users in 10 s, hold 1 min | sudden rush: does it bend or break? |
 | `stress` | 20 → 50 → 100 users | where does it start to fail? |
+| `breakpoint` | 0 → 1000 users over 8 min (`MAX_VUS=`), stops itself at >5% errors or p95 > 2 s | what breaks first? Runs k6 natively when installed (`brew install k6`), since 1000 users need more memory than the Docker VM has left |
 
 `STAGE` is any stage with a load balancer port: `classic-ec2`, `ecs`, `eks`, `ecs-blue-green`, `ec2-asg`, `eks-helm`, `eks-gitops`, `ecs-cognito`. On `ecs-cognito` every virtual user signs in through Cognito first and uses its own token.
 
@@ -38,3 +39,14 @@ The **system under test** panels come from the observability exporter (Docker st
 - Latency rising while requests per second stays flat → the app is saturating; look at the CPU panel to see which container.
 - Errors appearing at a certain number of users → that is your capacity on this setup.
 - Remember it is an emulator on a laptop: the numbers compare runs and stages with each other, not with real AWS.
+
+## Results on this laptop (ecs-cognito, Floci, 8 GB Mac, Docker VM 3.8 GB)
+
+| Profile | Users | Requests | Errors | p95 |
+|---|---|---|---|---|
+| load | 20 | ~47/s | 0% | 19 ms |
+| spike | 50 | ~83/s | 0% | 20 ms |
+| stress | 100 | ~96/s | 0% | 51 ms |
+| breakpoint | ramp to 1000 | ~100/s peak | 5.5% (aborted) | 1.5 s |
+
+The breakpoint run did not find an app limit: near the top of the ramp the Docker VM itself (Rancher Desktop) went down, taking the app, the emulator and Prometheus with it (`connection refused` on every request). On this machine the first thing to break is the laptop, not the code.
