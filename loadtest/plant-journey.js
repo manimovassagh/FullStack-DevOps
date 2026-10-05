@@ -22,7 +22,16 @@ const PROFILES = {
     { duration: '20s', target: 5 }, { duration: '10s', target: 50 }, { duration: '1m', target: 50 }, { duration: '20s', target: 0 }] },
   stress: { executor: 'ramping-vus', startVUs: 0, stages: [
     { duration: '1m', target: 20 }, { duration: '1m', target: 50 }, { duration: '1m', target: 100 }, { duration: '30s', target: 0 }] },
+  // Keep adding users until it breaks: the abort thresholds below stop the run at the breaking point.
+  breakpoint: { executor: 'ramping-vus', startVUs: 0, gracefulRampDown: '10s', stages: [
+    { duration: '8m', target: Number(__ENV.MAX_VUS || 1000) }, { duration: '30s', target: 0 }] },
 }
+
+// The breakpoint profile stops itself once the app is clearly overloaded, and the summary shows where.
+const ABORT = PROFILE === 'breakpoint'
+  ? { http_req_failed: [{ threshold: 'rate<0.05', abortOnFail: true, delayAbortEval: '20s' }],
+      'http_req_duration{expected_response:true}': [{ threshold: 'p(95)<2000', abortOnFail: true, delayAbortEval: '20s' }] }
+  : {}
 
 export const options = {
   scenarios: { [PROFILE]: PROFILES[PROFILE] },
@@ -30,6 +39,7 @@ export const options = {
     http_req_failed: ['rate<0.01'], // under 1% errors
     'http_req_duration{expected_response:true}': ['p(95)<500'], // 95% of good requests under 500 ms
     checks: ['rate>0.99'],
+    ...ABORT,
   },
   // One time series per endpoint instead of per URL (ids would explode the label count).
   tags: { stage: __ENV.STAGE || 'unknown' },
