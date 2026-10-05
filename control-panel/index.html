@@ -160,6 +160,7 @@
     <div class="grow"></div>
     <span class="clock mono" id="clock"></span>
     <a class="tool" id="tool-grafana" href="http://localhost:3400/d/stacks-overview" target="_blank"><span class="led"></span>Grafana</a>
+    <a class="tool" href="http://localhost:3400/d/load-test" target="_blank"><span class="led" id="tool-loadtest-led"></span>Load test</a>
     <a class="tool" id="tool-gitea" href="http://localhost:3300/ci/FullStack-DevOps/actions" target="_blank"><span class="led"></span>Pipelines</a>
   </div>
 </header>
@@ -340,6 +341,7 @@ function renderKpis() {
     $('#k-act-sub').textContent = last ? `Last: ${last.target} · ${last.action} ${last.rc === 0 ? '✓' : '✗'} · ${ago(last.ended)}` : 'Nothing has run yet'
   }
   for (const [id, on] of Object.entries(S.tools)) document.querySelector(`#tool-${id} .led`).className = 'led' + (on ? ' on' : '')
+  $('#tool-loadtest-led').className = 'led' + (S.tools.grafana ? ' on' : '')
 }
 
 function renderEmus() {

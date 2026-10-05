@@ -11,6 +11,8 @@ make -C observability down
 
 Deploy any stage (ecs, eks, ec2-asg, ecs-blue-green ...) and watch it appear; a `make rollout` shows tasks being replaced.
 
+Two dashboards: **Plant Parent · local stacks** (what is running) and **Plant Parent · load test (k6)** (live k6 results next to the containers doing the work; see [loadtest](../loadtest/)).
+
 ## What is in it
 
 | Tool | Role |
