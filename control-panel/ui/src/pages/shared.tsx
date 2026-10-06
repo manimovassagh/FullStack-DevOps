@@ -21,7 +21,7 @@ export function EmulatorStrip() {
             <div className="flex items-center gap-2 text-sm font-medium"><span className={cn('size-2 rounded-sm', CLOUD[e.cloud as keyof typeof CLOUD]?.color)} />{e.title}</div>
             <div className="truncate text-xs text-muted-foreground">:{e.port} · {e.used_by.length > 2 ? `${e.used_by.length} stages` : e.used_by.join(', ')}</div>
           </div>
-          {e.job ? <span className="text-xs text-amber-300">{verb(e.job.action)}…</span> : (
+          {e.job ? <span className="text-xs text-amber-600 dark:text-amber-300">{verb(e.job.action)}…</span> : (
             <Button size="sm" variant={e.up ? 'ghost' : 'outline'} disabled={e.busy || s.ci_running}
               onClick={() => run({
                 path: `/api/emulators/${e.id}/${e.up ? 'stop' : 'start'}`, label: e.title, action: e.up ? 'emu-stop' : 'emu-start',

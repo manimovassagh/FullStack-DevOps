@@ -20,7 +20,7 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, sta
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem storageKey="control-panel-theme" disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <ActionsProvider>

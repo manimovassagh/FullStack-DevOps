@@ -27,7 +27,7 @@ export function useStageActions(stage: Stage, status: Status | undefined) {
   const primary: ReactNode = stage.job
     ? <Button variant="outline" onClick={() => openLog(stage.job!.id, stage.title)}><ScrollText /> Watch log</Button>
     : stage.state === 'up' && stage.url
-      ? <Button asChild className="bg-sky-500/15 text-sky-300 hover:bg-sky-500/25"><a href={stage.url} target="_blank" rel="noreferrer"><ExternalLink /> Open app</a></Button>
+      ? <Button asChild className="bg-sky-500/15 text-sky-700 dark:text-sky-300 hover:bg-sky-500/25"><a href={stage.url} target="_blank" rel="noreferrer"><ExternalLink /> Open app</a></Button>
       : stage.state === 'partial'
         ? <Button onClick={start} disabled={blocked} title={why}><RefreshCw /> Retry deploy</Button>
         : <Button onClick={start} disabled={blocked} title={why}><Play /> {stage.state === 'stale' ? 'Redeploy' : 'Deploy'}</Button>

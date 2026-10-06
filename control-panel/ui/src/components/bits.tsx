@@ -14,19 +14,19 @@ export const KIND_NAME = { vm: 'Virtual machines', container: 'Containers', k8s:
 export function StageIcon({ stage, className }: { stage: Pick<Stage, 'kind' | 'state'>; className?: string }) {
   const Icon = KIND_ICON[stage.kind] ?? Cloud
   return (
-    <span className={cn('grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] ring-1 ring-white/10',
-      stage.state === 'up' ? 'from-emerald-400/25 to-cyan-400/10 text-emerald-300 ring-emerald-400/30' : 'text-muted-foreground', className)}>
+    <span className={cn('grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-black/[0.03] to-black/[0.01] dark:from-white/[0.07] dark:to-white/[0.02] ring-1 ring-black/5 dark:ring-white/10',
+      stage.state === 'up' ? 'from-emerald-400/25 to-cyan-400/10 text-emerald-700 dark:text-emerald-300 ring-emerald-400/30' : 'text-muted-foreground', className)}>
       <Icon className="size-5" />
     </span>
   )
 }
 
 const STATE: Record<string, [string, string]> = {
-  up: ['Running', 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'],
+  up: ['Running', 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'],
   down: ['Stopped', 'border-border bg-muted/50 text-muted-foreground'],
-  partial: ['Not answering', 'border-red-500/30 bg-red-500/10 text-red-400'],
-  stale: ['Emulator reset', 'border-violet-500/30 bg-violet-500/10 text-violet-300'],
-  busy: ['', 'border-amber-500/30 bg-amber-500/10 text-amber-300'],
+  partial: ['Not answering', 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400'],
+  stale: ['Emulator reset', 'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300'],
+  busy: ['', 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300'],
 }
 export function StatusBadge({ stage }: { stage: Stage }) {
   const [label, cls] = stage.job ? [verb(stage.job.action), STATE.busy[1]] : STATE[stage.state]

@@ -36,7 +36,7 @@ export function DeploymentDetail() {
           <p className="mt-1 flex flex-wrap items-center gap-x-3 font-mono text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5"><span className={cn('size-2 rounded-sm', CLOUD[st.family].color)} />{CLOUD[st.family].name}</span>
             <span>{d.dir}</span>
-            {st.url && <a href={st.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sky-300 hover:underline">{st.url} <ExternalLink className="size-3" /></a>}
+            {st.url && <a href={st.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sky-700 dark:text-sky-300 hover:underline">{st.url} <ExternalLink className="size-3" /></a>}
             {st.state === 'up' && <span>up {dur(now() - st.since)}</span>}
           </p>
         </div>
@@ -45,7 +45,7 @@ export function DeploymentDetail() {
         <StageButtons stage={st} />
         {st.job && <JobProgress job={st.job} />}
         {st.state === 'up' && <LoginHint stage={st} />}
-        {status?.ci_running && <p className="text-xs text-amber-300">A pipeline is running on Docker: actions are paused until it finishes.</p>}
+        {status?.ci_running && <p className="text-xs text-amber-600 dark:text-amber-300">A pipeline is running on Docker: actions are paused until it finishes.</p>}
       </Panel>
       <div className="flex gap-1 border-b">
         {TABS.map((t) => (
@@ -72,7 +72,7 @@ function OverviewTab({ d }: { d: NonNullable<ReturnType<typeof useStage>['data']
             {outputs.map(([k, v]) => (
               <div key={k} className="grid grid-cols-[180px_1fr] gap-3 border-b border-border/50 pb-2 last:border-0">
                 <dt className="font-mono text-xs text-muted-foreground">{k}</dt>
-                <dd className="min-w-0 break-all font-mono text-xs">{typeof v === 'string' ? (v.startsWith('http') ? <a className="text-sky-300 hover:underline" href={v} target="_blank" rel="noreferrer">{v}</a> : v) : JSON.stringify(v)}</dd>
+                <dd className="min-w-0 break-all font-mono text-xs">{typeof v === 'string' ? (v.startsWith('http') ? <a className="text-sky-700 dark:text-sky-300 hover:underline" href={v} target="_blank" rel="noreferrer">{v}</a> : v) : JSON.stringify(v)}</dd>
               </div>
             ))}
           </dl>
@@ -134,11 +134,11 @@ function RunsTab({ runs }: { runs: { id: string; action: string; rc: number; sta
         <tbody>
           {runs.map((r) => (
             <tr key={r.id} className="cursor-pointer border-b border-border/50 hover:bg-muted/40" onClick={() => openLog(r.id, verb(r.action))}>
-              <td className="px-4 py-2"><span className={r.rc === 0 ? 'text-emerald-400' : 'text-red-400'}>{r.rc === 0 ? '✓ passed' : `✗ exit ${r.rc}`}</span></td>
+              <td className="px-4 py-2"><span className={r.rc === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>{r.rc === 0 ? '✓ passed' : `✗ exit ${r.rc}`}</span></td>
               <td>{verb(r.action)}</td>
               <td className="text-muted-foreground">{new Date(r.started * 1000).toLocaleString()} · {ago(r.started)}</td>
               <td className="font-mono text-xs">{dur(r.ended - r.started)}</td>
-              <td className="pr-4 text-right text-xs text-sky-300">View log →</td>
+              <td className="pr-4 text-right text-xs text-sky-700 dark:text-sky-300">View log →</td>
             </tr>
           ))}
         </tbody>

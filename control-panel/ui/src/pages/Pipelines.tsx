@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Loading } from '@/pages/Overview'
 import { cn } from '@/lib/utils'
 
-const TONE: Record<string, string> = { success: 'text-emerald-400', failure: 'text-red-400', running: 'text-amber-300', waiting: 'text-muted-foreground', blocked: 'text-muted-foreground', cancelled: 'text-muted-foreground', skipped: 'text-muted-foreground' }
+const TONE: Record<string, string> = { success: 'text-emerald-600 dark:text-emerald-400', failure: 'text-red-600 dark:text-red-400', running: 'text-amber-600 dark:text-amber-300', waiting: 'text-muted-foreground', blocked: 'text-muted-foreground', cancelled: 'text-muted-foreground', skipped: 'text-muted-foreground' }
 
 export function Pipelines() {
   const { data: ci } = useCi()
@@ -36,7 +36,7 @@ export function Pipelines() {
             <Button size="sm" variant="outline" disabled={!ci.gitea || !!ci.job}
               onClick={() => run({
                 path: `/api/ci/run/${wf}`, label: wf, action: 'ci-run',
-                confirm: { title: `Run ${wf}?`, action: 'Run pipeline', body: <><p>Pushes your current commit to the local Gitea and runs this workflow there. It builds, deploys to its own Floci, tests and tears down (10–25 min).</p>{deploysUp && <p className="text-amber-300">Deployments are running here and share Docker ports with the pipeline: tear them down first, or the pipeline will fail.</p>}</> },
+                confirm: { title: `Run ${wf}?`, action: 'Run pipeline', body: <><p>Pushes your current commit to the local Gitea and runs this workflow there. It builds, deploys to its own Floci, tests and tears down (10–25 min).</p>{deploysUp && <p className="text-amber-600 dark:text-amber-300">Deployments are running here and share Docker ports with the pipeline: tear them down first, or the pipeline will fail.</p>}</> },
               })}><Play /> Run</Button>
           </div>
         ))}

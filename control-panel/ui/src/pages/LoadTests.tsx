@@ -50,7 +50,7 @@ export function LoadTests() {
           <div className="flex flex-wrap gap-2">
             {candidates.map((c) => (
               <button key={c.id} onClick={() => setStageId(c.id)} disabled={c.state !== 'up'}
-                className={cn('rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:opacity-40', sel === c.id ? 'border-emerald-400 bg-emerald-500/10 text-emerald-300' : 'hover:border-foreground/30')}>
+                className={cn('rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:opacity-40', sel === c.id ? 'border-emerald-400 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'hover:border-foreground/30')}>
                 {c.title} {c.state !== 'up' && <span className="text-xs">(not running)</span>}
               </button>
             ))}
@@ -70,7 +70,7 @@ export function LoadTests() {
             onClick={() => run({ path: `/api/loadtests/${sel}/${profile}`, label: `${target?.title} · ${profile}`, action: `loadtest-${profile}` })}>
             <Play /> Run {profile} test on {target?.title ?? '…'}
           </Button>
-          {running && <span className="text-sm text-amber-300">{verb(running.action)} running · {dur(now() - running.started)} · <button className="underline" onClick={() => openLog(running.id, 'Load test')}>log</button></span>}
+          {running && <span className="text-sm text-amber-600 dark:text-amber-300">{verb(running.action)} running · {dur(now() - running.started)} · <button className="underline" onClick={() => openLog(running.id, 'Load test')}>log</button></span>}
           {!candidates.some((c) => c.state === 'up') && <span className="text-sm text-muted-foreground">Deploy a stage first (Deployments).</span>}
         </div>
       </Panel>
@@ -80,7 +80,7 @@ export function LoadTests() {
             <Kpi label="Virtual users" value={Math.round(last(vus.data) ?? 0)} />
             <Kpi label="Requests / s" value={(last(rps.data) ?? 0).toFixed(1)} />
             <Kpi label="p95 (slowest endpoint)" value={`${Math.round(Math.max(0, ...(p95.data ?? []).map((x) => x.points.at(-1)?.v ?? 0)) * 1000)} ms`} />
-            <Kpi label="Error rate" value={`${((last(err.data) ?? 0) * 100).toFixed(2)}%`} tone={(last(err.data) ?? 0) > 0.01 ? 'text-red-400' : 'text-emerald-400'} />
+            <Kpi label="Error rate" value={`${((last(err.data) ?? 0) * 100).toFixed(2)}%`} tone={(last(err.data) ?? 0) > 0.01 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'} />
           </div>
           <div className="grid gap-4 xl:grid-cols-2">
             <Panel title="Virtual users and requests per second (15 min)"><TimeChart series={[...(vus.data ?? []), ...(rps.data ?? [])]} empty="No load test on this deployment in the last 15 minutes" /></Panel>
@@ -91,7 +91,7 @@ export function LoadTests() {
       <Panel title="Recent load tests" bodyClass="p-2">
         {runs.length ? runs.map((h) => (
           <button key={h.id} onClick={() => openLog(h.id, 'Load test')} className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted/50">
-            <span className={h.rc === 0 ? 'text-emerald-400' : 'text-red-400'}>{h.rc === 0 ? '✓' : '✗'}</span>
+            <span className={h.rc === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>{h.rc === 0 ? '✓' : '✗'}</span>
             <span className="flex-1">{s.stages.find((x) => x.id === h.target.split(':')[1])?.title} · {h.action.replace('loadtest-', '')}</span>
             <span className="text-xs text-muted-foreground">{h.rc === 0 ? 'thresholds passed' : 'thresholds failed'} · {dur(h.ended - h.started)} · {ago(h.ended)}</span>
           </button>
