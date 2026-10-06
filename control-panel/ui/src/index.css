@@ -249,36 +249,13 @@ body {
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: color-mix(in oklab, var(--foreground) 14%, transparent); border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
 
-/* ── Accent palettes (theme picker). Each sets the brand colours; light/dark only change surfaces. ───── */
-:root, [data-palette="emerald"] { --brand-1: #6ee7b7; --brand-2: #10b981; --brand-ink: #022c22; --brand-text-light: #047857; --brand-text-dark: #6ee7b7; }
-[data-palette="ocean"]    { --brand-1: #7dd3fc; --brand-2: #0284c7; --brand-ink: #f0f9ff; --brand-text-light: #0369a1; --brand-text-dark: #7dd3fc; }
-[data-palette="violet"]   { --brand-1: #c4b5fd; --brand-2: #7c3aed; --brand-ink: #faf5ff; --brand-text-light: #6d28d9; --brand-text-dark: #c4b5fd; }
-[data-palette="sunset"]   { --brand-1: #fdba74; --brand-2: #ea580c; --brand-ink: #fff7ed; --brand-text-light: #c2410c; --brand-text-dark: #fdba74; }
-[data-palette="rose"]     { --brand-1: #fda4af; --brand-2: #e11d48; --brand-ink: #fff1f2; --brand-text-light: #be123c; --brand-text-dark: #fda4af; }
-[data-palette="graphite"] { --brand-1: #d4d4d8; --brand-2: #52525b; --brand-ink: #fafafa; --brand-text-light: #3f3f46; --brand-text-dark: #e4e4e7; }
-:root {
-    --brand-text: var(--brand-text-light);
-    --brand-soft: color-mix(in oklab, var(--brand-2) 13%, transparent);
-    --brand-ring: color-mix(in oklab, var(--brand-2) 35%, transparent);
-    --primary: var(--brand-2);
-    --ring: var(--brand-2);
-    --glow-a: color-mix(in oklab, var(--brand-1) 22%, transparent);
-}
-.dark {
-    --brand-text: var(--brand-text-dark);
-    --brand-soft: color-mix(in oklab, var(--brand-1) 14%, transparent);
-    --brand-ring: color-mix(in oklab, var(--brand-1) 30%, transparent);
-    --primary: var(--brand-1);
-    --ring: var(--brand-1);
-    --glow-a: color-mix(in oklab, var(--brand-2) 20%, transparent);
-}
 .brand-gradient { background: linear-gradient(135deg, var(--brand-1), var(--brand-2)); }
 .brand-button {
     background: linear-gradient(180deg, color-mix(in oklab, var(--brand-1) 70%, var(--brand-2)), var(--brand-2));
     color: var(--brand-ink);
     box-shadow: 0 8px 22px -10px var(--brand-2);
 }
-.dark .brand-button { background: linear-gradient(180deg, var(--brand-1), color-mix(in oklab, var(--brand-1) 45%, var(--brand-2))); color: #0a0a0a; }
+.dark .brand-button { background: linear-gradient(180deg, var(--brand-1), color-mix(in oklab, var(--brand-1) 45%, var(--brand-2))); color: var(--brand-ink); }
 .brand-soft { background: linear-gradient(90deg, var(--brand-soft), transparent); }
 .brand-tint { background: var(--brand-soft); }
 .brand-ring { --tw-ring-color: var(--brand-ring); }
@@ -287,3 +264,197 @@ body {
 .dark .brand-selected { border-color: var(--brand-1) !important; }
 .brand-border { border-color: var(--brand-2) !important; }
 .dark .brand-border { border-color: var(--brand-1) !important; }
+
+/* ── Full themes (theme picker): surfaces + accent. Generated from the table in this commit. ── */
+html[data-theme="midnight"] {
+    --background: #0f1424; --foreground: #e8ecf6; --card: #182036; --card-foreground: #e8ecf6;
+    --popover: #182036; --popover-foreground: #e8ecf6;
+    --muted: color-mix(in oklab, #e8ecf6 7%, #182036); --muted-foreground: #93a0bd;
+    --secondary: color-mix(in oklab, #e8ecf6 8%, #182036); --secondary-foreground: #e8ecf6;
+    --accent: color-mix(in oklab, #6ee7b7 14%, #182036); --accent-foreground: #e8ecf6;
+    --border: color-mix(in oklab, #e8ecf6 11%, transparent); --input: color-mix(in oklab, #e8ecf6 15%, transparent);
+    --sidebar: #0b1020;
+    --brand-1: #6ee7b7; --brand-2: #10b981; --brand-ink: #04221a; --brand-text: #6ee7b7;
+    --brand-soft: color-mix(in oklab, #6ee7b7 15%, transparent); --brand-ring: color-mix(in oklab, #6ee7b7 35%, transparent);
+    --primary: #6ee7b7; --primary-foreground: #04221a; --ring: #6ee7b7;
+    --glow-a: color-mix(in oklab, #6ee7b7 16%, transparent); --glow-b: color-mix(in oklab, #10b981 14%, transparent);
+    --glass-top: color-mix(in oklab, #182036 94%, #ffffff); --glass-bottom: color-mix(in oklab, #182036 90%, transparent);
+    --glass-line: oklch(1 0 0 / 8%);
+    --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
+}
+html[data-theme="obsidian"] {
+    --background: #08080a; --foreground: #f5f5f4; --card: #141417; --card-foreground: #f5f5f4;
+    --popover: #141417; --popover-foreground: #f5f5f4;
+    --muted: color-mix(in oklab, #f5f5f4 7%, #141417); --muted-foreground: #a8a29e;
+    --secondary: color-mix(in oklab, #f5f5f4 8%, #141417); --secondary-foreground: #f5f5f4;
+    --accent: color-mix(in oklab, #fcd34d 14%, #141417); --accent-foreground: #f5f5f4;
+    --border: color-mix(in oklab, #f5f5f4 11%, transparent); --input: color-mix(in oklab, #f5f5f4 15%, transparent);
+    --sidebar: #050506;
+    --brand-1: #fcd34d; --brand-2: #d97706; --brand-ink: #1c1003; --brand-text: #fcd34d;
+    --brand-soft: color-mix(in oklab, #fcd34d 15%, transparent); --brand-ring: color-mix(in oklab, #fcd34d 35%, transparent);
+    --primary: #fcd34d; --primary-foreground: #1c1003; --ring: #fcd34d;
+    --glow-a: color-mix(in oklab, #fcd34d 16%, transparent); --glow-b: color-mix(in oklab, #d97706 14%, transparent);
+    --glass-top: color-mix(in oklab, #141417 94%, #ffffff); --glass-bottom: color-mix(in oklab, #141417 90%, transparent);
+    --glass-line: oklch(1 0 0 / 8%);
+    --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
+}
+html[data-theme="nord"] {
+    --background: #2e3440; --foreground: #eceff4; --card: #3b4252; --card-foreground: #eceff4;
+    --popover: #3b4252; --popover-foreground: #eceff4;
+    --muted: color-mix(in oklab, #eceff4 7%, #3b4252); --muted-foreground: #b3bccc;
+    --secondary: color-mix(in oklab, #eceff4 8%, #3b4252); --secondary-foreground: #eceff4;
+    --accent: color-mix(in oklab, #88c0d0 14%, #3b4252); --accent-foreground: #eceff4;
+    --border: color-mix(in oklab, #eceff4 11%, transparent); --input: color-mix(in oklab, #eceff4 15%, transparent);
+    --sidebar: #272c36;
+    --brand-1: #88c0d0; --brand-2: #5e81ac; --brand-ink: #0f1a24; --brand-text: #88c0d0;
+    --brand-soft: color-mix(in oklab, #88c0d0 15%, transparent); --brand-ring: color-mix(in oklab, #88c0d0 35%, transparent);
+    --primary: #88c0d0; --primary-foreground: #0f1a24; --ring: #88c0d0;
+    --glow-a: color-mix(in oklab, #88c0d0 16%, transparent); --glow-b: color-mix(in oklab, #5e81ac 14%, transparent);
+    --glass-top: color-mix(in oklab, #3b4252 94%, #ffffff); --glass-bottom: color-mix(in oklab, #3b4252 90%, transparent);
+    --glass-line: oklch(1 0 0 / 8%);
+    --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
+}
+html[data-theme="dracula"] {
+    --background: #1e1f29; --foreground: #f8f8f2; --card: #2a2c3a; --card-foreground: #f8f8f2;
+    --popover: #2a2c3a; --popover-foreground: #f8f8f2;
+    --muted: color-mix(in oklab, #f8f8f2 7%, #2a2c3a); --muted-foreground: #a9adc8;
+    --secondary: color-mix(in oklab, #f8f8f2 8%, #2a2c3a); --secondary-foreground: #f8f8f2;
+    --accent: color-mix(in oklab, #ff79c6 14%, #2a2c3a); --accent-foreground: #f8f8f2;
+    --border: color-mix(in oklab, #f8f8f2 11%, transparent); --input: color-mix(in oklab, #f8f8f2 15%, transparent);
+    --sidebar: #191a22;
+    --brand-1: #ff79c6; --brand-2: #bd93f9; --brand-ink: #1e0b25; --brand-text: #ff79c6;
+    --brand-soft: color-mix(in oklab, #ff79c6 15%, transparent); --brand-ring: color-mix(in oklab, #ff79c6 35%, transparent);
+    --primary: #ff79c6; --primary-foreground: #1e0b25; --ring: #ff79c6;
+    --glow-a: color-mix(in oklab, #ff79c6 16%, transparent); --glow-b: color-mix(in oklab, #bd93f9 14%, transparent);
+    --glass-top: color-mix(in oklab, #2a2c3a 94%, #ffffff); --glass-bottom: color-mix(in oklab, #2a2c3a 90%, transparent);
+    --glass-line: oklch(1 0 0 / 8%);
+    --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
+}
+html[data-theme="forest"] {
+    --background: #0c1712; --foreground: #e4f1e8; --card: #14241c; --card-foreground: #e4f1e8;
+    --popover: #14241c; --popover-foreground: #e4f1e8;
+    --muted: color-mix(in oklab, #e4f1e8 7%, #14241c); --muted-foreground: #9cb8a8;
+    --secondary: color-mix(in oklab, #e4f1e8 8%, #14241c); --secondary-foreground: #e4f1e8;
+    --accent: color-mix(in oklab, #86efac 14%, #14241c); --accent-foreground: #e4f1e8;
+    --border: color-mix(in oklab, #e4f1e8 11%, transparent); --input: color-mix(in oklab, #e4f1e8 15%, transparent);
+    --sidebar: #09120e;
+    --brand-1: #86efac; --brand-2: #22c55e; --brand-ink: #052e14; --brand-text: #86efac;
+    --brand-soft: color-mix(in oklab, #86efac 15%, transparent); --brand-ring: color-mix(in oklab, #86efac 35%, transparent);
+    --primary: #86efac; --primary-foreground: #052e14; --ring: #86efac;
+    --glow-a: color-mix(in oklab, #86efac 16%, transparent); --glow-b: color-mix(in oklab, #22c55e 14%, transparent);
+    --glass-top: color-mix(in oklab, #14241c 94%, #ffffff); --glass-bottom: color-mix(in oklab, #14241c 90%, transparent);
+    --glass-line: oklch(1 0 0 / 8%);
+    --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
+}
+html[data-theme="mocha"] {
+    --background: #1e1e2e; --foreground: #cdd6f4; --card: #2a2a3d; --card-foreground: #cdd6f4;
+    --popover: #2a2a3d; --popover-foreground: #cdd6f4;
+    --muted: color-mix(in oklab, #cdd6f4 7%, #2a2a3d); --muted-foreground: #a6adc8;
+    --secondary: color-mix(in oklab, #cdd6f4 8%, #2a2a3d); --secondary-foreground: #cdd6f4;
+    --accent: color-mix(in oklab, #fab387 14%, #2a2a3d); --accent-foreground: #cdd6f4;
+    --border: color-mix(in oklab, #cdd6f4 11%, transparent); --input: color-mix(in oklab, #cdd6f4 15%, transparent);
+    --sidebar: #181825;
+    --brand-1: #fab387; --brand-2: #f38ba8; --brand-ink: #2a1013; --brand-text: #fab387;
+    --brand-soft: color-mix(in oklab, #fab387 15%, transparent); --brand-ring: color-mix(in oklab, #fab387 35%, transparent);
+    --primary: #fab387; --primary-foreground: #2a1013; --ring: #fab387;
+    --glow-a: color-mix(in oklab, #fab387 16%, transparent); --glow-b: color-mix(in oklab, #f38ba8 14%, transparent);
+    --glass-top: color-mix(in oklab, #2a2a3d 94%, #ffffff); --glass-bottom: color-mix(in oklab, #2a2a3d 90%, transparent);
+    --glass-line: oklch(1 0 0 / 8%);
+    --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
+}
+html[data-theme="porcelain"] {
+    --background: #f4f6f9; --foreground: #1b2130; --card: #ffffff; --card-foreground: #1b2130;
+    --popover: #ffffff; --popover-foreground: #1b2130;
+    --muted: color-mix(in oklab, #1b2130 7%, #ffffff); --muted-foreground: #64708a;
+    --secondary: color-mix(in oklab, #1b2130 8%, #ffffff); --secondary-foreground: #1b2130;
+    --accent: color-mix(in oklab, #059669 14%, #ffffff); --accent-foreground: #1b2130;
+    --border: color-mix(in oklab, #1b2130 12%, transparent); --input: color-mix(in oklab, #1b2130 15%, transparent);
+    --sidebar: #ffffff;
+    --brand-1: #34d399; --brand-2: #059669; --brand-ink: #ffffff; --brand-text: #059669;
+    --brand-soft: color-mix(in oklab, #059669 15%, transparent); --brand-ring: color-mix(in oklab, #059669 35%, transparent);
+    --primary: #059669; --primary-foreground: #ffffff; --ring: #059669;
+    --glow-a: color-mix(in oklab, #059669 14%, transparent); --glow-b: color-mix(in oklab, #34d399 18%, transparent);
+    --glass-top: color-mix(in oklab, #ffffff 96%, #1b2130); --glass-bottom: color-mix(in oklab, #ffffff 90%, transparent);
+    --glass-line: #ffffff;
+    --glass-shadow: 0 1px 2px oklch(0.2 0.02 260 / 6%), 0 12px 32px -16px oklch(0.2 0.02 260 / 16%);
+}
+html[data-theme="paper"] {
+    --background: #f6f1e7; --foreground: #2b2620; --card: #fffdf8; --card-foreground: #2b2620;
+    --popover: #fffdf8; --popover-foreground: #2b2620;
+    --muted: color-mix(in oklab, #2b2620 7%, #fffdf8); --muted-foreground: #7a6f62;
+    --secondary: color-mix(in oklab, #2b2620 8%, #fffdf8); --secondary-foreground: #2b2620;
+    --accent: color-mix(in oklab, #b45309 14%, #fffdf8); --accent-foreground: #2b2620;
+    --border: color-mix(in oklab, #2b2620 12%, transparent); --input: color-mix(in oklab, #2b2620 15%, transparent);
+    --sidebar: #fbf7ef;
+    --brand-1: #fbbf24; --brand-2: #b45309; --brand-ink: #ffffff; --brand-text: #b45309;
+    --brand-soft: color-mix(in oklab, #b45309 15%, transparent); --brand-ring: color-mix(in oklab, #b45309 35%, transparent);
+    --primary: #b45309; --primary-foreground: #ffffff; --ring: #b45309;
+    --glow-a: color-mix(in oklab, #b45309 14%, transparent); --glow-b: color-mix(in oklab, #fbbf24 18%, transparent);
+    --glass-top: color-mix(in oklab, #fffdf8 96%, #2b2620); --glass-bottom: color-mix(in oklab, #fffdf8 90%, transparent);
+    --glass-line: #ffffff;
+    --glass-shadow: 0 1px 2px oklch(0.2 0.02 260 / 6%), 0 12px 32px -16px oklch(0.2 0.02 260 / 16%);
+}
+html[data-theme="sky"] {
+    --background: #ecf4fc; --foreground: #12263f; --card: #ffffff; --card-foreground: #12263f;
+    --popover: #ffffff; --popover-foreground: #12263f;
+    --muted: color-mix(in oklab, #12263f 7%, #ffffff); --muted-foreground: #5a6f8a;
+    --secondary: color-mix(in oklab, #12263f 8%, #ffffff); --secondary-foreground: #12263f;
+    --accent: color-mix(in oklab, #0369a1 14%, #ffffff); --accent-foreground: #12263f;
+    --border: color-mix(in oklab, #12263f 12%, transparent); --input: color-mix(in oklab, #12263f 15%, transparent);
+    --sidebar: #f6faff;
+    --brand-1: #38bdf8; --brand-2: #0369a1; --brand-ink: #ffffff; --brand-text: #0369a1;
+    --brand-soft: color-mix(in oklab, #0369a1 15%, transparent); --brand-ring: color-mix(in oklab, #0369a1 35%, transparent);
+    --primary: #0369a1; --primary-foreground: #ffffff; --ring: #0369a1;
+    --glow-a: color-mix(in oklab, #0369a1 14%, transparent); --glow-b: color-mix(in oklab, #38bdf8 18%, transparent);
+    --glass-top: color-mix(in oklab, #ffffff 96%, #12263f); --glass-bottom: color-mix(in oklab, #ffffff 90%, transparent);
+    --glass-line: #ffffff;
+    --glass-shadow: 0 1px 2px oklch(0.2 0.02 260 / 6%), 0 12px 32px -16px oklch(0.2 0.02 260 / 16%);
+}
+html[data-theme="lavender"] {
+    --background: #f2eefb; --foreground: #241c3b; --card: #fdfcff; --card-foreground: #241c3b;
+    --popover: #fdfcff; --popover-foreground: #241c3b;
+    --muted: color-mix(in oklab, #241c3b 7%, #fdfcff); --muted-foreground: #6e6390;
+    --secondary: color-mix(in oklab, #241c3b 8%, #fdfcff); --secondary-foreground: #241c3b;
+    --accent: color-mix(in oklab, #6d28d9 14%, #fdfcff); --accent-foreground: #241c3b;
+    --border: color-mix(in oklab, #241c3b 12%, transparent); --input: color-mix(in oklab, #241c3b 15%, transparent);
+    --sidebar: #f9f7fe;
+    --brand-1: #a78bfa; --brand-2: #6d28d9; --brand-ink: #ffffff; --brand-text: #6d28d9;
+    --brand-soft: color-mix(in oklab, #6d28d9 15%, transparent); --brand-ring: color-mix(in oklab, #6d28d9 35%, transparent);
+    --primary: #6d28d9; --primary-foreground: #ffffff; --ring: #6d28d9;
+    --glow-a: color-mix(in oklab, #6d28d9 14%, transparent); --glow-b: color-mix(in oklab, #a78bfa 18%, transparent);
+    --glass-top: color-mix(in oklab, #fdfcff 96%, #241c3b); --glass-bottom: color-mix(in oklab, #fdfcff 90%, transparent);
+    --glass-line: #ffffff;
+    --glass-shadow: 0 1px 2px oklch(0.2 0.02 260 / 6%), 0 12px 32px -16px oklch(0.2 0.02 260 / 16%);
+}
+html[data-theme="blush"] {
+    --background: #fbeff2; --foreground: #3a1d24; --card: #fffafb; --card-foreground: #3a1d24;
+    --popover: #fffafb; --popover-foreground: #3a1d24;
+    --muted: color-mix(in oklab, #3a1d24 7%, #fffafb); --muted-foreground: #8a6670;
+    --secondary: color-mix(in oklab, #3a1d24 8%, #fffafb); --secondary-foreground: #3a1d24;
+    --accent: color-mix(in oklab, #be123c 14%, #fffafb); --accent-foreground: #3a1d24;
+    --border: color-mix(in oklab, #3a1d24 12%, transparent); --input: color-mix(in oklab, #3a1d24 15%, transparent);
+    --sidebar: #fff7f9;
+    --brand-1: #fb7185; --brand-2: #be123c; --brand-ink: #ffffff; --brand-text: #be123c;
+    --brand-soft: color-mix(in oklab, #be123c 15%, transparent); --brand-ring: color-mix(in oklab, #be123c 35%, transparent);
+    --primary: #be123c; --primary-foreground: #ffffff; --ring: #be123c;
+    --glow-a: color-mix(in oklab, #be123c 14%, transparent); --glow-b: color-mix(in oklab, #fb7185 18%, transparent);
+    --glass-top: color-mix(in oklab, #fffafb 96%, #3a1d24); --glass-bottom: color-mix(in oklab, #fffafb 90%, transparent);
+    --glass-line: #ffffff;
+    --glass-shadow: 0 1px 2px oklch(0.2 0.02 260 / 6%), 0 12px 32px -16px oklch(0.2 0.02 260 / 16%);
+}
+html[data-theme="mint"] {
+    --background: #eaf7f0; --foreground: #11281e; --card: #fbfffd; --card-foreground: #11281e;
+    --popover: #fbfffd; --popover-foreground: #11281e;
+    --muted: color-mix(in oklab, #11281e 7%, #fbfffd); --muted-foreground: #567a69;
+    --secondary: color-mix(in oklab, #11281e 8%, #fbfffd); --secondary-foreground: #11281e;
+    --accent: color-mix(in oklab, #047857 14%, #fbfffd); --accent-foreground: #11281e;
+    --border: color-mix(in oklab, #11281e 12%, transparent); --input: color-mix(in oklab, #11281e 15%, transparent);
+    --sidebar: #f5fcf8;
+    --brand-1: #34d399; --brand-2: #047857; --brand-ink: #ffffff; --brand-text: #047857;
+    --brand-soft: color-mix(in oklab, #047857 15%, transparent); --brand-ring: color-mix(in oklab, #047857 35%, transparent);
+    --primary: #047857; --primary-foreground: #ffffff; --ring: #047857;
+    --glow-a: color-mix(in oklab, #047857 14%, transparent); --glow-b: color-mix(in oklab, #34d399 18%, transparent);
+    --glass-top: color-mix(in oklab, #fbfffd 96%, #11281e); --glass-bottom: color-mix(in oklab, #fbfffd 90%, transparent);
+    --glass-line: #ffffff;
+    --glass-shadow: 0 1px 2px oklch(0.2 0.02 260 / 6%), 0 12px 32px -16px oklch(0.2 0.02 260 / 16%);
+}

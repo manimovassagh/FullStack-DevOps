@@ -30,7 +30,7 @@ export function AppShell() {
   const up = s?.stages.filter((x) => x.state === 'up').length ?? 0
   return (
     <div className="flex min-h-svh">
-      <aside className="sticky top-0 hidden h-svh w-64 shrink-0 flex-col border-r bg-white/55 backdrop-blur-xl md:flex dark:bg-black/15">
+      <aside className="sticky top-0 hidden h-svh w-64 shrink-0 flex-col border-r bg-[var(--sidebar)] md:flex">
         <div className="flex items-center gap-2.5 px-5 py-5">
           <span className="grid size-9 place-items-center rounded-xl brand-gradient text-white shadow-lg shadow-black/15"><Sprout className="size-5" /></span>
           <div className="leading-tight"><div className="font-semibold">Control panel</div><div className="text-xs text-muted-foreground">Plant Parent cloud lab</div></div>
