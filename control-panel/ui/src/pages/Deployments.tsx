@@ -27,7 +27,7 @@ export function Deployments() {
     <div className="grid gap-5">
       <div>
         <h1 className="text-gradient text-3xl font-semibold tracking-tight">Deployments</h1>
-        <p className="text-sm text-muted-foreground">Eleven ways to ship the same app. Deploy, test, release and tear down each one.</p>
+        <p className="text-sm text-muted-foreground">Twelve ways to ship the same app. Deploy, test, release and tear down each one.</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {FILTERS.map(([id, label]) => (

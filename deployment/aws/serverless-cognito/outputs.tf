@@ -1,0 +1,46 @@
+output "app_url" {
+  description = "Open this in the browser."
+  value       = var.on_floci ? "http://${var.local_hostname}:${var.floci_port}" : "https://${aws_cloudfront_distribution.main.domain_name}"
+}
+
+output "distribution_id" {
+  value = aws_cloudfront_distribution.main.id
+}
+
+output "api_id" {
+  value = aws_apigatewayv2_api.main.id
+}
+
+output "function_name" {
+  value = aws_lambda_function.api.function_name
+}
+
+output "live_version" {
+  description = "The function version the `live` alias points at; changes on every release."
+  value       = aws_lambda_alias.live.function_version
+}
+
+output "media_bucket" {
+  value = aws_s3_bucket.media.id
+}
+
+output "site_bucket" {
+  value = aws_s3_bucket.site.id
+}
+
+output "database_secret_arn" {
+  value = aws_secretsmanager_secret.database_url.arn
+}
+
+output "user_pool_id" {
+  value = aws_cognito_user_pool.main.id
+}
+
+output "client_id" {
+  value = aws_cognito_user_pool_client.web.id
+}
+
+output "demo_users" {
+  description = "Sign in with any of these (password: var.demo_password)."
+  value       = { for u, cfg in var.demo_users : u => cfg.admin ? "admin" : "member" }
+}

@@ -4,3 +4,4 @@ use ./backend
 use ./backend-serverless
 use ./backend-gcp
 use ./backend-auth
+use ./backend-serverless-auth

@@ -1,0 +1,279 @@
+# Pipeline for the serverless-cognito stage: Lambda + API Gateway + CloudFront + S3 with Amazon Cognito sign-in.
+# It has its own workflow because it builds different things (a Go zip, the React bundle), needs no
+# container images or EC2 artifacts, and runs on its own Floci (deployment/aws/serverless-cognito/compose.yaml).
+# It runs only when something it depends on changes.
+#
+#   Lambda backend tests ─── Build function (zip) ─┐
+#   Frontend tests + build (React → dist) ─────────┼─ Deploy+verify: infrastructure → frontend to S3 → API smoke → UI
+#   IaC checks ────────────────────────────────────┘                                                      → rollout ─ summary
+name: "AWS · Serverless + Cognito"
+run-name: "AWS · Serverless + Cognito · ${{ github.event.pull_request.title || github.ref_name }}"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - backend-serverless-auth/**
+      - deployment/aws/serverless-cognito/**
+      - deployment/smoke/**
+      - frontend-auth/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - .github/workflows/serverless-cognito.yml
+  pull_request:
+    paths:
+      - backend-serverless-auth/**
+      - deployment/aws/serverless-cognito/**
+      - deployment/smoke/**
+      - frontend-auth/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - .github/workflows/serverless-cognito.yml
+  workflow_dispatch:
+
+# Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.
+# Uncomment if you like: superseded runs of the same branch get cancelled (saves runner minutes,
+# but a new push can kill a run that is still in progress).
+# concurrency:
+#   group: serverless-cognito-${{ github.ref }}
+#   cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22
+  TERRAFORM_VERSION: 1.14.6
+
+jobs:
+  # ── Stage 1: tests and static checks (parallel) ───────────────────────────
+  backend:
+    name: Lambda backend · vet + unit + integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend-serverless-auth/go.mod
+          cache-dependency-path: backend-serverless-auth/go.sum
+      - name: Start Postgres + Floci (integration test dependencies)
+        run: make up
+      - name: go vet
+        working-directory: backend-serverless-auth
+        run: go vet ./...
+      - name: Unit + integration tests (race detector)
+        working-directory: backend-serverless-auth
+        env:
+          TEST_DATABASE_URL: postgres://plant:plant@localhost:5432/plant_test?sslmode=disable
+          AWS_ENDPOINT_URL: http://localhost:4566
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_REGION: us-east-1
+          S3_BUCKET: plant-media
+        run: go test -race -count=1 ./...
+
+  frontend:
+    name: Frontend · lint + typecheck + unit + build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend-auth
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend-auth/package-lock.json
+      - run: npm ci
+      - name: Lint (oxlint)
+        run: npm run lint
+      - name: Typecheck
+        run: npx tsc -b
+      - name: Unit tests (Vitest)
+        run: npm test
+      - name: Build the static site (what gets uploaded to S3)
+        run: npm run build
+      - uses: actions/upload-artifact@v7
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: frontend-dist
+          path: frontend-auth/dist
+          retention-days: 3
+      - uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
+        with:
+          name: frontend-dist
+          path: frontend-auth/dist
+          retention-days: 3
+
+  iac:
+    name: IaC · serverless-cognito
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: deployment/aws/serverless-cognito
+    env:
+      TF_VAR_lambda_zip: /dev/null # validate only needs the file to exist
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+      - name: terraform validate
+        run: terraform init -backend=false -input=false >/dev/null && terraform validate
+      - uses: terraform-linters/setup-tflint@v6
+      - name: tflint (terraform + aws rulesets)
+        env:
+          GITHUB_TOKEN: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+        run: tflint --config ../../.tflint.hcl --init && tflint --config ../../.tflint.hcl --format compact
+      - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          skip-setup-trivy: ${{ github.server_url != 'https://github.com' }}
+          scan-type: config
+          scan-ref: deployment/aws/serverless-cognito
+          severity: HIGH,CRITICAL
+          trivyignores: deployment/.trivyignore
+          exit-code: "1"
+
+  # ── Stage 2: build the function (only after its tests pass) ───────────────
+  build-function:
+    name: Build · Lambda function (zip)
+    needs: [backend]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend-serverless-auth/go.mod
+          cache-dependency-path: backend-serverless-auth/go.sum
+      - name: Compile the bootstrap binary and zip it
+        run: make -C deployment/aws/serverless-cognito lambda
+      - uses: actions/upload-artifact@v7
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: lambda-zip
+          path: deployment/aws/serverless-cognito/build/lambda.zip
+          retention-days: 3
+      - uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
+        with:
+          name: lambda-zip
+          path: deployment/aws/serverless-cognito/build/lambda.zip
+          retention-days: 3
+
+  # ── Stage 3: deploy to Floci and verify ───────────────────────────────────
+  deploy:
+    name: Deploy+verify · serverless-cognito
+    needs: [build-function, frontend, iac]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: deployment/aws/serverless-cognito
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: deployment/smoke/package-lock.json
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - uses: actions/download-artifact@v8
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: lambda-zip
+          path: deployment/aws/serverless-cognito/build
+      - uses: christopherhx/gitea-download-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
+        with:
+          name: lambda-zip
+          path: deployment/aws/serverless-cognito/build
+      - uses: actions/download-artifact@v8
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: frontend-dist
+          path: frontend-auth/dist
+      - uses: christopherhx/gitea-download-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
+        with:
+          name: frontend-dist
+          path: frontend-auth/dist
+      - name: "Start this stage's Floci"
+        run: make floci
+      - name: "Deploy infrastructure (terraform apply: Lambda, API Gateway, CloudFront, buckets, RDS)"
+        run: make init deploy
+      - name: "Deploy frontend → S3 site bucket (aws s3 sync + CloudFront invalidation)"
+        run: make site
+      - name: "Verify: app answers through CloudFront (page + API)"
+        run: make wait
+      - name: "Verify: idempotent (plan shows no changes)"
+        run: make check
+      - name: "Verify: API + browser smoke tests"
+        env:
+          CI: "true"
+        run: make smoke
+      - name: "Verify: new release goes live (X-Release changes, API smoke passes)"
+        run: make rollout
+      - name: Diagnostics
+        if: failure()
+        run: |
+          make -s logs || true
+          docker compose logs floci | grep -v ContainerLogStreamer | tail -150
+      - name: Upload e2e recording (Playwright video, screenshots, report)
+        uses: actions/upload-artifact@v7
+        if: ${{ always() && github.server_url == 'https://github.com' }}
+        with:
+          name: e2e-recording-serverless-cognito
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Upload e2e recording (Playwright video, screenshots, report)
+        uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ always() && github.server_url != 'https://github.com' }}
+        with:
+          name: e2e-recording-serverless-cognito
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Destroy
+        if: always()
+        run: make destroy || true
+      - name: "Verify: teardown left nothing running"
+        run: |
+          left=$(docker ps --format '{{.Names}}' | grep -E '^floci-(plant-sls-auth|rds)' || true)
+          [ -z "$left" ] || { echo "still running: $left"; exit 1; }
+
+  # ── Stage 4: one result for this workflow ─────────────────────────────────
+  summary:
+    name: Serverless + Cognito summary
+    needs: [backend, frontend, iac, build-function, deploy]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          {
+            echo "## Serverless pipeline result"
+            echo "| job | result |"
+            echo "|---|---|"
+            echo "$RESULTS" | jq -r 'to_entries[] | "| \(.key) | \(if .value.result == "success" then "✅" else "❌" end) \(.value.result) |"'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' >/dev/null
