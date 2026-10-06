@@ -54,7 +54,7 @@ export function DeploymentDetail() {
           </button>
         ))}
       </div>
-      {tab === 'overview' && <OverviewTab d={d} />}
+      {tab === 'overview' && <OverviewTab d={d} live={st.state === 'up'} />}
       {tab === 'log' && <LiveLog job={st.job?.id ?? st.last?.id} />}
       {tab === 'runs' && <RunsTab runs={d.runs} />}
       {tab === 'metrics' && <MetricsTab id={st.id} prom={!!status?.tools.prometheus} />}
@@ -62,7 +62,7 @@ export function DeploymentDetail() {
   )
 }
 
-function OverviewTab({ d }: { d: NonNullable<ReturnType<typeof useStage>['data']> }) {
+function OverviewTab({ d, live }: { d: NonNullable<ReturnType<typeof useStage>['data']>; live: boolean }) {
   const outputs = Object.entries(d.outputs)
   return (
     <div className="grid gap-4 xl:grid-cols-2">
@@ -72,7 +72,7 @@ function OverviewTab({ d }: { d: NonNullable<ReturnType<typeof useStage>['data']
             {outputs.map(([k, v]) => (
               <div key={k} className="grid grid-cols-[180px_1fr] gap-3 border-b border-border/50 pb-2 last:border-0">
                 <dt className="font-mono text-xs text-muted-foreground">{k}</dt>
-                <dd className="min-w-0 break-all font-mono text-xs">{typeof v === 'string' ? (v.startsWith('http') ? <a className="text-sky-700 dark:text-sky-300 hover:underline" href={v} target="_blank" rel="noreferrer">{v}</a> : v) : JSON.stringify(v)}</dd>
+                <dd className="min-w-0 break-all font-mono text-xs">{typeof v === 'string' ? (v.startsWith('http') && live ? <a className="text-sky-700 dark:text-sky-300 hover:underline" href={v} target="_blank" rel="noreferrer">{v}</a> : v) : JSON.stringify(v)}</dd>
               </div>
             ))}
           </dl>
