@@ -13,7 +13,7 @@ export function EmulatorStrip() {
   const { run } = useActions()
   if (!s) return null
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
       {s.emulators.map((e) => (
         <div key={e.id} className="glass flex items-center gap-3 rounded-2xl px-4 py-3">
           <Dot on={e.up} />

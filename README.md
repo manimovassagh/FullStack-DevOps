@@ -2,7 +2,7 @@
 
 # FullStack-DevOps
 
-**One full-stack app, deployed eleven different ways — and a local cloud lab to run, watch and test all of them.**
+**One full-stack app, deployed twelve different ways — and a local cloud lab to run, watch and test all of them.**
 
 ![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
@@ -12,7 +12,7 @@
 ![Helm](https://img.shields.io/badge/Helm-chart-0F1689?logo=helm&logoColor=white)
 ![Argo CD](https://img.shields.io/badge/Argo_CD-GitOps-EF7B4D?logo=argo&logoColor=white)
 <br>
-![AWS](https://img.shields.io/badge/AWS-9_stages-FF9900?logo=amazonwebservices&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-10_stages-FF9900?logo=amazonwebservices&logoColor=white)
 ![Google Cloud](https://img.shields.io/badge/Google_Cloud-Cloud_Run-4285F4?logo=googlecloud&logoColor=white)
 ![Azure](https://img.shields.io/badge/Azure-Container_Apps-0078D4?logo=microsoftazure&logoColor=white)
 ![Prometheus](https://img.shields.io/badge/Prometheus-metrics-E6522C?logo=prometheus&logoColor=white)
@@ -94,6 +94,7 @@ flowchart LR
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [eks](deployment/aws/eks/) | Kubernetes with Kustomize | :8090 |
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [eks-helm](deployment/aws/eks-helm/) | The app as a Helm chart | :8094 |
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [eks-gitops](deployment/aws/eks-gitops/) | Argo CD syncs the cluster from git | :8095 |
+| ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [serverless-cognito](deployment/aws/serverless-cognito/) | Lambda + API Gateway + CloudFront with Cognito sign-in | plant-auth.localhost:4568 |
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [serverless](deployment/aws/serverless/) | Lambda + API Gateway + S3 + CloudFront | plant.localhost:4567 |
 | ![GCP](https://img.shields.io/badge/-GCP-4285F4?logo=googlecloud&logoColor=white) | [cloud-run](deployment/gcp/cloud-run/) | Cloud Run + Cloud SQL + Cloud Storage | from `terraform output` |
 | ![Azure](https://img.shields.io/badge/-Azure-0078D4?logo=microsoftazure&logoColor=white) | [container-apps](deployment/azure/container-apps/) | Container Apps + PostgreSQL Flexible Server | from `terraform output` |
@@ -111,6 +112,7 @@ flowchart LR
 | eks | cluster vs app layer, Kustomize, NodePort + ALB, `aws eks get-token` auth |
 | eks-helm | charts, values, releases and revisions, `helm upgrade --install`, `helm rollback` |
 | eks-gitops | the repo as source of truth, a release is a commit, rollback is `git revert`, drift self-healing |
+| serverless-cognito | sign-in on Lambda: JWT checks in the function, cookies through API Gateway, per-user data |
 | serverless | function packaging, cold starts, versions and aliases, CloudFront origins, a private S3 site |
 | cloud-run | revisions, Cloud SQL, Cloud Storage, service accounts |
 | container-apps | Container Apps revisions and ingress, PostgreSQL Flexible Server |
