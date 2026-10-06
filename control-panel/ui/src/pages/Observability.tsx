@@ -45,14 +45,14 @@ export function Observability() {
                   <tbody>{ecs.data.map((r) => {
                     const want = ecsDesired.data?.find((x) => x.metric.cluster === r.metric.cluster && x.metric.service === r.metric.service)?.value ?? 0
                     return <tr key={r.metric.cluster + r.metric.service} className="border-b border-border/50"><td className="px-4 py-2 font-mono text-xs">{r.metric.cluster}/{r.metric.service}</td>
-                      <td className={cn('font-semibold', r.value >= want ? 'text-emerald-400' : 'text-amber-300')}>{r.value}</td><td>{want}</td><td className="font-mono text-xs text-muted-foreground">{r.metric.task_definition}</td></tr>
+                      <td className={cn('font-semibold', r.value >= want ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-300')}>{r.value}</td><td>{want}</td><td className="font-mono text-xs text-muted-foreground">{r.metric.task_definition}</td></tr>
                   })}</tbody></table>
               ) : <div className="p-4"><Empty>No ECS service running.</Empty></div>}
             </Panel>
             <Panel title="Kubernetes pods" bodyClass="p-0">
               {pods.data?.length ? (
                 <table className="w-full text-sm"><thead className="text-left text-xs text-muted-foreground"><tr className="border-b"><th className="px-4 py-2">Cluster</th><th>Namespace</th><th>Phase</th><th>Pods</th></tr></thead>
-                  <tbody>{pods.data.map((r) => <tr key={JSON.stringify(r.metric)} className="border-b border-border/50"><td className="px-4 py-2 font-mono text-xs">{r.metric.cluster}</td><td>{r.metric.namespace}</td><td className={r.metric.phase === 'Running' ? 'text-emerald-400' : 'text-amber-300'}>{r.metric.phase}</td><td>{r.value}</td></tr>)}</tbody></table>
+                  <tbody>{pods.data.map((r) => <tr key={JSON.stringify(r.metric)} className="border-b border-border/50"><td className="px-4 py-2 font-mono text-xs">{r.metric.cluster}</td><td>{r.metric.namespace}</td><td className={r.metric.phase === 'Running' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-300'}>{r.metric.phase}</td><td>{r.value}</td></tr>)}</tbody></table>
               ) : <div className="p-4"><Empty>No Kubernetes cluster running.</Empty></div>}
             </Panel>
           </div>

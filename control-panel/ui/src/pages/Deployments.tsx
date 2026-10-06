@@ -73,10 +73,10 @@ export function StageCard({ stage: st }: { stage: Stage }) {
         <StatusBadge stage={st} />
       </Link>
       <p className="text-sm text-muted-foreground">{st.note}</p>
-      {st.state === 'stale' && !st.job && <p className="rounded-lg bg-violet-500/10 px-3 py-2 text-xs text-violet-200">Its emulator was restarted and lost these resources. Redeploy clears the old state first.</p>}
+      {st.state === 'stale' && !st.job && <p className="rounded-lg bg-violet-500/10 px-3 py-2 text-xs text-violet-800 dark:text-violet-200">Its emulator was restarted and lost these resources. Redeploy clears the old state first.</p>}
       {st.state === 'up' && !st.job && <LoginHint stage={st} />}
       {st.job ? <JobProgress job={st.job} /> : st.last && (
-        <div className="text-xs text-muted-foreground"><span className={st.last.rc === 0 ? 'text-emerald-400' : 'text-red-400'}>{st.last.rc === 0 ? '✓' : '✗'}</span> {verb(st.last.action).toLowerCase()} {st.last.rc === 0 ? 'done' : 'failed'} · {dur(st.last.ended - st.last.started)} · {ago(st.last.ended)}</div>
+        <div className="text-xs text-muted-foreground"><span className={st.last.rc === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>{st.last.rc === 0 ? '✓' : '✗'}</span> {verb(st.last.action).toLowerCase()} {st.last.rc === 0 ? 'done' : 'failed'} · {dur(st.last.ended - st.last.started)} · {ago(st.last.ended)}</div>
       )}
       <div className="mt-auto"><StageButtons stage={st} compact /></div>
     </article>

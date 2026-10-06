@@ -27,7 +27,7 @@ export function Activity() {
             <tbody>
               {list.map((h) => (
                 <tr key={h.id} onClick={() => openLog(h.id, `${targetTitle(h.target, s?.stages)} · ${verb(h.action)}`)} className="cursor-pointer border-b border-border/50 hover:bg-muted/40">
-                  <td className={cn('px-4 py-2 font-medium', h.rc === 0 ? 'text-emerald-400' : 'text-red-400')}>{h.rc === 0 ? '✓ ok' : `✗ exit ${h.rc}`}</td>
+                  <td className={cn('px-4 py-2 font-medium', h.rc === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>{h.rc === 0 ? '✓ ok' : `✗ exit ${h.rc}`}</td>
                   <td>{targetTitle(h.target, s?.stages)}</td>
                   <td className="text-muted-foreground">{verb(h.action)}</td>
                   <td className="text-xs text-muted-foreground">{new Date(h.started * 1000).toLocaleString()} · {ago(h.ended)}</td>
