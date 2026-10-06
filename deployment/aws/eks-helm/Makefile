@@ -104,7 +104,7 @@ backend_image = $$($(K) get deploy backend -o jsonpath='{.spec.template.spec.con
 
 rollout: ## release test: upgrade to a new tag (revision +1, new image), then helm rollback (revision +1, old image back), then upgrade again; API smoke after each
 	@set -e; r0=$(revision); i0="$(backend_image)"; echo "revision $$r0, backend $${i0##*:}"; \
-	for svc in backend frontend; do docker tag plant/$$svc:$(IMAGE_TAG) plant/$$svc:$(IMAGE_TAG)-rollout; done; \
+	for svc in backend frontend; do { docker image inspect plant/$$svc:$(IMAGE_TAG) >/dev/null 2>&1 || $(MAKE) -s images IMAGE_TAG=$(IMAGE_TAG) >/dev/null || exit 1; } && docker tag plant/$$svc:$(IMAGE_TAG) plant/$$svc:$(IMAGE_TAG)-rollout; done; \
 	$(MAKE) -s push app IMAGE_TAG=$(IMAGE_TAG)-rollout >/dev/null; \
 	r1=$(revision); i1="$(backend_image)"; echo "upgrade   → revision $$r1, backend $${i1##*:}"; \
 	[ "$$r1" -eq $$((r0 + 1)) ] && [ "$$i1" != "$$i0" ] || { echo "FAIL: upgrade did not create a new revision with a new image"; exit 1; }; \

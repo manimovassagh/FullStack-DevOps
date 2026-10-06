@@ -46,7 +46,7 @@ revisions = terraform apply -refresh-only -auto-approve -input=false >/dev/null 
 
 rollout: ## release test: same images under a new tag; every service moves to a new revision, the old container stops, the API smoke test passes
 	@set -e; before=$$($(revisions)); echo "revisions before: $$before"; \
-	for img in backend-gcp frontend gcp-gateway; do docker tag plant/$$img:$(IMAGE_TAG) plant/$$img:$(IMAGE_TAG)-rollout; done; \
+	for img in backend-gcp frontend gcp-gateway; do { docker image inspect plant/$$img:$(IMAGE_TAG) >/dev/null 2>&1 || $(MAKE) -s images IMAGE_TAG=$(IMAGE_TAG) >/dev/null || exit 1; } && docker tag plant/$$img:$(IMAGE_TAG) plant/$$img:$(IMAGE_TAG)-rollout; done; \
 	$(MAKE) -s deploy IMAGE_TAG=$(IMAGE_TAG)-rollout >/dev/null; $(MAKE) -s wait >/dev/null; \
 	after=$$($(revisions)); echo "revisions after:  $$after"; \
 	jq -en --argjson a "$$before" --argjson b "$$after" '$$a|to_entries|all(.value != $$b[.key])' >/dev/null || { echo "FAIL: not every service moved to a new revision"; exit 1; }; \
