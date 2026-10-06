@@ -236,8 +236,9 @@ body {
     border: 1px solid var(--border);
     box-shadow: var(--glass-shadow);
     backdrop-filter: blur(16px);
-    position: relative;
 }
+/* the top hairline needs a positioned box, but never override absolute/fixed (popovers) */
+.glass:where(:not(.absolute):not(.fixed)) { position: relative; }
 .glass::before { /* hairline highlight along the top edge */
     content: ""; position: absolute; inset: 0 0 auto 0; height: 1px; border-radius: inherit; pointer-events: none;
     background: linear-gradient(90deg, transparent, var(--glass-line), transparent);
@@ -247,3 +248,42 @@ body {
 .text-gradient { background: linear-gradient(92deg, var(--foreground) 0%, color-mix(in oklab, var(--primary) 80%, var(--foreground)) 55%, oklch(0.7 0.13 220) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: color-mix(in oklab, var(--foreground) 14%, transparent); border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
+
+/* ── Accent palettes (theme picker). Each sets the brand colours; light/dark only change surfaces. ───── */
+:root, [data-palette="emerald"] { --brand-1: #6ee7b7; --brand-2: #10b981; --brand-ink: #022c22; --brand-text-light: #047857; --brand-text-dark: #6ee7b7; }
+[data-palette="ocean"]    { --brand-1: #7dd3fc; --brand-2: #0284c7; --brand-ink: #f0f9ff; --brand-text-light: #0369a1; --brand-text-dark: #7dd3fc; }
+[data-palette="violet"]   { --brand-1: #c4b5fd; --brand-2: #7c3aed; --brand-ink: #faf5ff; --brand-text-light: #6d28d9; --brand-text-dark: #c4b5fd; }
+[data-palette="sunset"]   { --brand-1: #fdba74; --brand-2: #ea580c; --brand-ink: #fff7ed; --brand-text-light: #c2410c; --brand-text-dark: #fdba74; }
+[data-palette="rose"]     { --brand-1: #fda4af; --brand-2: #e11d48; --brand-ink: #fff1f2; --brand-text-light: #be123c; --brand-text-dark: #fda4af; }
+[data-palette="graphite"] { --brand-1: #d4d4d8; --brand-2: #52525b; --brand-ink: #fafafa; --brand-text-light: #3f3f46; --brand-text-dark: #e4e4e7; }
+:root {
+    --brand-text: var(--brand-text-light);
+    --brand-soft: color-mix(in oklab, var(--brand-2) 13%, transparent);
+    --brand-ring: color-mix(in oklab, var(--brand-2) 35%, transparent);
+    --primary: var(--brand-2);
+    --ring: var(--brand-2);
+    --glow-a: color-mix(in oklab, var(--brand-1) 22%, transparent);
+}
+.dark {
+    --brand-text: var(--brand-text-dark);
+    --brand-soft: color-mix(in oklab, var(--brand-1) 14%, transparent);
+    --brand-ring: color-mix(in oklab, var(--brand-1) 30%, transparent);
+    --primary: var(--brand-1);
+    --ring: var(--brand-1);
+    --glow-a: color-mix(in oklab, var(--brand-2) 20%, transparent);
+}
+.brand-gradient { background: linear-gradient(135deg, var(--brand-1), var(--brand-2)); }
+.brand-button {
+    background: linear-gradient(180deg, color-mix(in oklab, var(--brand-1) 70%, var(--brand-2)), var(--brand-2));
+    color: var(--brand-ink);
+    box-shadow: 0 8px 22px -10px var(--brand-2);
+}
+.dark .brand-button { background: linear-gradient(180deg, var(--brand-1), color-mix(in oklab, var(--brand-1) 45%, var(--brand-2))); color: #0a0a0a; }
+.brand-soft { background: linear-gradient(90deg, var(--brand-soft), transparent); }
+.brand-tint { background: var(--brand-soft); }
+.brand-ring { --tw-ring-color: var(--brand-ring); }
+.brand-text { color: var(--brand-text); }
+.brand-selected { border-color: var(--brand-2) !important; background: var(--brand-soft); color: var(--brand-text); }
+.dark .brand-selected { border-color: var(--brand-1) !important; }
+.brand-border { border-color: var(--brand-2) !important; }
+.dark .brand-border { border-color: var(--brand-1) !important; }

@@ -5,6 +5,9 @@ import type { Series, Stage } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { verb } from '@/lib/format'
 
+// The accent colour of the current palette (charts draw with SVG attributes, which can't read CSS variables).
+export const brand = () => getComputedStyle(document.documentElement).getPropertyValue('--brand-2').trim() || '#10b981'
+
 export const KIND_ICON = { vm: Server, container: Boxes, k8s: Hexagon, serverless: Zap } as const
 export const CLOUD = {
   aws: { name: 'AWS', color: 'bg-orange-400' }, gcp: { name: 'Google Cloud', color: 'bg-blue-400' }, azure: { name: 'Azure', color: 'bg-sky-400' },
@@ -66,7 +69,7 @@ export function Kpi({ label, value, sub, icon: Icon = Cpu, tone = 'text-foregrou
       {children}
       {spark && spark.points.length > 1 && (
         <div className="pointer-events-none -mx-4 -mb-4 mt-3 h-12 opacity-80">
-          <ResponsiveContainer><AreaChart data={spark.points}><defs><linearGradient id={`g-${label}`} x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#34d399" stopOpacity={0.35} /><stop offset="100%" stopColor="#34d399" stopOpacity={0} /></linearGradient></defs><Area dataKey="v" type="monotone" stroke="#34d399" strokeWidth={1.4} fill={`url(#g-${label})`} isAnimationActive={false} /></AreaChart></ResponsiveContainer>
+          <ResponsiveContainer><AreaChart data={spark.points}><defs><linearGradient id={`g-${label}`} x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor={brand()} stopOpacity={0.35} /><stop offset="100%" stopColor={brand()} stopOpacity={0} /></linearGradient></defs><Area dataKey="v" type="monotone" stroke={brand()} strokeWidth={1.4} fill={`url(#g-${label})`} isAnimationActive={false} /></AreaChart></ResponsiveContainer>
         </div>
       )}
     </div>
@@ -83,12 +86,14 @@ export function TimeChart({ series, unit = '', stacked = false, height = 220, em
   if (!series?.length || series.every((s) => !s.points.length)) {
     return <div className="grid place-items-center rounded-xl border border-dashed text-sm text-muted-foreground" style={{ height }}>{empty}</div>
   }
+  const colors = [brand(), ...PALETTE.slice(1)]
   const times = [...new Set(series.flatMap((s) => s.points.map((p) => p.t)))].sort((a, b) => a - b)
   const data = times.map((t) => Object.fromEntries([['t', t], ...series.map((s) => [s.name, s.points.find((p) => p.t === t)?.v ?? null])]))
   const fmt = (v: number) => unit === 'bytes' ? (v >= 1024 ** 3 ? `${(v / 1024 ** 3).toFixed(1)}G` : `${Math.round(v / 1024 ** 2)}M`)
     : unit === 's' ? (v < 1 ? `${Math.round(v * 1000)}ms` : `${v.toFixed(1)}s`) : unit === '%' ? `${v.toFixed(v < 10 ? 1 : 0)}%`
     : unit === 'ratio' ? `${(v * 100).toFixed(1)}%` : `${Math.round(v * 10) / 10}${unit}`
-  const time = (t: number) => new Date(t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const span = times.length > 1 ? times[times.length - 1] - times[0] : 0
+  const time = (t: number) => new Date(t * 1000).toLocaleTimeString([], span < 1200 ? { hour: '2-digit', minute: '2-digit', second: '2-digit' } : { hour: '2-digit', minute: '2-digit' })
   const common = (
     <>
       <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border" vertical={false} />
@@ -99,16 +104,18 @@ export function TimeChart({ series, unit = '', stacked = false, height = 220, em
     </>
   )
   return (
-    <div style={{ height }}>
+    <div>
+      <div style={{ height }}>
       <ResponsiveContainer>
         {stacked ? (
-          <AreaChart data={data}>{common}{series.map((s, i) => <Area key={s.name} dataKey={s.name} stackId="a" type="monotone" stroke={PALETTE[i % 10]} fill={PALETTE[i % 10]} fillOpacity={0.25} strokeWidth={1.5} isAnimationActive={false} connectNulls />)}</AreaChart>
+          <AreaChart data={data}>{common}{series.map((s, i) => <Area key={s.name} dataKey={s.name} stackId="a" type="monotone" stroke={colors[i % 10]} fill={colors[i % 10]} fillOpacity={0.25} strokeWidth={1.5} isAnimationActive={false} connectNulls />)}</AreaChart>
         ) : (
-          <LineChart data={data}>{common}{series.map((s, i) => <Line key={s.name} dataKey={s.name} type="monotone" stroke={PALETTE[i % 10]} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />)}</LineChart>
+          <LineChart data={data}>{common}{series.map((s, i) => <Line key={s.name} dataKey={s.name} type="monotone" stroke={colors[i % 10]} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />)}</LineChart>
         )}
       </ResponsiveContainer>
-      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-        {series.slice(0, 10).map((s, i) => <span key={s.name} className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="size-2 rounded-sm" style={{ background: PALETTE[i % 10] }} />{s.name}</span>)}
+      </div>
+      <div className="mt-2 flex max-h-16 flex-wrap gap-x-4 gap-y-1 overflow-y-auto">
+        {series.slice(0, 10).map((s, i) => <span key={s.name} className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="size-2 rounded-sm" style={{ background: colors[i % 10] }} />{s.name}</span>)}
       </div>
     </div>
   )
