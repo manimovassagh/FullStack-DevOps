@@ -26,7 +26,7 @@ export function Deployments() {
   return (
     <div className="grid gap-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Deployments</h1>
+        <h1 className="text-gradient text-3xl font-semibold tracking-tight">Deployments</h1>
         <p className="text-sm text-muted-foreground">Eleven ways to ship the same app. Deploy, test, release and tear down each one.</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -57,8 +57,8 @@ export function Deployments() {
 
 export function StageCard({ stage: st }: { stage: Stage }) {
   return (
-    <article className={cn('group relative flex flex-col gap-3 overflow-hidden rounded-2xl border bg-card/80 p-4 shadow-sm transition-colors hover:border-foreground/20',
-      st.state === 'up' && 'border-emerald-500/25', st.job && 'border-amber-500/30')}>
+    <article className={cn('glass glass-hover group relative flex flex-col gap-3 overflow-hidden rounded-2xl p-4',
+      st.state === 'up' && 'border-emerald-400/25', st.job && 'border-amber-400/35')}>
       <span className={cn('absolute inset-y-0 left-0 w-0.5', st.job ? 'bg-amber-400' : st.state === 'up' ? 'bg-emerald-400' : st.state === 'partial' ? 'bg-red-400' : st.state === 'stale' ? 'bg-violet-400' : 'bg-transparent')} />
       <Link to={`/deployments/${st.id}`} className="flex items-start gap-3">
         <StageIcon stage={st} />

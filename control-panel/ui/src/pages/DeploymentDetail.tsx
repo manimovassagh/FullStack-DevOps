@@ -31,7 +31,7 @@ export function DeploymentDetail() {
       <div className="flex flex-wrap items-start gap-4">
         <StageIcon stage={st} className="size-12" />
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-semibold tracking-tight">{st.title}</h1><StatusBadge stage={st} /></div>
+          <div className="flex flex-wrap items-center gap-3"><h1 className="text-gradient text-3xl font-semibold tracking-tight">{st.title}</h1><StatusBadge stage={st} /></div>
           <p className="text-sm text-muted-foreground">{st.note}</p>
           <p className="mt-1 flex flex-wrap items-center gap-x-3 font-mono text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5"><span className={cn('size-2 rounded-sm', CLOUD[st.family].color)} />{CLOUD[st.family].name}</span>
@@ -152,7 +152,7 @@ function MetricsTab({ id, prom }: { id: string; prom: boolean }) {
   const targets = usePromRange(`sum by (target_group, state) (alb_targets{target_group=~"${p}-.*"}) > 0`, (m) => `${m.target_group.replace(p + '-', '')} ${m.state}`, 30, prom && !!p)
   const ecs = usePromRange(`ecs_service_running{cluster="${p}"}`, (m) => `${m.service} running`, 30, prom && !!p)
   const pods = usePromRange(`sum by (phase) (k8s_pods{cluster="${p}"})`, (m) => `pods ${m.phase}`, 30, prom && !!p)
-  const k6 = usePromRange(`sum(rate(k6_http_reqs_total{stage="${id}"}[30s]))`, () => 'requests / s', 30, prom)
+  const k6 = usePromRange(`sum(rate(k6_http_reqs_total{testid=~"${id}-.*"}[30s]))`, () => 'requests / s', 30, prom)
   if (!prom) return <NoProm />
   if (!p) return <Empty>This deployment has no load balancer metrics in the exporter.</Empty>
   return (

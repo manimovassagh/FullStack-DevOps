@@ -14,7 +14,7 @@ export function Activity() {
   return (
     <div className="grid gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Activity</h1>
+        <h1 className="text-gradient text-3xl font-semibold tracking-tight">Activity</h1>
         <p className="text-sm text-muted-foreground">Every deploy, test, release, load test and pipeline the panel ran, with its full log.</p>
       </div>
       <div className="flex gap-2">

@@ -25,7 +25,7 @@ breakpoint: check
 		BASE_URL=http://localhost:$(PORT) AUTH=$(AUTH) PROFILE=$@ STAGE=$(STAGE) MAX_VUS=$${MAX_VUS:-1000} \
 		K6_PROMETHEUS_RW_SERVER_URL=http://localhost:9091/api/v1/write K6_PROMETHEUS_RW_TREND_STATS="p(50),p(95),p(99),avg,max" \
 		K6_PROMETHEUS_RW_PUSH_INTERVAL=5s \
-		k6 run -o experimental-prometheus-rw --tag testid=$(STAGE)-$@-$$(date +%H%M%S) plant-journey.js; \
+		k6 run -o experimental-prometheus-rw --tag stage=$(STAGE) --tag testid=$(STAGE)-$@-$$(date +%H%M%S) plant-journey.js; \
 	else $(MAKE) -s _docker PROFILE=$@; fi
 
 smoke load spike stress:
@@ -38,7 +38,7 @@ _docker: check
 		-e K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write \
 		-e K6_PROMETHEUS_RW_TREND_STATS="p(50),p(95),p(99),avg,max" \
 		-e K6_PROMETHEUS_RW_PUSH_INTERVAL=5s \
-		$(K6) run -o experimental-prometheus-rw --tag testid=$(STAGE)-$(PROFILE)-$$(date +%H%M%S) /scripts/plant-journey.js
+		$(K6) run -o experimental-prometheus-rw --tag stage=$(STAGE) --tag testid=$(STAGE)-$(PROFILE)-$$(date +%H%M%S) /scripts/plant-journey.js
 
 check: ## the stage must answer and the observability stack must be running
 	@[ -n "$(PORT)" ] || { echo "unknown STAGE=$(STAGE)"; exit 1; }

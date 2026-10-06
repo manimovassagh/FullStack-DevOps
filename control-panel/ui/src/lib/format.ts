@@ -36,7 +36,7 @@ export function targetTitle(target: string, stages: { id: string; title: string 
   const [kind, id] = target.includes(':') ? target.split(':') : ['stage', target]
   const stage = stages.find((s) => s.id === (id ?? target))
   if (kind === 'emu') return `Emulator ${id}`
-  if (kind === 'loadtest') return `${stage?.title ?? id} load test`
+  if (kind === 'loadtest') return stage?.title ?? id
   if (kind === 'ci') return id ? `Pipeline ${id}` : 'Local CI'
   if (target === 'observability') return 'Observability'
   return stage?.title ?? target

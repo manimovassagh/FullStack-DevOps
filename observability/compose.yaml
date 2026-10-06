@@ -38,6 +38,7 @@ services:
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/overview.json
       GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_SECURITY_ALLOW_EMBEDDING: "true" # the control panel shows these dashboards in its Dashboards page
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro

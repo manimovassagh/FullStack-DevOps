@@ -13,19 +13,21 @@ export function Overview() {
   const { openLog } = useActions()
   const groups = usePromRange('sum by (group) (container_up)', (m) => m.group, 30, !!s?.tools.prometheus)
   const cpu = usePromRange('topk(6, container_cpu_percent)', (m) => m.name.replace(/^floci-/, '').slice(0, 34), 30, !!s?.tools.prometheus)
+  const contSpark = usePromRange('sum(container_up)', () => 'containers', 60, !!s?.tools.prometheus)
+  const memSpark = usePromRange('sum(container_memory_bytes)', () => 'memory', 60, !!s?.tools.prometheus)
   if (!s) return <Loading />
   const up = s.stages.filter((x) => x.state === 'up')
   const memPct = s.system.mem_total ? (s.system.mem_used / s.system.mem_total) * 100 : 0
   return (
     <div className="grid gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
+        <h1 className="text-gradient text-3xl font-semibold tracking-tight">Overview</h1>
         <p className="text-sm text-muted-foreground">Everything running in the local cloud lab, live.</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi label="Deployments up" icon={Server} value={<>{up.length}<span className="text-lg text-muted-foreground"> / {s.stages.length}</span></>} sub={up.map((x) => x.title).join(', ') || 'Nothing deployed'} tone={up.length ? 'text-emerald-400' : ''} />
-        <Kpi label="Containers" icon={Boxes} value={s.system.running} sub={Object.entries(s.system.groups).sort((a, b) => b[1] - a[1]).map(([g, n]) => `${g} ${n}`).join(' · ') || '—'} />
-        <Kpi label="Docker memory" icon={HardDrive} value={<>{bytes(s.system.mem_used)}<span className="text-lg text-muted-foreground"> / {bytes(s.system.mem_total)}</span></>} sub={`${s.system.ncpu} CPUs`}>
+        <Kpi label="Containers" icon={Boxes} spark={contSpark.data?.[0]} value={s.system.running} sub={Object.entries(s.system.groups).sort((a, b) => b[1] - a[1]).map(([g, n]) => `${g} ${n}`).join(' · ') || '—'} />
+        <Kpi label="Docker memory" icon={HardDrive} spark={memSpark.data?.[0]} value={<>{bytes(s.system.mem_used)}<span className="text-lg text-muted-foreground"> / {bytes(s.system.mem_total)}</span></>} sub={`${s.system.ncpu} CPUs`}>
           <Meter value={memPct} className="mt-3" />
         </Kpi>
         <Kpi label="Running now" icon={Cpu} value={s.active.length || 'Idle'} tone={s.active.length ? 'text-amber-300' : 'text-muted-foreground'}
