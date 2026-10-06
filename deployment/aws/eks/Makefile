@@ -103,8 +103,9 @@ register: ## point the ALB target groups at the nodes' NodePorts
 up: images push deploy kubeconfig secrets app register wait ## everything, from nothing to a working URL
 
 rollout: ## deployment test: same images under a new tag; expect a new ReplicaSet, zero downtime, passing API smoke
+	@# The image tag is the git commit: after new commits the deployed images carry an older tag, so build this commit's first.
 	@before=$$($(K) get deploy backend -o jsonpath='{.status.observedGeneration}'); \
-	for svc in backend frontend; do docker tag plant/$$svc:$(IMAGE_TAG) plant/$$svc:$(IMAGE_TAG)-rollout; done; \
+	for svc in backend frontend; do { docker image inspect plant/$$svc:$(IMAGE_TAG) >/dev/null 2>&1 || $(MAKE) -s images IMAGE_TAG=$(IMAGE_TAG) >/dev/null || exit 1; } && docker tag plant/$$svc:$(IMAGE_TAG) plant/$$svc:$(IMAGE_TAG)-rollout; done; \
 	$(MAKE) -s push app IMAGE_TAG=$(IMAGE_TAG)-rollout >/dev/null || exit 1; \
 	after=$$($(K) get deploy backend -o jsonpath='{.status.observedGeneration}'); \
 	echo "backend generation: $$before → $$after"; \

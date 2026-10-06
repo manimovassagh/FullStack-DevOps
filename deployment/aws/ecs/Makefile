@@ -56,8 +56,9 @@ revisions = $$($(AWS) ecs describe-services --cluster plant-ecs --services backe
 	--query 'services[].taskDefinition' --output text | grep -o ':[0-9]*' | tr -d : | tr '\n' ' ')
 
 rollout: ## deployment test: ship the same images under a new tag; expect new revisions, healthy targets, passing API smoke
+	@# The image tag is the git commit: after new commits the deployed images carry an older tag, so build this commit's first.
 	@before="$(revisions)"; echo "revisions before: $$before"; \
-	for svc in backend frontend; do docker tag plant/$$svc:$(IMAGE_TAG) plant/$$svc:$(IMAGE_TAG)-rollout; done; \
+	for svc in backend frontend; do { docker image inspect plant/$$svc:$(IMAGE_TAG) >/dev/null 2>&1 || $(MAKE) -s images IMAGE_TAG=$(IMAGE_TAG) >/dev/null || exit 1; } && docker tag plant/$$svc:$(IMAGE_TAG) plant/$$svc:$(IMAGE_TAG)-rollout; done; \
 	$(MAKE) -s push deploy IMAGE_TAG=$(IMAGE_TAG)-rollout >/dev/null && $(MAKE) -s wait IMAGE_TAG=$(IMAGE_TAG)-rollout >/dev/null || exit 1; \
 	after="$(revisions)"; echo "revisions after:  $$after"; \
 	[ "$$before" != "$$after" ] || { echo "FAIL: task-definition revisions did not change"; exit 1; }; \

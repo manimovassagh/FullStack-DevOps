@@ -68,7 +68,7 @@ revisions = scripts/revisions.sh
 
 rollout: ## release test: same images under a new tag; every app moves to a new revision, replicas keep running, the API smoke test passes
 	@set -e; before=$$($(revisions)); echo "revisions before: $$before"; \
-	for img in backend frontend azure-gateway; do docker tag plant/$$img:$(IMAGE_TAG) plant/$$img:$(IMAGE_TAG)-rollout; done; \
+	for img in backend frontend azure-gateway; do { docker image inspect plant/$$img:$(IMAGE_TAG) >/dev/null 2>&1 || $(MAKE) -s images IMAGE_TAG=$(IMAGE_TAG) >/dev/null || exit 1; } && docker tag plant/$$img:$(IMAGE_TAG) plant/$$img:$(IMAGE_TAG)-rollout; done; \
 	$(MAKE) -s deploy IMAGE_TAG=$(IMAGE_TAG)-rollout >/dev/null; $(MAKE) -s wait >/dev/null; \
 	after=$$($(revisions)); echo "revisions after:  $$after"; \
 	jq -en --argjson a "$$before" --argjson b "$$after" '$$a|to_entries|all(.value != $$b[.key])' >/dev/null || { echo "FAIL: not every app moved to a new revision"; exit 1; }; \
