@@ -19,7 +19,7 @@ export function Pipelines() {
     <div className="grid gap-6">
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Pipelines</h1>
+          <h1 className="text-gradient text-3xl font-semibold tracking-tight">Pipelines</h1>
           <p className="text-sm text-muted-foreground">The repo's GitHub Actions workflows, run on this machine by Gitea and its runner (local-ci/).</p>
         </div>
         <span className="flex-1" />

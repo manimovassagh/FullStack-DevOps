@@ -13,6 +13,7 @@ import { Observability } from '@/pages/Observability'
 import { LoadTests } from '@/pages/LoadTests'
 import { Pipelines } from '@/pages/Pipelines'
 import { Activity } from '@/pages/Activity'
+import { Dashboards } from '@/pages/Dashboards'
 import './index.css'
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 1000 } } })
@@ -29,6 +30,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="deployments" element={<Deployments />} />
                 <Route path="deployments/:id" element={<DeploymentDetail />} />
                 <Route path="observability" element={<Observability />} />
+                <Route path="dashboards" element={<Dashboards />} />
                 <Route path="loadtests" element={<LoadTests />} />
                 <Route path="pipelines" element={<Pipelines />} />
                 <Route path="activity" element={<Activity />} />

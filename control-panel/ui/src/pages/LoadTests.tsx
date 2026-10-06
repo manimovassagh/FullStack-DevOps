@@ -27,7 +27,8 @@ export function LoadTests() {
   const prom = !!s?.tools.prometheus
   const running = s?.active.find((j) => j.action.startsWith('loadtest-'))
   const sel = stageId || running?.target.split(':')[1] || candidates.find((x) => x.state === 'up')?.id || ''
-  const f = `stage="${sel}"`
+  // Runs carry stage=<id> (and older ones only testid=<id>-<profile>-<time>): match either.
+  const f = `testid=~"${sel}-.*"`
   const vus = usePromRange(`sum(k6_vus{${f}})`, () => 'virtual users', 15, prom && !!sel)
   const rps = usePromRange(`sum(rate(k6_http_reqs_total{${f}}[30s]))`, () => 'requests / s', 15, prom && !!sel)
   const p95 = usePromRange(`max by (name) (k6_http_req_duration_p95{${f}})`, (m) => m.name, 15, prom && !!sel)
@@ -39,7 +40,7 @@ export function LoadTests() {
   return (
     <div className="grid gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Load tests</h1>
+        <h1 className="text-gradient text-3xl font-semibold tracking-tight">Load tests</h1>
         <p className="text-sm text-muted-foreground">k6 virtual users sign in, browse, add, water and delete plants. Metrics stream live from k6 into Prometheus.</p>
       </div>
       {!prom && <NoProm />}

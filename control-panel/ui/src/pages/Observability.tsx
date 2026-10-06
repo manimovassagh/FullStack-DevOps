@@ -21,7 +21,7 @@ export function Observability() {
     <div className="grid gap-6">
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Observability</h1>
+          <h1 className="text-gradient text-3xl font-semibold tracking-tight">Observability</h1>
           <p className="text-sm text-muted-foreground">What runs where: every container, ECS service, Kubernetes pod and load balancer target.</p>
         </div>
         <span className="flex-1" />

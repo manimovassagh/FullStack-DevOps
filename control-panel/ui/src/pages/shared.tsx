@@ -15,7 +15,7 @@ export function EmulatorStrip() {
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {s.emulators.map((e) => (
-        <div key={e.id} className="flex items-center gap-3 rounded-2xl border bg-card/60 px-4 py-3">
+        <div key={e.id} className="glass flex items-center gap-3 rounded-2xl px-4 py-3">
           <Dot on={e.up} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 text-sm font-medium"><span className={cn('size-2 rounded-sm', CLOUD[e.cloud as keyof typeof CLOUD]?.color)} />{e.title}</div>
