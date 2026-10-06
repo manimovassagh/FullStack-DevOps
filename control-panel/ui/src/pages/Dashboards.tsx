@@ -57,7 +57,10 @@ export function Dashboards() {
                 <Dot on={on} />
               </div>
               <div className="flex flex-wrap gap-2">
-                {t.links.map(([label, url]) => <Button key={label} size="sm" variant="outline" disabled={!on} asChild={on}>{on ? <a href={url} target="_blank" rel="noreferrer">{label} <ExternalLink /></a> : <span>{label}</span>}</Button>)}
+                {on ? t.links.map(([label, url]) => <Button key={label} size="sm" variant="outline" asChild><a href={url} target="_blank" rel="noreferrer">{label} <ExternalLink /></a></Button>)
+                  : <Button size="sm" onClick={() => run(t.key === 'gitea'
+                      ? { path: '/api/ci/up', label: 'Local CI', action: 'ci-up' }
+                      : { path: '/api/observability/up', label: 'Observability', action: 'obs-up' })}>Start {t.title}</Button>}
               </div>
             </div>
           )

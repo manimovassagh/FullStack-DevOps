@@ -5,6 +5,7 @@
     python3 control-panel/cli.py deploy ecs        (also: destroy, smoke, release, forget)
     python3 control-panel/cli.py loadtest ecs-cognito load
     python3 control-panel/cli.py emulator aws start
+    python3 control-panel/cli.py ci up             (local CI: Gitea + runner)
 
 Runs go through the panel API (http://localhost:3500), so they appear live in the panel too, with the same
 safety rules (one operation per emulator, paused during CI, emulator-reset handling). Exit code = the job's.
@@ -81,6 +82,8 @@ def main(argv):
     if cmd == "loadtest" and len(args) in (1, 2):
         profile = args[1] if len(args) == 2 else "load"
         return run(f"/api/loadtests/{args[0]}/{profile}", f"{profile} load test on {args[0]}")
+    if cmd == "ci" and len(args) == 1 and args[0] in ("up", "down"):
+        return run(f"/api/ci/{args[0]}", f"local CI {args[0]}")
     if cmd == "emulator" and len(args) == 2:
         return run(f"/api/emulators/{args[0]}/{args[1]}", f"emulator {args[0]} {args[1]}")
     sys.exit(f"unknown command: {' '.join(argv)}  (see --help)")
