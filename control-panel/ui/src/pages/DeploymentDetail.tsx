@@ -49,7 +49,7 @@ export function DeploymentDetail() {
       </Panel>
       <div className="flex gap-1 border-b">
         {TABS.map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={cn('border-b-2 px-4 py-2 text-sm font-medium capitalize transition-colors', tab === t ? 'border-emerald-400 text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>
+          <button key={t} onClick={() => setTab(t)} className={cn('border-b-2 px-4 py-2 text-sm font-medium capitalize transition-colors', tab === t ? 'brand-border text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>
             {t === 'log' ? 'Live log' : t}{t === 'runs' && <span className="ml-1.5 text-xs opacity-60">{d.runs.length}</span>}
           </button>
         ))}

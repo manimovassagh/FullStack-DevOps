@@ -52,7 +52,7 @@ export function Dashboards() {
           return (
             <div key={t.key} className="glass flex flex-col gap-3 rounded-2xl p-4">
               <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-emerald-400/20 to-sky-400/10 text-emerald-700 dark:text-emerald-300 ring-1 ring-black/5 dark:ring-white/10"><t.icon className="size-5" /></span>
+                <span className="grid size-10 place-items-center rounded-xl brand-tint brand-text ring-1 ring-black/5 dark:ring-white/10"><t.icon className="size-5" /></span>
                 <div className="min-w-0 flex-1"><div className="font-semibold">{t.title}</div><div className="truncate text-xs text-muted-foreground">{t.what}</div></div>
                 <Dot on={on} />
               </div>
@@ -97,7 +97,7 @@ function Explorer({ enabled }: { enabled: boolean }) {
         <Button type="submit" disabled={!enabled}>{isFetching ? 'Running…' : 'Run query'}</Button>
       </form>
       <div className="flex flex-wrap gap-1.5">
-        {EXAMPLES.map(([name, q]) => <button key={name} onClick={() => { setDraft(q); setQuery(q) }} className={cn('rounded-full border px-2.5 py-0.5 text-xs transition-colors', query === q ? 'border-emerald-400/60 bg-emerald-400/10 text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground hover:text-foreground')}>{name}</button>)}
+        {EXAMPLES.map(([name, q]) => <button key={name} onClick={() => { setDraft(q); setQuery(q) }} className={cn('rounded-full border px-2.5 py-0.5 text-xs transition-colors', query === q ? 'brand-selected' : 'text-muted-foreground hover:text-foreground')}>{name}</button>)}
       </div>
       {!enabled ? <Empty>Prometheus is not running.</Empty> : error ? <Empty>Query failed: {(error as Error).message}</Empty> : <TimeChart series={data} unit={unit} height={300} empty="No series for this query in the chosen window" />}
     </Panel>

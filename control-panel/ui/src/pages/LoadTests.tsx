@@ -50,7 +50,7 @@ export function LoadTests() {
           <div className="flex flex-wrap gap-2">
             {candidates.map((c) => (
               <button key={c.id} onClick={() => setStageId(c.id)} disabled={c.state !== 'up'}
-                className={cn('rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:opacity-40', sel === c.id ? 'border-emerald-400 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'hover:border-foreground/30')}>
+                className={cn('rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:opacity-40', sel === c.id ? 'brand-selected' : 'hover:border-foreground/30')}>
                 {c.title} {c.state !== 'up' && <span className="text-xs">(not running)</span>}
               </button>
             ))}
@@ -58,7 +58,7 @@ export function LoadTests() {
         </div>
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {PROFILES.map((p) => (
-            <button key={p.id} onClick={() => setProfile(p.id)} className={cn('rounded-xl border p-3 text-left transition-colors', profile === p.id ? 'border-emerald-400 bg-emerald-500/10' : 'hover:border-foreground/30')}>
+            <button key={p.id} onClick={() => setProfile(p.id)} className={cn('rounded-xl border p-3 text-left transition-colors', profile === p.id ? 'brand-selected' : 'hover:border-foreground/30')}>
               <div className="flex items-center gap-2 font-semibold"><Gauge className="size-4" /> {p.title}</div>
               <div className="font-mono text-xs text-muted-foreground">{p.shape}</div>
               <div className="mt-1 text-sm text-muted-foreground">{p.what}</div>
