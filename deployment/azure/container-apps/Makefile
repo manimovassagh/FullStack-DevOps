@@ -82,7 +82,7 @@ check: ## idempotency: after an apply, a plan must show no changes (exit 0)
 
 smoke: ## API + browser smoke tests through the gateway (shared with every deployment style)
 	$(SMOKE)/api-smoke.sh "$(apiurl)" plant-media
-	cd $(SMOKE) && npm ci --silent && npx playwright install chromium >/dev/null \
+	cd $(SMOKE) && npm ci --silent && { [ -n "$$SMOKE_BROWSER_CHANNEL" ] || npx playwright install chromium >/dev/null; } \
 		&& SMOKE_STAGE=azure-container-apps SMOKE_BASE_URL="$$(cd $(CURDIR) && scripts/app-url.sh)" npx playwright test
 
 logs: ## recent output of the app replicas and the database (Floci keeps them in Docker, not Log Analytics)

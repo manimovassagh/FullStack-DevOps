@@ -43,7 +43,7 @@ SMOKE := ../../smoke
 
 smoke: ## API + browser smoke tests through the ALB (shared with every deployment style)
 	$(SMOKE)/api-smoke.sh "$$(terraform output -raw app_url)" "$$(terraform output -raw media_bucket)"
-	cd $(SMOKE) && npm ci --silent && npx playwright install chromium >/dev/null \
+	cd $(SMOKE) && npm ci --silent && { [ -n "$$SMOKE_BROWSER_CHANNEL" ] || npx playwright install chromium >/dev/null; } \
 		&& SMOKE_STAGE=classic-ec2 SMOKE_BASE_URL="$$(cd $(CURDIR) && terraform output -raw app_url)" npx playwright test
 
 health: ## target health of both target groups

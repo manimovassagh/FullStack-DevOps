@@ -75,7 +75,7 @@ check: ## idempotency: after an apply, a plan must show no changes (exit 0)
 smoke: ## sign-in rules, the shared API smoke test as alice, and the browser test with a real login
 	scripts/auth-smoke.sh "$$(terraform output -raw app_url)"
 	$(tokenenv) $(SMOKE)/api-smoke.sh "$$(terraform output -raw app_url)" "$$(terraform output -raw media_bucket)"
-	cd $(SMOKE) && npm ci --silent && npx playwright install chromium >/dev/null \
+	cd $(SMOKE) && npm ci --silent && { [ -n "$$SMOKE_BROWSER_CHANNEL" ] || npx playwright install chromium >/dev/null; } \
 		&& SMOKE_LOGIN_USER=alice@plant.example SMOKE_LOGIN_PASSWORD='Plant-Parent-2026!' SMOKE_STAGE=ecs-cognito SMOKE_BASE_URL="$$(cd $(CURDIR) && terraform output -raw app_url)" npx playwright test
 
 health: ## target health of both target groups
