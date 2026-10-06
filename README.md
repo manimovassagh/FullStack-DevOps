@@ -1,15 +1,45 @@
 # FullStack-DevOps
 
-One full-stack app, deployed eleven different ways — and a local cloud lab to run, watch and test all of them.
+**One full-stack app, deployed eleven different ways — and a local cloud lab to run, watch and test all of them.**
 
-**Plant Parent** is a small houseplant tracker (watering schedules, photo timelines). It's a classic React + Go + Postgres + S3 app, but the app is not the point: it's the subject for learning how real teams ship software — VMs, containers, Kubernetes, GitOps, serverless, blue/green, sign-in with Cognito — on AWS, Google Cloud and Azure.
+![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
+![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-1.14-7B42BC?logo=terraform&logoColor=white)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-k3s-326CE5?logo=kubernetes&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-9_stages-FF9900?logo=amazonwebservices&logoColor=white)
+![Google Cloud](https://img.shields.io/badge/Google_Cloud-Cloud_Run-4285F4?logo=googlecloud&logoColor=white)
+![Azure](https://img.shields.io/badge/Azure-Container_Apps-0078D4?logo=microsoftazure&logoColor=white)
+![Grafana](https://img.shields.io/badge/Grafana-Prometheus-F46800?logo=grafana&logoColor=white)
+![k6](https://img.shields.io/badge/k6-load_tests-7D64FF?logo=k6&logoColor=white)
 
-Everything runs **on your machine**. The clouds are emulated by [Floci](https://floci.io), so no cloud account and no bill.
+![The control panel](docs/screenshots/control-panel-overview.png)
+
+**Plant Parent** is a small houseplant tracker (watering schedules, photo timelines). It's a classic React + Go + Postgres + S3 app — but the app is not the point. It's the subject for learning how real teams ship software: VMs, containers, Kubernetes, GitOps, serverless, blue/green, sign-in with Cognito — on AWS, Google Cloud and Azure.
+
+Everything runs **on your machine**. The clouds are emulated by [Floci](https://floci.io): no cloud account, no bill.
 
 ```bash
 make                          # starts the lab and opens the control panel → http://localhost:3500
 make deploy STAGE=ecs         # deploy a stage (or press Deploy in the panel)
 make help                     # everything else
+```
+
+## How it fits together
+
+```mermaid
+flowchart LR
+  you([You]) -->|make · browser| panel[Control panel<br/>:3500]
+  panel -->|deploy · test · release| tf[Stage Makefile<br/>+ Terraform]
+  tf --> floci[(Floci emulators<br/>AWS · Google Cloud · Azure)]
+  floci --> stack[ALB · ECS · EKS · Lambda · Cloud Run …<br/>Postgres · S3 · Cognito]
+  stack --> app[Plant Parent]
+  k6[k6 load tests] --> app
+  k6 --> prom[(Prometheus)]
+  exporter[Exporter<br/>Docker · ECS · ALB · k8s] --> prom
+  prom --> grafana[Grafana]
+  prom --> panel
+  ci[Local CI<br/>Gitea + runner] -->|.github/workflows| tf
 ```
 
 ## What's inside
@@ -40,6 +70,14 @@ make help                     # everything else
 | Azure | [container-apps](deployment/azure/container-apps/) | Container Apps + PostgreSQL Flexible Server | from `terraform output` |
 
 Every stage passes the same checks: deploy → healthy → idempotent plan → API and browser smoke tests → rollout → clean teardown. Details, what each one teaches and the rules for adding one: [deployment/README.md](deployment/README.md) and [deployment/ROADMAP.md](deployment/ROADMAP.md).
+
+## Screenshots
+
+| Deploy, test and release from the control panel | Every stage's Terraform outputs, resources, logs and runs |
+|---|---|
+| ![Deployments](docs/screenshots/control-panel-deployments.png) | ![Deployment detail](docs/screenshots/control-panel-detail.png) |
+| **The app: public home page, sign-in only when you act** | **Grafana: containers, ECS tasks, pods, target health** |
+| ![Plant Parent](docs/screenshots/app-welcome.png) | ![Grafana](docs/screenshots/grafana-stacks.png) |
 
 ## Repository layout
 
