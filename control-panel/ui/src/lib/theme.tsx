@@ -1,30 +1,34 @@
-// Theme = mode (light / dark / system, via next-themes) + accent palette (data-palette on <html>).
+// Full themes: each one sets every surface (page, sidebar, cards, text) and the accent, plus light or dark mode.
+// The look is data-theme on <html> (CSS in index.css); next-themes keeps the light/dark class in step.
 import { useEffect, useRef, useState } from 'react'
-import { Check, Monitor, Moon, Palette, Sun } from 'lucide-react'
+import { Check, Palette } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import THEMES from '@/lib/themes.json'
 import { cn } from '@/lib/utils'
 
-export const PALETTES = [
-  { id: 'emerald', name: 'Emerald', a: '#6ee7b7', b: '#10b981' },
-  { id: 'ocean', name: 'Ocean', a: '#7dd3fc', b: '#0284c7' },
-  { id: 'violet', name: 'Violet', a: '#c4b5fd', b: '#7c3aed' },
-  { id: 'sunset', name: 'Sunset', a: '#fdba74', b: '#ea580c' },
-  { id: 'rose', name: 'Rose', a: '#fda4af', b: '#e11d48' },
-  { id: 'graphite', name: 'Graphite', a: '#d4d4d8', b: '#52525b' },
-] as const
-const KEY = 'control-panel-palette'
+export type Skin = (typeof THEMES)[number]
+export { THEMES }
+const KEY = 'control-panel-skin'
+const DEFAULT = 'midnight'
 
-export function usePalette() {
-  const [palette, set] = useState(() => { try { return localStorage.getItem(KEY) ?? 'emerald' } catch { return 'emerald' } })
-  useEffect(() => {
-    document.documentElement.dataset.palette = palette
-    try { localStorage.setItem(KEY, palette) } catch { /* private mode */ }
-    window.dispatchEvent(new Event('palettechange'))
-  }, [palette])
-  return [palette, set] as const
+function current(): string {
+  try { return localStorage.getItem(KEY) ?? DEFAULT } catch { return DEFAULT }
 }
 
-// Re-render charts when the palette changes (they read the accent colour from CSS).
+export function useSkin() {
+  const { setTheme } = useTheme()
+  const [id, setId] = useState(current)
+  const skin = THEMES.find((t) => t.id === id) ?? THEMES[0]
+  useEffect(() => {
+    document.documentElement.dataset.theme = skin.id
+    setTheme(skin.mode)
+    try { localStorage.setItem(KEY, skin.id) } catch { /* private mode */ }
+    window.dispatchEvent(new Event('palettechange'))
+  }, [skin.id, skin.mode, setTheme])
+  return [skin, setId] as const
+}
+
+// Charts read the accent from CSS: re-render them when the theme changes.
 export function usePaletteVersion() {
   const [v, setV] = useState(0)
   useEffect(() => {
@@ -35,9 +39,24 @@ export function usePaletteVersion() {
   return v
 }
 
+function Preview({ t }: { t: Skin }) {
+  // a tiny picture of the panel in this theme: sidebar, a card with a title bar and the accent button
+  return (
+    <div className="relative h-16 w-full overflow-hidden rounded-lg ring-1 ring-black/10" style={{ background: t.bg }}>
+      <div className="absolute inset-y-0 left-0 w-5" style={{ background: t.sidebar }}>
+        <div className="mx-auto mt-2 size-2.5 rounded" style={{ background: `linear-gradient(135deg, ${t.a}, ${t.b})` }} />
+      </div>
+      <div className="absolute left-7 right-2 top-2 bottom-2 rounded-md p-1.5" style={{ background: t.card, boxShadow: '0 1px 2px rgba(0,0,0,.15)' }}>
+        <div className="h-1.5 w-10 rounded-full" style={{ background: t.fg, opacity: 0.85 }} />
+        <div className="mt-1 h-1 w-14 rounded-full" style={{ background: t.muted, opacity: 0.7 }} />
+        <div className="mt-1.5 h-2.5 w-8 rounded" style={{ background: t.mode === 'dark' ? t.a : t.b }} />
+      </div>
+    </div>
+  )
+}
+
 export function ThemeMenu() {
-  const { theme, setTheme, resolvedTheme } = useTheme()
-  const [palette, setPalette] = usePalette()
+  const [skin, setSkin] = useSkin()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -48,38 +67,32 @@ export function ThemeMenu() {
     document.addEventListener('keydown', esc)
     return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc) }
   }, [open])
-  const modes = [['light', 'Light', Sun], ['dark', 'Dark', Moon], ['system', 'System', Monitor]] as const
   return (
     <div ref={ref} className="relative order-last">
       <button onClick={() => setOpen((o) => !o)} aria-label="Theme" aria-expanded={open}
-        className="flex h-9 items-center gap-2 rounded-full border bg-card/70 px-3 text-sm text-muted-foreground shadow-sm transition-colors hover:text-foreground">
-        <Palette className="size-4" />
+        className="flex h-9 items-center gap-2 rounded-full border bg-card px-3 text-sm text-muted-foreground shadow-sm transition-colors hover:text-foreground">
+        <Palette className="size-4" /> <span className="hidden sm:inline">{skin.name}</span>
         <span className="size-3.5 rounded-full brand-gradient ring-1 ring-black/10" />
-        {resolvedTheme === 'dark' ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
       </button>
       {open && (
-        <div role="dialog" aria-label="Theme" className="glass absolute right-0 top-11 z-50 w-72 rounded-2xl !bg-popover p-4 shadow-2xl animate-in fade-in zoom-in-95">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mode</div>
-          <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted/60 p-1">
-            {modes.map(([id, label, Icon]) => (
-              <button key={id} onClick={() => setTheme(id)} aria-pressed={theme === id}
-                className={cn('flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-sm transition-colors', theme === id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
-                <Icon className="size-3.5" /> {label}
-              </button>
-            ))}
-          </div>
-          <div className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Accent</div>
-          <div className="grid grid-cols-3 gap-2">
-            {PALETTES.map((p) => (
-              <button key={p.id} onClick={() => setPalette(p.id)} aria-pressed={palette === p.id} aria-label={`${p.name} accent`}
-                className={cn('flex flex-col items-center gap-1.5 rounded-xl border p-2 text-xs transition-colors', palette === p.id ? 'border-foreground/40 bg-muted/60 text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-                <span className="relative grid size-8 place-items-center rounded-full ring-1 ring-black/10" style={{ background: `linear-gradient(135deg, ${p.a}, ${p.b})` }}>
-                  {palette === p.id && <Check className="size-4 text-white drop-shadow" />}
-                </span>
-                {p.name}
-              </button>
-            ))}
-          </div>
+        <div role="dialog" aria-label="Themes" className="absolute right-0 top-11 z-50 w-[420px] max-w-[92vw] rounded-2xl border bg-popover p-4 shadow-2xl animate-in fade-in zoom-in-95">
+          {(['dark', 'light'] as const).map((mode) => (
+            <div key={mode} className="mb-3 last:mb-0">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{mode === 'dark' ? 'Dark themes' : 'Light themes'}</div>
+              <div className="grid grid-cols-3 gap-2">
+                {THEMES.filter((t) => t.mode === mode).map((t) => (
+                  <button key={t.id} onClick={() => setSkin(t.id)} aria-pressed={skin.id === t.id} aria-label={`${t.name} theme`}
+                    className={cn('group rounded-xl border p-1.5 text-left transition-all hover:-translate-y-0.5', skin.id === t.id ? 'border-transparent ring-2 ring-[var(--primary)]' : 'hover:border-foreground/30')}>
+                    <Preview t={t} />
+                    <div className="mt-1.5 flex items-center justify-between px-0.5 text-xs font-medium">
+                      {t.name}
+                      {skin.id === t.id && <Check className="size-3.5 text-[var(--primary)]" />}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

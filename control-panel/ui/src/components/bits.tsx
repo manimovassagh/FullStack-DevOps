@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { verb } from '@/lib/format'
 
 // The accent colour of the current palette (charts draw with SVG attributes, which can't read CSS variables).
-export const brand = () => getComputedStyle(document.documentElement).getPropertyValue('--brand-2').trim() || '#10b981'
+export const brand = () => getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#10b981'
 
 export const KIND_ICON = { vm: Server, container: Boxes, k8s: Hexagon, serverless: Zap } as const
 export const CLOUD = {
