@@ -1,12 +1,17 @@
 import { Sprout } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
 import { errorMessage } from '@/api'
 import { useAuth } from '@/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 export function LoginPage() {
-  const { login } = useAuth()
+  const { login, status } = useAuth()
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  // Only local paths: never send someone off to another site after signing in.
+  const next = params.get('next')?.startsWith('/') && !params.get('next')?.startsWith('//') ? params.get('next')! : '/'
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -18,12 +23,15 @@ export function LoginPage() {
     setError(null)
     try {
       await login(username.trim(), password)
+      navigate(next, { replace: true })
     } catch (err) {
       setError(errorMessage(err))
     } finally {
       setBusy(false)
     }
   }
+
+  if (status === 'signedIn') return <Navigate replace to={next} />
 
   return (
     <div className="grid min-h-svh place-items-center px-4">
@@ -50,6 +58,9 @@ export function LoginPage() {
         <Button type="submit" className="w-full" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </Button>
+        <p className="text-center text-sm text-muted-foreground">
+          <Link to="/" className="hover:underline">← Back to Plant Parent</Link>
+        </p>
       </form>
     </div>
   )

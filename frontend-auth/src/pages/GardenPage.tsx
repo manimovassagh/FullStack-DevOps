@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Droplets, Plus } from 'lucide-react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { api, errorMessage } from '@/api'
 import { PlantCard, PlantCover } from '@/components/PlantCard'
@@ -11,6 +11,9 @@ import type { NewPlant, PlantSummary } from '@/types'
 
 export function GardenPage() {
   const [plants, setPlants] = useState<PlantSummary[] | null>(null)
+  // ?add=1: the visitor pressed "Add plant" before signing in; open the form now that they are back.
+  const [params] = useSearchParams()
+  const [openAdd] = useState(() => params.get('add') === '1')
 
   // State is set in promise callbacks, never synchronously, so the effect below
   // doesn't trigger a cascading render (react/set-state-in-effect).
@@ -62,7 +65,7 @@ export function GardenPage() {
             </p>
           )}
         </div>
-        <PlantFormDialog title="New plant" trigger={addButton} onSubmit={create} />
+        <PlantFormDialog title="New plant" trigger={addButton} onSubmit={create} defaultOpen={openAdd} />
       </div>
 
       {plants === null && <GridSkeleton />}

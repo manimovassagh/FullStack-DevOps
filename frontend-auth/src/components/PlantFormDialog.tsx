@@ -22,10 +22,11 @@ interface Props {
   title: string
   initial?: Plant // present → edit mode
   onSubmit: (plant: NewPlant) => Promise<void>
+  defaultOpen?: boolean // open right away (e.g. "Add plant" pressed before signing in)
 }
 
-export function PlantFormDialog({ trigger, title, initial, onSubmit }: Props) {
-  const [open, setOpen] = useState(false)
+export function PlantFormDialog({ trigger, title, initial, onSubmit, defaultOpen = false }: Props) {
+  const [open, setOpen] = useState(defaultOpen)
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {

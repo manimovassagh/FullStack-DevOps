@@ -1,33 +1,31 @@
 # Control panel
 
-The cockpit for the local deployments: see what is up, start and stop stages and emulators, watch the commands live.
+The cockpit of the local cloud lab: deploy and tear down the stages, watch them live, run load tests and pipelines.
+A single-page app (React, Vite, Tailwind, shadcn/ui, Recharts, TanStack Query) served by a small Python API.
 
 ```bash
-make -C control-panel run      # then open http://localhost:3500
+make -C control-panel run      # builds the UI on first run, then http://localhost:3500
+make -C control-panel dev      # UI hot reload on :5174 (keep `run` going for the API)
 ```
 
-## What you see
+| Page | What you do there |
+|---|---|
+| **Overview** | deployments up, containers by kind, Docker memory, what is running now; the four emulators; live charts (containers, CPU); recent activity |
+| **Deployments** | every stage as a card (filters: running, stopped, needs attention, per cloud; search). Deploy, open the app, smoke tests, release, load test, tear down |
+| **Deployment detail** | outputs and cloud resources from the Terraform state, the commands behind each button, the live log, every earlier run with its log, and metrics (load balancer targets, ECS tasks or pods, load-test traffic) |
+| **Observability** | all containers with CPU and memory, ECS services desired vs running, Kubernetes pods, target health; start/stop Prometheus + Grafana |
+| **Load tests** | pick a running deployment and a k6 profile (smoke, load, spike, stress), run it, watch users, requests/s, p95 and errors live |
+| **Pipelines** | start/stop the local CI (Gitea), run any workflow, see recent runs and their jobs |
+| **Activity** | every run the panel did, filterable, each with its full log |
 
-- **Headline tiles:** how many deployments are up (with a ring), containers running grouped by what they are (ECS tasks, databases, EKS nodes, CI jobs …), Docker memory used vs. available (turns amber and red as it fills), and the current activity.
-- **Emulators:** the four Floci emulators (AWS, the serverless nightly, Google Cloud, Azure) with their port, which stages use them, and Start / Stop.
-- **Filters and search:** All · Running · Stopped · AWS · Google Cloud · Azure, and a search box (press `/`).
-- **One card per stage**, grouped by cloud and style (VMs, containers, Kubernetes, serverless):
-  - status: **Running** (the app answers, with "up 12 min"), **Stopped**, **Partly deployed** (Terraform has resources but the app does not answer), or **Starting / Stopping / Testing / Releasing** with a progress bar, time left (learned from earlier runs) and the line the command is on right now;
-  - the last run and how long it took;
-  - the main action changes with the state: **Start** → **Open app** → (if broken) **Retry** / **Clear state**; plus **Test** (smoke tests), **Release** (rollout), **Stop** (terraform destroy) and **Logs**;
-  - the sign-in stage shows its demo user and copies the password.
-- **Drawer** (Logs): the live output of the running command with terraform's colours, errors and successes highlighted, a line filter, follow, copy and **Cancel run**; the **History** tab lists every earlier run of that stage and opens its log.
-- **Notifications:** a toast when a run ends, and a desktop notification if the tab is in the background.
-- Header links to the Grafana dashboard ([observability](../observability/)) and the pipelines ([local-ci](../local-ci/)), with a light that shows whether each is running.
+Every action asks for confirmation in a dialog when it is destructive, then follows the job in a toast (time, current step, result) with a link to the live log drawer (colours, filter, copy, cancel).
 
-Run history and logs are kept in `control-panel/.history.json` and `control-panel/.logs/` (git-ignored), so they survive a restart of the panel.
+## What it handles for you
 
-## Rules it enforces
+- **Emulator first.** Any action on an AWS stage starts the shared Floci when it is off.
+- **Emulator resets.** The emulators keep everything in memory. After a restart a stage's Terraform state lists resources that no longer exist: the panel checks one of them (the VPC or a bucket) against the emulator, shows the stage as **Emulator reset**, and on Deploy clears the old state first. Tear down on such a stage only clears the state.
+- **One operation per emulator, one load test, one pipeline at a time.** Other buttons wait (disabled, with the reason).
+- **Not during CI.** Deployments pause while a pipeline job uses Docker (same ports).
+- **Fixed commands only**, run in the stage's folder (listed on each detail page). Requests need `X-Panel: 1` and the panel's own origin, so another website cannot drive it. It listens on 127.0.0.1 only.
 
-- **One operation per emulator.** The eight AWS stages share one Floci, so two applies never race; the other stages wait (their buttons are disabled) until it is done. Serverless, Google Cloud and Azure each have their own emulator and can run next to an AWS stage.
-- **Not during CI.** Nothing starts while a local CI job is running on the same Docker (same ports).
-- **Fixed commands only.** It runs exactly the commands listed in `server.py`, in the stage's folder; nothing from the browser becomes part of a command.
-- **Same-origin only.** Requests need the `X-Panel: 1` header and the panel's own origin, so another website cannot make your browser start deployments.
-- **Local only.** It listens on 127.0.0.1 and runs `make` as you. Do not expose it.
-
-Standard-library Python and one HTML file: no dependencies, no build step. Memory is the practical limit: Docker has about 4 GB here, so run two or three stages at a time, not all eleven.
+Run history and logs live in `control-panel/.history.json` and `control-panel/.logs/` (git-ignored). Docker has about 4 GB here: run two or three stages at a time.

@@ -26,10 +26,12 @@ export const test = base.extend<Fixtures>({
   // The garden page, already signed in when the stage has a login.
   garden: async ({ page, loginPage }, use) => {
     const garden = new GardenPage(page)
-    await garden.open()
     if (login.user) {
+      await loginPage.open()
       await loginPage.signIn(login.user, login.password)
       await loginPage.expectSignedInAs(login.user)
+    } else {
+      await garden.open()
     }
     await use(garden)
   },
