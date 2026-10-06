@@ -1,6 +1,6 @@
 import { Activity, BarChart3, Boxes, ExternalLink, Flame, Gauge, GitBranch, LayoutDashboard, LineChart, Loader2, Moon, Sprout, Sun, Workflow } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { NavLink, Outlet } from 'react-router'
+import { Link, NavLink, Outlet } from 'react-router'
 import { useStatus } from '@/lib/api'
 import { dur, now, targetTitle, verb } from '@/lib/format'
 import { useActions } from '@/components/actions'
@@ -55,13 +55,15 @@ export function AppShell() {
         </nav>
         <div className="mt-6 px-3">
           <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tools</div>
-          {TOOLS.map((t) => (
-            <a key={t.key} href={t.url} target="_blank" rel="noreferrer" title={t.hint}
-              className="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
-              <t.icon className="size-4" /> {t.label}
-              <span className="ml-auto flex items-center gap-2"><Dot on={!!s?.tools[t.key]} /><ExternalLink className="size-3 opacity-0 transition-opacity group-hover:opacity-100" /></span>
-            </a>
-          ))}
+          {TOOLS.map((t) => {
+            const on = !!s?.tools[t.key]
+            const cls = 'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground'
+            const inner = <><t.icon className="size-4" /> {t.label}<span className="ml-auto flex items-center gap-2">{!on && <span className="text-[10px] uppercase tracking-wide">off</span>}<Dot on={on} />{on && <ExternalLink className="size-3 opacity-0 transition-opacity group-hover:opacity-100" />}</span></>
+            // A tool that is off opens the page that can start it, not a dead tab.
+            return on
+              ? <a key={t.key} href={t.url} target="_blank" rel="noreferrer" title={t.hint} className={cls}>{inner}</a>
+              : <Link key={t.key} to={t.key === 'gitea' ? '/pipelines' : '/dashboards'} title={`${t.label} is not running: start it here`} className={cls}>{inner}</Link>
+          })}
         </div>
         <div className="mt-auto border-t p-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-2"><Dot on={!!s?.system.docker} /> Docker {s?.system.docker ? `· ${s.system.running} containers` : 'not running'}</div>

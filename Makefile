@@ -15,10 +15,10 @@ export TEST_DATABASE_URL      ?= postgres://plant:plant@localhost:5432/plant_tes
 AWS := aws --endpoint-url $(AWS_ENDPOINT_URL)
 
 .PHONY: help up down reset bucket backend frontend test test-backend test-frontend \
-	dashboard-up dashboard-down dashboard-status dashboard-logs stages deploy destroy smoke release forget loadtest docker
+	dashboard-up dashboard-down dashboard-status dashboard-logs ci-up ci-down stages deploy destroy smoke release forget loadtest docker
 
 help: ## list the targets
-	@echo "Cloud lab"; grep -hE '^(dashboard|stages|deploy|destroy|smoke|release|forget|loadtest|docker)[a-z-]*:.*## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | awk -F'\t' '{printf "  make %-18s %s\n", $$1, $$2}'
+	@echo "Cloud lab"; grep -hE '^(dashboard|stages|deploy|destroy|smoke|release|forget|loadtest|docker|ci)[a-z-]*:.*## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | awk -F'\t' '{printf "  make %-18s %s\n", $$1, $$2}'
 	@echo; echo "App development"; grep -hE '^(up|down|reset|bucket|backend|frontend|test)[a-z-]*:.*## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | awk -F'\t' '{printf "  make %-18s %s\n", $$1, $$2}'
 
 up: ## start postgres + floci and create the bucket (also used by CI)
@@ -85,6 +85,12 @@ dashboard-status: ## what is up: panel, observability, every stage
 
 dashboard-logs: ## follow the control panel's own log
 	tail -f $(PANEL_LOG)
+
+ci-up: _panel ## start the local CI (Gitea + runner) through the panel
+	@$(LAB) ci up
+
+ci-down: _panel ## stop the local CI
+	@$(LAB) ci down
 
 _panel: # start the panel when it is not running (deploy & co. need it)
 	@curl -sf -o /dev/null $(PANEL_URL)/api/status || $(MAKE) --no-print-directory dashboard-up
