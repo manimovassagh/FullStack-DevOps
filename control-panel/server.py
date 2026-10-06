@@ -94,6 +94,10 @@ since = {}     # stage id → (state, first seen at)
 _cache = {}    # small TTL cache
 _system = {"at": 0, "containers": []}
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+# The browser smoke tests download Chromium (and ffmpeg for videos) from Playwright's CDN, which is not always
+# reachable from a laptop. When Chrome is installed, the panel's runs use it instead and skip the recording.
+BROWSER_ENV = ({"PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD": "1", "SMOKE_BROWSER_CHANNEL": "chrome", "SMOKE_VIDEO": "off"}
+               if Path("/Applications/Google Chrome.app").exists() and not os.environ.get("SMOKE_USE_PLAYWRIGHT_CHROMIUM") else {})
 
 
 def cached(key, ttl, fn):
@@ -358,7 +362,7 @@ def run_job(job_id, key, steps):
             job["lines"].append(f"$ (cd {rel}) {cmd}")
             logf.write(f"$ (cd {rel}) {cmd}\n")
             p = subprocess.Popen(cmd, shell=True, cwd=where, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                                 start_new_session=True, env={**os.environ, "CI": "", "TF_IN_AUTOMATION": "1"})
+                                 start_new_session=True, env={**os.environ, "CI": "", "TF_IN_AUTOMATION": "1", **BROWSER_ENV})
             job["pid"] = p.pid
             for line in p.stdout:
                 job["lines"].append(line.rstrip("\n"))

@@ -25,3 +25,5 @@ deployment/**/build/
 # control panel runtime data
 control-panel/.history.json
 control-panel/.logs/
+control-panel/.panel.pid
+control-panel/.panel.log
