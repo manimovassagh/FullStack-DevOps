@@ -3,6 +3,10 @@ import { expect, type Page } from '@playwright/test'
 export class LoginPage {
   constructor(private readonly page: Page) {}
 
+  async open(next?: string) {
+    await this.page.goto(next ? `/login?next=${encodeURIComponent(next)}` : '/login')
+  }
+
   async signIn(user: string, password: string) {
     await this.page.getByLabel('Email').fill(user)
     await this.page.getByLabel('Password').fill(password)

@@ -1,13 +1,14 @@
-import { LogOut, Moon, Sprout, Sun } from 'lucide-react'
+import { LogIn, LogOut, Moon, Sprout, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { Link, Outlet } from 'react-router'
+import { Link, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '@/auth'
 import { Button } from '@/components/ui/button'
 
 export function Layout() {
   const { resolvedTheme, setTheme } = useTheme()
   const dark = resolvedTheme === 'dark'
-  const { user, logout } = useAuth()
+  const { user, status, logout } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <div className="min-h-svh bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,var(--color-accent),transparent)]">
@@ -20,13 +21,23 @@ export function Layout() {
             <span className="font-heading text-xl font-semibold tracking-tight">Plant Parent</span>
           </Link>
           <div className="flex items-center gap-1">
-          <span className="mr-2 hidden text-sm text-muted-foreground sm:inline" data-testid="whoami">
-            {user?.username}
-            {user?.admin && ' (admin)'}
-          </span>
-          <Button variant="ghost" size="sm" onClick={() => void logout()}>
-            <LogOut /> Sign out
-          </Button>
+          {status === 'signedIn' ? (
+            <>
+              <span className="mr-2 hidden text-sm text-muted-foreground sm:inline" data-testid="whoami">
+                {user?.username}
+                {user?.admin && ' (admin)'}
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => void logout().then(() => navigate('/'))}>
+                <LogOut /> Sign out
+              </Button>
+            </>
+          ) : (
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/login">
+                <LogIn /> Sign in
+              </Link>
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"

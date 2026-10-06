@@ -2,19 +2,20 @@ import { Link, Route, Routes } from 'react-router'
 import { Layout } from '@/components/Layout'
 import { useAuth } from '@/auth'
 import { Button } from '@/components/ui/button'
-import { GardenPage } from '@/pages/GardenPage'
+import { RequireAuth } from '@/components/RequireAuth'
+import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { PlantPage } from '@/pages/PlantPage'
 
 export default function App() {
   const { status } = useAuth()
   if (status === 'loading') return <div className="grid min-h-svh place-items-center text-muted-foreground">Loading…</div>
-  if (status === 'anonymous') return <LoginPage />
   return (
     <Routes>
+      <Route path="login" element={<LoginPage />} />
       <Route element={<Layout />}>
-        <Route index element={<GardenPage />} />
-        <Route path="plants/:id" element={<PlantPage />} />
+        <Route index element={<HomePage />} />
+        <Route path="plants/:id" element={<RequireAuth><PlantPage /></RequireAuth>} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

@@ -28,12 +28,24 @@ GIT       := git -C $(WORK) -c user.name=gitops -c user.email=gitops@local
 
 WAIT_TRIES ?= 72 # × 5 s
 
-.PHONY: init repos images push deploy kubeconfig secrets lint gitserver gitrepo argocd app release revert refresh status register up rollout plan check smoke health wait logs destroy forget
+.PHONY: init repos _repos images push deploy kubeconfig secrets lint gitserver gitrepo argocd app release revert refresh status register up rollout plan check smoke health wait logs destroy forget
 
 init:
 	terraform init
 
 repos: ## create the ECR repositories first, so images can be pushed before the cluster needs them
+	@# Right after an emulator restart Floci brings its stored ECR repositories back a few seconds late: retry once.
+	@$(MAKE) -s _repos || { sleep 8; $(MAKE) -s _repos; }
+
+_repos:
+	@# Floci keeps ECR repositories across a restart while everything else is lost. If one is still there but not in
+	@# this state, it is such a leftover: remove it so Terraform can create it again (the images are pushed right after).
+	@for svc in backend frontend; do \
+		terraform state show 'aws_ecr_repository.app["'$$svc'"]' >/dev/null 2>&1 && continue; \
+		$(AWS) ecr describe-repositories --repository-names plant-eks-gitops-$$svc >/dev/null 2>&1 || continue; \
+		echo "removing leftover ECR repository plant-eks-gitops-$$svc from an earlier emulator run"; \
+		$(AWS) ecr delete-repository --force --repository-name plant-eks-gitops-$$svc >/dev/null; \
+	done
 	terraform apply -auto-approve -target=aws_ecr_repository.app
 
 images: ## build both images locally as plant/<svc>:$(IMAGE_TAG) (CI builds them in a separate job)
