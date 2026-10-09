@@ -28,6 +28,10 @@ The other stages use the shared Floci 2.1.0 (port 4566, root `docker-compose.yml
 - Tokens carry `iss = http://localhost:4566/<pool>` (Floci's address inside its container), not the host port 4570: `var.cognito_issuer_base` sets it for the function's `COGNITO_ISSUER`.
 - The CloudFront 404 → `/index.html` rewrite above also hides the API's 404s, so `scripts/auth-smoke.sh` counts the SPA page as "refused" on Floci, as long as the other user's data is not in it. On AWS the CloudFront Function keeps API 404s as they are.
 
-## JWT authorizer
+## JWT authorizer (verified live 2026-10-10: everything passes)
 
-Floci (2.1.0 and the nightly) implements HTTP API JWT authorizers: the binary has `enforceJwtAuthorizer`, `JwtConfiguration` and the error "JWT authorizer has no configured issuer". The issuer is Floci's own address inside the container (`http://localhost:4566/<pool id>`), the same value written into the tokens' `iss` claim, so the gateway can fetch the pool's JWKS from itself. **Not verified live yet** (merged to fix forward): record here whether Floci accepts Cognito access tokens, which carry `client_id` instead of `aud`.
+`make up smoke check rollout` all pass on `nightly-10012026`: 10 gateway rules, the per-user rules, the API smoke, 10 browser tests with a real sign-in, no drift, a release goes live. Three Floci differences had to be handled:
+
+- **Signing keys from the issuer:** Floci's verifier fetches the pool's JWKS from the token issuer and accepts plain HTTP only for a *literal private IP* when `FLOCI_SECURITY_ALLOW_PRIVATE_JWT_TARGETS=true`. With the default issuer `http://localhost:4566/<pool>` every valid token failed with a silent 401 (debug log: "JWT OIDC discovery document must use HTTPS"). `compose.yaml` sets `FLOCI_HOSTNAME=127.0.0.1`, so tokens carry `iss = http://127.0.0.1:4566/<pool>`, and `cognito_issuer_base` matches it. The function compares that issuer but fetches its keys through `AWS_ENDPOINT_URL`, so it is unaffected.
+- **Route matching:** Floci takes the first route created that matches, not the most specific one, so a protected `ANY /api/{proxy+}` could swallow `POST /api/auth/login`. `api.tf` lists the app's routes so they never overlap.
+- **Access tokens:** Floci accepts `client_id` in place of `aud` (as AWS does), so the audience is the app client id.

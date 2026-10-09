@@ -57,9 +57,9 @@ variable "local_hostname" {
 }
 
 variable "cognito_issuer_base" {
-  description = "On Floci: the base URL Floci writes into the tokens' iss claim (its own address inside the container, port 4566). Not used on AWS."
+  description = "On Floci: the base URL Floci writes into the tokens' iss claim (FLOCI_HOSTNAME in compose.yaml, port 4566 inside the container). Not used on AWS."
   type        = string
-  default     = "http://localhost:4566"
+  default     = "http://127.0.0.1:4566"
 }
 
 variable "demo_users" {
