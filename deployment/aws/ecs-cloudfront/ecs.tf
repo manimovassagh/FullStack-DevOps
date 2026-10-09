@@ -14,7 +14,11 @@ resource "aws_cloudwatch_log_group" "app" {
 }
 
 locals {
-  image = { for k, r in aws_ecr_repository.app : k => "${r.repository_url}:${var.image_tag}" }
+  # Floci answers with repository URLs on its internal port (4566). This stage's Floci is published on another
+  # host port, and the Docker daemon that pulls the task images can only reach it there, so swap the port in.
+  # Real AWS: the repository URL as it is.
+  floci_host_port = regex(":([0-9]+)$", var.floci_endpoint)[0]
+  image           = { for k, r in aws_ecr_repository.app : k => "${var.on_floci ? replace(r.repository_url, "/:[0-9]+//", ":${local.floci_host_port}/") : r.repository_url}:${var.image_tag}" }
 
   log_configuration = {
     for k, g in aws_cloudwatch_log_group.app : k => {
