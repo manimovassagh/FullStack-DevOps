@@ -34,6 +34,7 @@ deployment/
 │   ├── eks-gitops/           ✅ Argo CD pulls the manifests from git
 │   ├── ecs-cognito/          ✅ ECS + Amazon Cognito sign-in (own app copies: /backend-auth, /frontend-auth)
 │   ├── ecs-alb-auth/         ✅ ECS + sign-in at the ALB (authenticate-cognito), unchanged app
+│   ├── serverless-gateway-auth/ ✅ serverless + Cognito, the token checked by API Gateway's JWT authorizer
 │   └── beanstalk/            dropped: Floci only stores Beanstalk metadata (see phase 5)
 │
 ├── azure/                    later: same idea, Azure services
@@ -81,6 +82,7 @@ Each stage folder looks the same inside:
 | eks-gitops | http://localhost:8095 |
 | ecs-cognito | http://localhost:8096 |
 | ecs-alb-auth | http://localhost:8097 (own Floci :4569) |
+| serverless-gateway-auth | http://plant-gw.localhost:4570 (own Floci) |
 | beanstalk (dropped) | – |
 
 **CI:** one workflow file per deployment family, each its own pipeline in the Actions tab and each run only when its paths change: [`ec2.yml`](../.github/workflows/ec2.yml) (classic-ec2: VMs, native artifacts), [`containers.yml`](../.github/workflows/containers.yml) (ecs + eks: both run the same images) and [`serverless.yml`](../.github/workflows/serverless.yml). Each later family (blue/green, GitOps, Azure, GCP …) adds its own file.
@@ -146,3 +148,7 @@ The ecs recipe plus Amazon Cognito (user pool, app client, `admin` group, demo u
 ### Authentication at the edge: `aws/ecs-alb-auth/` ✅
 
 The ecs recipe with sign-in moved out of the app: the ALB listener runs `authenticate-cognito` before it forwards. Pages without a session are redirected to the Cognito hosted login, `/api/*` calls get 401, and after sign-in the ALB keeps the session in its own cookie. The app is the unchanged `backend/` and `frontend/`. Compare it with `ecs-cognito`, where the Go API checks every token itself. Runs on its own nightly Floci (2.1.0 has no ALB authentication); on real AWS the listener must be HTTPS. Workflow `ecs-alb-auth.yml`. The shared smoke tests got two more optional hooks (`SMOKE_COOKIE_JAR`, `SMOKE_STORAGE_STATE`) and `hosted-login.mjs`.
+
+### Authentication at the gateway: `aws/serverless-gateway-auth/` ✅
+
+The serverless-cognito recipe with an API Gateway JWT authorizer: `GET /api/health` and `POST /api/auth/{proxy+}` stay open, everything else needs a valid Cognito access token at the gateway, so a bad token gets 401 without invoking the function. Same app (`backend-serverless-auth`, `frontend-auth`), which still checks the token as defence in depth. Workflow `serverless-gateway-auth.yml`.
