@@ -1,0 +1,20 @@
+# This stage's own Floci on :4571, so it touches neither the shared one (4566) nor the other stages' (4567-4570).
+#
+# Why a separate emulator: the pinned release (2.1.0) answers POST/PUT/DELETE sent through a CloudFront
+# distribution with an empty 405, and the API sits behind CloudFront here. The dated nightly forwards them.
+name: plant-ecs-cloudfront
+
+services:
+  floci:
+    image: floci/floci:nightly-10012026
+    ports:
+      - "4571:4566" # Floci API + CloudFront (the app: http://plant-cf.localhost:4571)
+      - "8098:80"   # the ALB itself, only to show that skipping CloudFront gets 403
+    environment:
+      FLOCI_NETWORK_SECURITY_GROUP_ENFORCEMENT_ENABLED: "true"
+      # ECS task containers join this compose network, so the ALB and the RDS proxy reach them.
+      FLOCI_SERVICES_ECS_DOCKER_NETWORK: plant-ecs-cloudfront_default
+      # CloudFront refuses custom origins that resolve to local addresses (SSRF guard); the ALB is local here.
+      FLOCI_SERVICES_CLOUDFRONT_ALLOWED_PRIVATE_ORIGIN_HOSTS: localhost
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
