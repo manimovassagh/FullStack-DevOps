@@ -1,0 +1,19 @@
+# This stage's own Floci on :4570, so it touches neither the shared one (4566) nor the other serverless ones (4567, 4568).
+#
+# Why a separate emulator: the pinned release answers POST/PUT/DELETE sent through a CloudFront
+# distribution with an empty 405. The dated nightly forwards them, which this stage needs (the API
+# is behind CloudFront). Pin a release here once one includes that fix.
+name: plant-serverless-gateway-auth
+
+services:
+  floci:
+    image: floci/floci:nightly-10012026
+    ports:
+      - "4570:4566"
+    environment:
+      # Lambda containers join the compose network, so they can reach RDS and S3 on Floci.
+      FLOCI_SERVICES_LAMBDA_DOCKER_NETWORK: plant-serverless-gateway-auth_default
+      # CloudFront refuses custom origins that resolve to local addresses (SSRF guard); API Gateway is local here.
+      FLOCI_SERVICES_CLOUDFRONT_ALLOWED_PRIVATE_ORIGIN_HOSTS: localhost
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
