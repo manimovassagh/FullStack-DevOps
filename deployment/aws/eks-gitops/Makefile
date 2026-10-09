@@ -20,9 +20,12 @@ FLOCI_NETWORK ?= fullstack-devops_default
 REGISTRY  := 000000000000.dkr.ecr.$(AWS_REGION).localhost:4566
 K         := kubectl -n plant
 ARGO_VERSION := v3.5.3
-# The "git remote": a bare repo on disk, served read-only over git:// by a git-daemon container on the compose network.
+# The "git remote": a bare repo inside a git-daemon container on the compose network, served over git://.
+# Argo CD reads it on the compose network; this machine pushes to it on 127.0.0.1:9418. The repo lives in the
+# container, not in a bind mount: in a CI job that itself runs in a container, a bind-mount path names a folder
+# on the Docker host that does not exist there, and the daemon would serve an empty directory.
 GITSRV    := plant-gitops-git
-GITDIR    := $(BUILD)/git
+GITURL    := git://127.0.0.1:9418/plant.git
 WORK      := $(BUILD)/work
 GIT       := git -C $(WORK) -c user.name=gitops -c user.email=gitops@local
 
@@ -85,19 +88,16 @@ lint: ## helm lint + render the chart with the values the repo's env/values.yaml
 	helm lint helm/plant --set backend.s3Bucket=lint,image.registry=lint
 	helm template plant helm/plant --set backend.s3Bucket=lint,image.registry=lint >/dev/null
 
-gitserver: ## start the git remote: a bare repo (build/git/plant.git) served over the git:// protocol on the compose network
-	@mkdir -p $(GITDIR)
-	@[ -d $(GITDIR)/plant.git ] || git init -q --bare -b main $(GITDIR)/plant.git
+gitserver: ## start the git remote: an empty bare repo (plant.git) in a git-daemon container, pushable over git://
 	@docker rm -f $(GITSRV) >/dev/null 2>&1 || true
-	@# Alpine's git-daemon package; safe.directory because the repo is owned by your host user, not by root in the container.
-	docker run -d --name $(GITSRV) --network $(FLOCI_NETWORK) -v "$(CURDIR)/$(GITDIR):/git:ro" alpine:3 sh -c \
-		"apk add --no-cache git git-daemon >/dev/null && git config --global --add safe.directory '*' \
-		&& exec git daemon --base-path=/git --export-all --reuseaddr --port=9418 --verbose /git" >/dev/null
+	docker run -d --name $(GITSRV) --network $(FLOCI_NETWORK) -p 127.0.0.1:9418:9418 alpine:3 sh -c \
+		"apk add --no-cache git git-daemon >/dev/null && git init -q --bare -b main /git/plant.git \
+		&& exec git daemon --base-path=/git --export-all --enable=receive-pack --reuseaddr --port=9418 --verbose /git" >/dev/null
 	@for i in $$(seq 1 60); do docker logs $(GITSRV) 2>&1 | grep -q 'Ready to rumble' && exit 0; sleep 1; done; \
 		echo "git daemon did not start:"; docker logs $(GITSRV); exit 1
 
 gitrepo: ## first commit: the chart plus env/values.yaml (image tags, bucket, role ARN from Terraform outputs)
-	rm -rf $(WORK) && git clone -q $(GITDIR)/plant.git $(WORK) 2>/dev/null
+	rm -rf $(WORK) && git clone -q $(GITURL) $(WORK) 2>/dev/null
 	mkdir -p $(WORK)/env && cp -R helm/plant $(WORK)/chart
 	@printf '%s\n' \
 		'# What runs in the cluster. Argo CD applies this with the chart; edit and push to release.' \
