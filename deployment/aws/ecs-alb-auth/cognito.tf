@@ -1,0 +1,63 @@
+# Sign-in at the load balancer: a Cognito user pool with a hosted login page (the domain) and one app
+# client that belongs to the ALB, not to the browser. The app behind the ALB never sees a password or a token
+# it has to check: the ALB signs people in and keeps the session in its own cookie.
+
+resource "aws_cognito_user_pool" "main" {
+  name                     = var.name
+  username_attributes      = ["email"]
+  auto_verified_attributes = ["email"]
+  mfa_configuration        = "OFF"
+  deletion_protection      = "INACTIVE"
+
+  password_policy {
+    minimum_length                   = 12
+    require_lowercase                = true
+    require_uppercase                = true
+    require_numbers                  = true
+    require_symbols                  = true
+    temporary_password_validity_days = 7
+  }
+
+  admin_create_user_config {
+    allow_admin_create_user_only = true
+  }
+}
+
+# The hosted UI: Cognito's own login page. The ALB sends visitors without a session here.
+resource "aws_cognito_user_pool_domain" "main" {
+  domain       = var.cognito_domain_prefix
+  user_pool_id = aws_cognito_user_pool.main.id
+}
+
+locals {
+  app_origin   = var.on_floci ? "http://localhost:${var.alb_host_port}" : var.public_url
+  callback_url = "${local.app_origin}/oauth2/idpresponse" # the ALB's own path; no app route needed
+}
+
+# A confidential client: the ALB keeps the secret and runs the authorization-code flow on the server side.
+# (ecs-cognito's client is public and has no secret, because the browser app uses it.)
+resource "aws_cognito_user_pool_client" "alb" {
+  name         = "${var.name}-alb"
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  generate_secret                      = true
+  allowed_oauth_flows_user_pool_client = true
+  allowed_oauth_flows                  = ["code"]
+  allowed_oauth_scopes                 = ["openid", "email"]
+  supported_identity_providers         = ["COGNITO"]
+  callback_urls                        = [local.callback_url]
+
+  prevent_user_existence_errors = "ENABLED"
+}
+
+resource "aws_cognito_user" "demo" {
+  for_each     = var.demo_users
+  user_pool_id = aws_cognito_user_pool.main.id
+  username     = each.key
+  password     = var.demo_password
+
+  attributes = {
+    email          = each.key
+    email_verified = "true"
+  }
+}

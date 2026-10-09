@@ -20,6 +20,8 @@ export default defineConfig({
     video: process.env.SMOKE_VIDEO === 'off' ? 'off' : process.env.CI ? { mode: 'on', size: { width: 1280, height: 800 } } : 'retain-on-failure',
     viewport: { width: 1280, height: 800 },
     launchOptions: { slowMo: process.env.CI ? 400 : 0 },
+    // SMOKE_STORAGE_STATE: a saved signed-in browser (hosted-login.mjs) for stages that sign in at the load balancer.
+    storageState: process.env.SMOKE_STORAGE_STATE || undefined,
   },
   // SMOKE_BROWSER_CHANNEL=chrome uses the Chrome installed on this machine instead of Playwright's download.
   projects: [{ name: stage, use: { ...devices['Desktop Chrome'], channel: process.env.SMOKE_BROWSER_CHANNEL || undefined } }],
