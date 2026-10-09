@@ -10,7 +10,12 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./dev/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    # The init script is inline (configs.postgres-init below), not a bind-mounted file: the local CI runs `docker compose`
+    # inside a job container, where ./dev/... names a path the Docker host does not have, and Docker mounted an empty
+    # directory instead ("init.sql: Is a directory").
+    configs:
+      - source: postgres-init
+        target: /docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U plant -d plant"]
       interval: 2s
@@ -45,3 +50,8 @@ services:
 
 volumes:
   pgdata:
+
+configs:
+  postgres-init:
+    content: |
+      CREATE DATABASE plant_test;
