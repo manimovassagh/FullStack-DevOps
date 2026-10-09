@@ -15,5 +15,8 @@ services:
       FLOCI_SERVICES_LAMBDA_DOCKER_NETWORK: plant-serverless-gateway-auth_default
       # CloudFront refuses custom origins that resolve to local addresses (SSRF guard); API Gateway is local here.
       FLOCI_SERVICES_CLOUDFRONT_ALLOWED_PRIVATE_ORIGIN_HOSTS: localhost
+      # The JWT authorizer fetches the pool's signing keys from the issuer URL, which is Floci itself (localhost).
+      # Floci's SSRF guard refuses private addresses by default, so every token failed closed with a silent 401.
+      FLOCI_SECURITY_ALLOW_PRIVATE_JWT_TARGETS: "true"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

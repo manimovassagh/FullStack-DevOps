@@ -32,8 +32,12 @@ resource "aws_apigatewayv2_authorizer" "cognito" {
   }
 }
 
-# Open routes: what a visitor needs before having a token. API Gateway picks the most specific match,
-# so these win over the catch-all below.
+# Routes never overlap, so exactly one matches each request. Real API Gateway would pick the most specific of
+# overlapping routes, but Floci picks the first one created (verified 2026-10-09: a protected "ANY /api/{proxy+}"
+# created first swallowed POST /api/auth/login). Listing the app's real paths also documents the API surface;
+# anything else gets the gateway's 404.
+
+# Open: what a visitor needs before having a token.
 resource "aws_apigatewayv2_route" "open" {
   for_each = toset([
     "GET /api/health",         # CloudFront and the smoke tests poll it
@@ -44,10 +48,16 @@ resource "aws_apigatewayv2_route" "open" {
   target    = "integrations/${aws_apigatewayv2_integration.api.id}"
 }
 
-# Everything else (plants, media, GET /api/auth/me) needs a valid token at the gateway.
+# Protected: a valid Cognito token at the gateway, or 401 before the function runs.
 resource "aws_apigatewayv2_route" "protected" {
+  for_each = toset([
+    "ANY /api/plants",
+    "ANY /api/plants/{proxy+}", # one plant, watering, its photos
+    "ANY /api/media/{proxy+}",  # a photo
+    "GET /api/auth/me",
+  ])
   api_id             = aws_apigatewayv2_api.main.id
-  route_key          = "ANY /api/{proxy+}"
+  route_key          = each.key
   target             = "integrations/${aws_apigatewayv2_integration.api.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
