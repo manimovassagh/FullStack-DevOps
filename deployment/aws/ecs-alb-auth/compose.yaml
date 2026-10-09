@@ -1,0 +1,18 @@
+# This stage's own Floci on :4569, so it touches neither the shared one (4566) nor the serverless ones (4567, 4568).
+#
+# Why a separate emulator: the pinned release (2.1.0) has no ALB authenticate-cognito action. The dated
+# nightly has it (listener action, hosted-UI round trip, AWSELBAuthSessionCookie). Pin a release once one has it.
+name: plant-ecs-alb-auth
+
+services:
+  floci:
+    image: floci/floci:nightly-10012026
+    ports:
+      - "4569:4566"
+      - "8097:80" # ALB listener → http://localhost:8097
+    environment:
+      FLOCI_NETWORK_SECURITY_GROUP_ENFORCEMENT_ENABLED: "true"
+      # ECS task containers join this compose network, so the ALB and the RDS proxy reach them.
+      FLOCI_SERVICES_ECS_DOCKER_NETWORK: plant-ecs-alb-auth_default
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

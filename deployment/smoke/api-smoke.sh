@@ -13,8 +13,9 @@ AWS=(aws --endpoint-url "${FLOCI_ENDPOINT:-http://localhost:4566}" --region us-e
 list_objects() {
   if [ -n "${SMOKE_LIST_OBJECTS:-}" ]; then "$SMOKE_LIST_OBJECTS" "$BUCKET" "$1"; else "${AWS[@]}" s3 ls "s3://$BUCKET/$1"; fi
 }
-# Stages with sign-in set SMOKE_AUTH_TOKEN (a Cognito access token): every request carries it.
-curl() { command curl ${SMOKE_AUTH_TOKEN:+-H "Authorization: Bearer $SMOKE_AUTH_TOKEN"} "$@"; }
+# Stages with sign-in set SMOKE_AUTH_TOKEN (a Cognito access token) or SMOKE_COOKIE_JAR (a session cookie
+# from a hosted login, e.g. an ALB with authenticate-cognito): every request carries it.
+curl() { command curl ${SMOKE_AUTH_TOKEN:+-H "Authorization: Bearer $SMOKE_AUTH_TOKEN"} ${SMOKE_COOKIE_JAR:+-b "$SMOKE_COOKIE_JAR"} "$@"; }
 pass() { printf '  ok   %s\n' "$*"; }
 fail() { printf '  FAIL %s\n' "$*"; exit 1; }
 json() { python3 -c "import sys,json;print(json.load(sys.stdin)$1)"; }

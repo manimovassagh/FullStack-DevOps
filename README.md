@@ -90,6 +90,7 @@ flowchart LR
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [ec2-asg](deployment/aws/ec2-asg/) | Launch templates + Auto Scaling groups, self-healing | :8093 |
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [ecs](deployment/aws/ecs/) | ECS Fargate + ALB + RDS | :8089 |
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [ecs-cognito](deployment/aws/ecs-cognito/) | ECS + Amazon Cognito sign-in, per-user data | :8096 |
+| ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [ecs-alb-auth](deployment/aws/ecs-alb-auth/) | ECS + sign-in at the load balancer (Cognito hosted UI), unchanged app | :8097 |
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [ecs-blue-green](deployment/aws/ecs-blue-green/) | Weighted ALB, canary, instant rollback | :8091 |
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [eks](deployment/aws/eks/) | Kubernetes with Kustomize | :8090 |
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [eks-helm](deployment/aws/eks-helm/) | The app as a Helm chart | :8094 |
@@ -108,6 +109,7 @@ flowchart LR
 | ec2-asg | launch templates and versions, Auto Scaling groups, ALB registration by the group, self-healing, rolling replacement |
 | ecs | images in ECR, task definitions, services, execution vs task roles, secrets injection |
 | ecs-cognito | user pools and app clients, JWT verification with JWKS, per-user data, an admin group, HttpOnly refresh cookies |
+| ecs-alb-auth | ALB authenticate-cognito, hosted login, a confidential app client, the ALB session cookie, auth with zero app changes |
 | ecs-blue-green | blue/green and canary releases, weighted target groups, a preview listener, instant rollback |
 | eks | cluster vs app layer, Kustomize, NodePort + ALB, `aws eks get-token` auth |
 | eks-helm | charts, values, releases and revisions, `helm upgrade --install`, `helm rollback` |

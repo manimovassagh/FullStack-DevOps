@@ -1,0 +1,280 @@
+# Pipeline for sign-in at the load balancer: ECS Fargate + an ALB that runs authenticate-cognito (Amazon Cognito
+# hosted login) before forwarding. The app is the repo's unchanged backend/ and frontend/: the ALB does all of the
+# sign-in. Runs on the stage's own Floci (a nightly with ALB authentication), on the runner (no AWS).
+#
+#   backend tests ─┐
+#                  ├─ build images ─┐
+#   frontend tests ┘                ├─ deploy + verify (ALB sign-in rules, smoke signed in, rollout) ─ summary
+#   IaC checks ─────────────────────┘
+name: "AWS · ECS + ALB sign-in"
+run-name: "AWS · ECS + ALB sign-in · ${{ github.event.pull_request.title || github.ref_name }}"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - backend/**
+      - frontend/**
+      - deployment/aws/ecs-alb-auth/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - .github/workflows/ecs-alb-auth.yml
+  pull_request:
+    paths:
+      - backend/**
+      - frontend/**
+      - deployment/aws/ecs-alb-auth/**
+      - deployment/smoke/**
+      - Makefile
+      - docker-compose.yml
+      - dev/**
+      - .github/workflows/ecs-alb-auth.yml
+  workflow_dispatch:
+
+# Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.
+# Uncomment if you like: superseded runs of the same branch get cancelled (saves runner minutes,
+# but a new push can kill a run that is still in progress).
+# concurrency:
+#   group: ecs-alb-auth-${{ github.ref }}
+#   cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22
+  TERRAFORM_VERSION: 1.14.6
+  IMAGE_TAG: ci-${{ github.sha }}
+
+jobs:
+  # ── Stage 1: tests and static checks (parallel) ───────────────────────────
+  backend:
+    name: Backend · vet + unit + integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Start Postgres + Floci (integration test dependencies)
+        run: make up
+      - name: go vet
+        working-directory: backend
+        run: go vet ./...
+      - name: Unit + integration tests (race detector, against Postgres + Floci S3)
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgres://plant:plant@localhost:5432/plant_test?sslmode=disable
+          AWS_ENDPOINT_URL: http://localhost:4566
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_REGION: us-east-1
+          S3_BUCKET: plant-media
+        run: go test -race -count=1 ./...
+
+  frontend:
+    name: Frontend · lint + typecheck + unit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Lint (oxlint)
+        run: npm run lint
+      - name: Typecheck
+        run: npx tsc -b
+      - name: Unit tests (Vitest)
+        run: npm test
+
+  iac:
+    name: IaC · ecs-alb-auth
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: deployment/aws/ecs-alb-auth
+    env:
+      TF_VAR_image_tag: validate-only
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+      - name: terraform validate
+        run: terraform init -backend=false -input=false >/dev/null && terraform validate
+      - uses: terraform-linters/setup-tflint@v6
+      - name: tflint (terraform + aws rulesets)
+        env:
+          GITHUB_TOKEN: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+        run: tflint --config ../../.tflint.hcl --init && tflint --config ../../.tflint.hcl --format compact
+      - name: trivy IaC security scan (HIGH/CRITICAL, accepted findings in .trivyignore)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          skip-setup-trivy: ${{ github.server_url != 'https://github.com' }}
+          scan-type: config
+          scan-ref: deployment/aws/ecs-alb-auth
+          severity: HIGH,CRITICAL
+          trivyignores: deployment/.trivyignore
+          exit-code: "1"
+      - name: shellcheck
+        working-directory: deployment
+        run: shellcheck smoke/*.sh aws/ecs-alb-auth/scripts/*.sh
+
+  # ── Stage 2: build once (only after tests pass) ───────────────────────────
+  build-images:
+    name: Build · container images
+    needs: [backend, frontend]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build backend and frontend images
+        run: |
+          docker buildx build --load -t "plant/backend:${IMAGE_TAG}" backend
+          docker buildx build --load -t "plant/frontend:${IMAGE_TAG}" frontend
+          docker images --format 'table {{.Repository}}:{{.Tag}}\t{{.Size}}' | grep plant/ >> "$GITHUB_STEP_SUMMARY"
+      - name: trivy image scan backend (fixable HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          skip-setup-trivy: ${{ github.server_url != 'https://github.com' }}
+          scan-type: image
+          image-ref: plant/backend:${{ env.IMAGE_TAG }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: trivy image scan frontend
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: plant/frontend:${{ env.IMAGE_TAG }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          skip-setup-trivy: true
+      - name: Save images
+        run: docker save "plant/backend:${IMAGE_TAG}" "plant/frontend:${IMAGE_TAG}" | gzip > images.tar.gz
+      - uses: actions/upload-artifact@v7
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: images
+          path: images.tar.gz
+          retention-days: 3
+      - uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
+        with:
+          name: images
+          path: images.tar.gz
+          retention-days: 3
+
+  # ── Stage 3: deploy to Floci and verify ───────────────────────────────────
+  deploy:
+    name: Deploy+verify · ecs-alb-auth
+    needs: [build-images, iac]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: deployment/aws/ecs-alb-auth
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: deployment/smoke/package-lock.json
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - uses: actions/download-artifact@v8
+        if: ${{ github.server_url == 'https://github.com' }}
+        with:
+          name: images
+          path: .
+      - uses: christopherhx/gitea-download-artifact@v4
+        if: ${{ github.server_url != 'https://github.com' }}
+        with:
+          name: images
+          path: .
+      - name: Load images from the build job
+        run: gunzip -c "$GITHUB_WORKSPACE/images.tar.gz" | docker load
+      - name: Start this stage's Floci (a nightly with ALB authentication, :4569)
+        run: make floci
+      - name: "Deploy (push to ECR, terraform apply: Cognito user pool + hosted UI + the ECS stack behind an authenticating ALB)"
+        run: make init && make push deploy
+      - name: "Verify: ALB targets healthy"
+        run: make wait
+      - name: "Verify: idempotent (plan shows no changes)"
+        run: make check
+      - name: "Verify: ALB sign-in rules + API smoke + browser tests signed in through the hosted login"
+        env:
+          CI: "true"
+        run: make smoke
+      - name: "Verify: rolling deploy (new tag → new revisions, healthy, API smoke with the session from before)"
+        run: make rollout
+      - name: Diagnostics
+        if: failure()
+        run: |
+          make -s health || true
+          make -s logs || true
+          docker compose logs floci | grep -v ContainerLogStreamer | tail -150
+      - name: Upload e2e recording (Playwright video, screenshots, report)
+        uses: actions/upload-artifact@v7
+        if: ${{ always() && github.server_url == 'https://github.com' }}
+        with:
+          name: e2e-recording-ecs-alb-auth
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Upload e2e recording (Playwright video, screenshots, report)
+        uses: christopherhx/gitea-upload-artifact@v4
+        if: ${{ always() && github.server_url != 'https://github.com' }}
+        with:
+          name: e2e-recording-ecs-alb-auth
+          path: |
+            deployment/smoke/test-results
+            deployment/smoke/playwright-report
+          if-no-files-found: warn
+      - name: Destroy
+        if: always()
+        run: make destroy || true; docker compose down || true
+      - name: "Verify: teardown left nothing running"
+        run: |
+          left=$(docker ps --format '{{.Names}}' | grep -E '^floci-(ecs|rds)' || true)
+          [ -z "$left" ] || { echo "still running: $left"; exit 1; }
+
+  # ── Stage 4: one result for this workflow ─────────────────────────────────
+  summary:
+    name: ECS + ALB sign-in summary
+    needs: [backend, frontend, iac, build-images, deploy]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          {
+            echo "## ECS + ALB sign-in summary"
+            echo "| job | result |"
+            echo "|---|---|"
+            echo "$RESULTS" | jq -r 'to_entries[] | "| \(.key) | \(if .value.result == "success" then "✅" else "❌" end) \(.value.result) |"'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' >/dev/null

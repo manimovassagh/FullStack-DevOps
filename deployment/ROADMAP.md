@@ -33,6 +33,7 @@ deployment/
 │   ├── eks-helm/             ✅ same app as a Helm chart
 │   ├── eks-gitops/           ✅ Argo CD pulls the manifests from git
 │   ├── ecs-cognito/          ✅ ECS + Amazon Cognito sign-in (own app copies: /backend-auth, /frontend-auth)
+│   ├── ecs-alb-auth/         ✅ ECS + sign-in at the ALB (authenticate-cognito), unchanged app
 │   └── beanstalk/            dropped: Floci only stores Beanstalk metadata (see phase 5)
 │
 ├── azure/                    later: same idea, Azure services
@@ -79,6 +80,7 @@ Each stage folder looks the same inside:
 | eks-helm | http://localhost:8094 |
 | eks-gitops | http://localhost:8095 |
 | ecs-cognito | http://localhost:8096 |
+| ecs-alb-auth | http://localhost:8097 (own Floci :4569) |
 | beanstalk (dropped) | – |
 
 **CI:** one workflow file per deployment family, each its own pipeline in the Actions tab and each run only when its paths change: [`ec2.yml`](../.github/workflows/ec2.yml) (classic-ec2: VMs, native artifacts), [`containers.yml`](../.github/workflows/containers.yml) (ecs + eks: both run the same images) and [`serverless.yml`](../.github/workflows/serverless.yml). Each later family (blue/green, GitOps, Azure, GCP …) adds its own file.
@@ -140,3 +142,7 @@ AWS is the popular one, so the other two clouds get only the most common contain
 ### Authentication and authorization: `aws/ecs-cognito/` ✅
 
 The ecs recipe plus Amazon Cognito (user pool, app client, `admin` group, demo users). The app gets its own copies, `backend-auth/` (JWT verification against the pool's JWKS, owner-scoped queries, sign-in endpoints) and `frontend-auth/` (login page, in-memory access token, HttpOnly refresh cookie); the shared `backend/` and `frontend/` are untouched. Workflow `ecs-cognito.yml`. The shared smoke tests got two optional hooks (`SMOKE_AUTH_TOKEN`, `SMOKE_LOGIN_USER`), and the Playwright suite was reorganised into page objects, fixtures and one spec per feature.
+
+### Authentication at the edge: `aws/ecs-alb-auth/` ✅
+
+The ecs recipe with sign-in moved out of the app: the ALB listener runs `authenticate-cognito` before it forwards. Pages without a session are redirected to the Cognito hosted login, `/api/*` calls get 401, and after sign-in the ALB keeps the session in its own cookie. The app is the unchanged `backend/` and `frontend/`. Compare it with `ecs-cognito`, where the Go API checks every token itself. Runs on its own nightly Floci (2.1.0 has no ALB authentication); on real AWS the listener must be HTTPS. Workflow `ecs-alb-auth.yml`. The shared smoke tests got two more optional hooks (`SMOKE_COOKIE_JAR`, `SMOKE_STORAGE_STATE`) and `hosted-login.mjs`.
