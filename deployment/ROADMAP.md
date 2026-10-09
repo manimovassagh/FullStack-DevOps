@@ -26,6 +26,7 @@ deployment/
 ├── aws/
 │   ├── classic-ec2/          ✅ VMs: EC2 + ALB + UserData/systemd
 │   ├── ecs/                  ✅ containers: ECS Fargate + ALB
+│   ├── ecs-cloudfront/       ✅ React on S3 + CloudFront, API on ECS behind an ALB only CloudFront may use
 │   ├── eks/                  ✅ Kubernetes: EKS + Kustomize + ALB
 │   ├── ec2-asg/              ✅ VMs done right: Launch Template + Auto Scaling Group
 │   ├── serverless/           ✅ Lambda + API Gateway + S3 + CloudFront (own Go project: /backend-serverless)
@@ -74,6 +75,7 @@ Each stage folder looks the same inside:
 |---|---|
 | classic-ec2 | http://localhost:8088 |
 | ecs | http://localhost:8089 |
+| ecs-cloudfront | http://plant-cf.localhost:4571 (own Floci; ALB :8098 answers 403) |
 | eks | http://localhost:8090 |
 | ecs-blue-green | http://localhost:8091 (preview: 8092) |
 | ec2-asg | http://localhost:8093 |
@@ -152,3 +154,7 @@ The ecs recipe with sign-in moved out of the app: the ALB listener runs `authent
 ### Authentication at the gateway: `aws/serverless-gateway-auth/` ✅
 
 The serverless-cognito recipe with an API Gateway JWT authorizer: `GET /api/health` and `POST /api/auth/{proxy+}` stay open, everything else needs a valid Cognito access token at the gateway, so a bad token gets 401 without invoking the function. Same app (`backend-serverless-auth`, `frontend-auth`), which still checks the token as defence in depth. Workflow `serverless-gateway-auth.yml`.
+
+### The common SPA layout: `aws/ecs-cloudfront/` ✅
+
+The React build in a private S3 bucket and the API on ECS, both behind one CloudFront distribution (`/*` → S3, cached; `/api/*` → ALB, never cached). The ALB's default action is a fixed 403; it forwards only requests with the secret header CloudFront adds (and on real AWS only from CloudFront's managed prefix list). No frontend container. Own nightly Floci (:4571) because 2.1.0 drops POST/PUT/DELETE through CloudFront. Workflow `ecs-cloudfront.yml`.

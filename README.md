@@ -89,6 +89,7 @@ flowchart LR
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [classic-ec2](deployment/aws/classic-ec2/) | EC2 + ALB + RDS, systemd, artifacts in S3 | :8088 |
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [ec2-asg](deployment/aws/ec2-asg/) | Launch templates + Auto Scaling groups, self-healing | :8093 |
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [ecs](deployment/aws/ecs/) | ECS Fargate + ALB + RDS | :8089 |
+| ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [ecs-cloudfront](deployment/aws/ecs-cloudfront/) | React on S3 + CloudFront, API on ECS behind an ALB only CloudFront may use | :4571 |
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [ecs-cognito](deployment/aws/ecs-cognito/) | ECS + Amazon Cognito sign-in, per-user data | :8096 |
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [ecs-alb-auth](deployment/aws/ecs-alb-auth/) | ECS + sign-in at the load balancer (Cognito hosted UI), unchanged app | :8097 |
 | ![AWS](https://img.shields.io/badge/-AWS-FF9900?logo=amazonwebservices&logoColor=white) | [serverless-gateway-auth](deployment/aws/serverless-gateway-auth/) | Serverless + Cognito, token checked by API Gateway before the Lambda | :4570 |
@@ -109,6 +110,7 @@ flowchart LR
 | classic-ec2 | public/private subnets, security groups, EC2 UserData + systemd, instance profiles, Secrets Manager |
 | ec2-asg | launch templates and versions, Auto Scaling groups, ALB registration by the group, self-healing, rolling replacement |
 | ecs | images in ECR, task definitions, services, execution vs task roles, secrets injection |
+| ecs-cloudfront | CloudFront with two origins, cache behaviours, origin access control, locking an ALB to CloudFront, frontend releases without containers |
 | ecs-cognito | user pools and app clients, JWT verification with JWKS, per-user data, an admin group, HttpOnly refresh cookies |
 | ecs-alb-auth | ALB authenticate-cognito, hosted login, a confidential app client, the ALB session cookie, auth with zero app changes |
 | serverless-gateway-auth | API Gateway JWT authorizers, open vs protected routes, rejecting bad tokens before the function runs |

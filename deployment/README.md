@@ -9,6 +9,7 @@ The AWS stages run **locally on [Floci](https://floci.io)**, so no cloud account
 |---|---|---|
 | [classic-ec2](aws/classic-ec2/) | VPC + ALB + EC2 + RDS + S3 | public/private subnets, security groups, EC2 UserData + systemd, IAM instance profiles, Secrets Manager |
 | [ecs](aws/ecs/) | ECS Fargate + ALB + RDS + S3 | Docker images in ECR, task definitions, services, execution vs task roles, secrets injection |
+| [ecs-cloudfront](aws/ecs-cloudfront/) | CloudFront + S3 (React) + ALB + ECS Fargate (API) + RDS | the most common SPA + container API layout: two origins, cache behaviours, origin access control, an ALB that only answers CloudFront (secret header, prefix list), frontend releases as `s3 sync` + invalidation |
 | [eks](aws/eks/) | EKS (Kubernetes) + ALB + RDS + S3 | cluster vs app layer (Terraform + kubectl/Kustomize), node groups, NodePort + ALB, IRSA, kubectl auth with `aws eks get-token` |
 | [eks-helm](aws/eks-helm/) | EKS + the app as a Helm chart | charts, values, releases and revisions, `helm upgrade --install`, `helm rollback`, templating vs patching |
 | [ec2-asg](aws/ec2-asg/) | EC2 behind Auto Scaling Groups | launch templates and versions, Auto Scaling Groups, ALB registration by the group, self-healing, rolling replacement (instance refresh), target-tracking policies |
