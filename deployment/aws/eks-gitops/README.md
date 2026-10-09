@@ -10,7 +10,7 @@ The same Kubernetes platform as [`../eks`](../eks) and [`../eks-helm`](../eks-he
  Browser ─► ALB localhost:8095 ─► NodePorts ─► pods
 ```
 
-The "git remote" here is a bare repo inside a `git daemon` container on the compose network (you push to it on `git://127.0.0.1:9418/plant.git`), so the whole loop works offline with no GitHub token. On a real setup it is a GitHub/GitLab repo.
+The "git remote" here is a bare repo inside a `git daemon` container on the compose network (read-only for the network; you push through `docker exec`), so the whole loop works offline with no GitHub token. On a real setup it is a GitHub/GitLab repo.
 
 ## Run it
 
