@@ -1,8 +1,9 @@
 # Floci only: Floci stores the listener's authenticate-cognito actions but never runs them (FLOCI-NOTES.md),
 # so here an oauth2-proxy task does the ALB's sign-in job with the same Cognito pool, client and rules:
 #
-#   browser ─► ALB :80 ─► oauth2-proxy :4180 ─► ALB :81 (inside Floci) ─┬─ /api/* → backend
-#                          │                                             └─ /*     → frontend
+#   browser ─► ALB :80 ─► oauth2-proxy :4180 ─► ALB :81 (inside Floci) ─┬─ /api/*         → backend
+#                          │                                             ├─ /cognito-idp/*  → frontend nginx → Floci (styled login)
+#                          │                                             └─ /*              → frontend
 #                          ├─ GET anything → passed through, signed in or not
 #                          ├─ POST/PUT/PATCH/DELETE without a session → 401 on /api/*
 #                          └─ /oauth2/start → hosted login → /oauth2/callback → session cookie
@@ -71,7 +72,7 @@ resource "aws_lb_listener_rule" "internal_api" {
 locals {
   signout_redirects = var.on_floci ? {
     signout   = { priority = 5, host = "localhost", port = var.alb_host_port, path = "/oauth2/sign_out", query = "rd=%2Fsignedout" }
-    signedout = { priority = 6, host = "localhost", port = tonumber(local.floci_host_port), path = "/cognito-idp/logout", query = "client_id=${aws_cognito_user_pool_client.alb.id}&logout_uri=${urlencode("${local.app_origin}/")}" }
+    signedout = { priority = 6, host = "localhost", port = var.alb_host_port, path = "/cognito-idp/logout", query = "client_id=${aws_cognito_user_pool_client.alb.id}&logout_uri=${urlencode("${local.app_origin}/")}" }
   } : {}
 }
 
@@ -177,7 +178,7 @@ resource "aws_ecs_task_definition" "proxy" {
       # login on this Floci's host port; the proxy redeems codes and fetches keys inside the compose network.
       "--skip-oidc-discovery=true",
       "--oidc-issuer-url=${local.floci_issuer}",
-      "--login-url=${var.floci_endpoint}/cognito-idp/oauth2/authorize",
+      "--login-url=${local.app_origin}/cognito-idp/oauth2/authorize", # Floci's login page, styled (signin/nginx.conf)
       "--redeem-url=${local.floci_internal}/cognito-idp/oauth2/token",
       "--oidc-jwks-url=${local.floci_internal}/${aws_cognito_user_pool.main.id}/.well-known/jwks.json",
       "--redirect-url=${local.app_origin}/oauth2/callback",
@@ -188,6 +189,7 @@ resource "aws_ecs_task_definition" "proxy" {
       # The rules alb.tf gives the real listener: reads are open, changes need a session (401 on the API).
       "--skip-auth-route=GET=^/",
       "--skip-auth-route=HEAD=^/",
+      "--skip-auth-route=POST=^/cognito-idp/login$", # the login form itself is posted before there is a session
       "--api-route=^/api/",
     ]
     secrets = [
