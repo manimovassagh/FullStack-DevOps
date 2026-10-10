@@ -63,3 +63,22 @@ resource "aws_cognito_user" "demo" {
     email_verified = "true"
   }
 }
+
+# Real AWS: the hosted login in Plant Parent colours (classic hosted UI; only these -customizable classes are
+# allowed). Floci has no hosted-UI branding; there the frontend serves Floci's login page with signin/signin.css.
+resource "aws_cognito_user_pool_ui_customization" "brand" {
+  count        = var.on_floci ? 0 : 1
+  user_pool_id = aws_cognito_user_pool_domain.main.user_pool_id
+  client_id    = aws_cognito_user_pool_client.alb.id
+  css          = <<-CSS
+    .background-customizable { background-color: #f6faf6; }
+    .banner-customizable { background-color: #f6faf6; padding: 24px 0 8px; }
+    .label-customizable { font-weight: 500; color: #1f2d24; }
+    .textDescription-customizable { color: #5b6b60; }
+    .inputField-customizable { border-radius: 12px; border: 1px solid #d9e5dc; height: 44px; }
+    .inputField-customizable:focus { border-color: #16a34a; }
+    .submitButton-customizable { background-color: #16a34a; border-radius: 999px; height: 46px; font-weight: 600; }
+    .submitButton-customizable:hover { background-color: #15803d; }
+    .errorMessage-customizable { color: #b91c1c; background-color: #fef2f2; border: 0; border-radius: 10px; }
+  CSS
+}
