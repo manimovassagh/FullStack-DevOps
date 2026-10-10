@@ -93,11 +93,11 @@ login: ## sign in through the hosted login page as alice and save the ALB sessio
 	cd $(SMOKE) && npm ci --silent && { [ -n "$$SMOKE_BROWSER_CHANNEL" ] || npx playwright install chromium >/dev/null; } \
 		&& SMOKE_LOGIN_PATH='/oauth2/start?rd=/' node hosted-login.mjs "$$(cd $(CURDIR) && terraform output -raw app_url)" alice@plant.example 'Plant-Parent-2026!' $(SESSION)
 
-smoke: login ## who the ALB lets through, the shared API smoke and the browser tests, all signed in as alice
-	scripts/auth-rules.sh "$(URL)" $(SESSION)/cookies.txt
+smoke: login ## the shared API smoke and browser tests signed in as alice, then who gets through (ends with sign out)
 	SMOKE_COOKIE_JAR=$(SESSION)/cookies.txt $(SMOKE)/api-smoke.sh "$(URL)" "$$(terraform output -raw media_bucket)"
 	cd $(SMOKE) && SMOKE_STORAGE_STATE=$(SESSION)/state.json SMOKE_STAGE=ecs-alb-auth \
 		SMOKE_BASE_URL="$$(cd $(CURDIR) && terraform output -raw app_url)" npx playwright test
+	scripts/auth-rules.sh "$(URL)" $(SESSION)/cookies.txt # last: it signs the session out
 
 health: ## target health of the frontend, backend and sign-in proxy target groups
 	@for tg in backend frontend proxy; do echo "$$tg:"; $(AWS) elbv2 describe-target-health \
