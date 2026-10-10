@@ -34,4 +34,13 @@ id=$(curl -sf -b "$JAR" -X POST "$BASE/api/plants" -H 'content-type: application
   && [ -n "$id" ] && pass "signed in: create → saved" || fail "signed-in create refused"
 [ "$(code -b "$JAR" -X DELETE "$BASE/api/plants/$id")" = 204 ] && pass "signed in: delete → 204" || fail "signed-in delete refused"
 
+# --- sign out (last: it ends the session in the jar). Both sessions go: the app's cookie and the hosted
+# login's, or the next "Sign in" would come straight back without the form.
+end=$(curl -s -L -b "$JAR" -c "$JAR" -o /dev/null -w '%{url_effective}' "$BASE/signout")
+[ "$end" = "$BASE/" ] && pass "sign out → back on the app" || fail "sign out ended at $end"
+[ "$(code -b "$JAR" -X POST "$BASE/api/plants" -H 'content-type: application/json' -d "$new_plant")" = 401 ] \
+  && pass "after sign out: create → 401" || fail "session still works after sign out"
+again=$(curl -s -L -b "$JAR" -o /dev/null -w '%{url_effective}' "$BASE/oauth2/start?rd=/")
+[[ $again == *"/login"* ]] && pass "after sign out: Sign in shows the login form again" || fail "signed in again without the form ($again)"
+
 echo "AUTH RULES PASSED"

@@ -2,7 +2,7 @@
 // this script only shows it and sends people to the hosted login when they need it.
 //   GET  /oauth2/userinfo → 200 {email} signed in, 401 not
 //   GET  /oauth2/start?rd=<path> → hosted login, then back to <path>
-//   GET  /oauth2/sign_out → session cookie removed
+//   GET  /signout → session cookie and the hosted login's session removed, back on the app
 ;(() => {
   const here = () => location.pathname + location.search
   const signIn = () => location.assign('/oauth2/start?rd=' + encodeURIComponent(here()))
@@ -15,12 +15,23 @@
     const text = (b.getAttribute('aria-label') || b.textContent || '').trim()
     return /^(add plant|water |delete |upload)/i.test(text)
   }
+  // A click before /oauth2/userinfo has answered waits for it, then goes ahead (signed in) or to the login.
+  let known = false
+  let ready
+  const replayed = new WeakSet()
   document.addEventListener('click', (e) => {
-    if (!user && e.target instanceof Element && isChange(e.target)) {
-      e.preventDefault()
-      e.stopPropagation()
-      signIn()
-    }
+    const el = e.target
+    if (user || !(el instanceof Element) || !isChange(el)) return
+    if (replayed.has(e)) return
+    e.preventDefault()
+    e.stopPropagation()
+    if (known) return signIn()
+    ready.then(() => {
+      if (!user) return signIn()
+      const again = new MouseEvent('click', { bubbles: true, cancelable: true })
+      replayed.add(again)
+      el.dispatchEvent(again)
+    })
   }, true)
 
   // Anything that still reaches the API without a session (401) also goes to the login.
@@ -45,7 +56,7 @@
       who.textContent = user.email || 'Signed in'
       who.style.cssText = 'font:14px system-ui,sans-serif;opacity:.75'
       const out = document.createElement('a')
-      out.href = '/oauth2/sign_out?rd=' + encodeURIComponent('/')
+      out.href = '/signout' // the load balancer chains the app's and the hosted login's sign-out
       out.textContent = 'Sign out'
       out.style.cssText = style + 'background:transparent;color:inherit;text-decoration:none'
       box.append(who, out)
@@ -66,9 +77,9 @@
   }
   new MutationObserver(mount).observe(document.body, { childList: true, subtree: true })
 
-  realFetch('/oauth2/userinfo', { credentials: 'same-origin' })
+  ready = realFetch('/oauth2/userinfo', { credentials: 'same-origin' })
     .then((r) => (r.ok ? r.json() : null))
     .then((u) => (u && u.email ? u : null)) // the open GET route answers {} without a session
     .catch(() => null)
-    .then((u) => { user = u; render(); mount() })
+    .then((u) => { user = u; known = true; render(); mount() })
 })()

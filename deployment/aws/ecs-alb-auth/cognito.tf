@@ -47,6 +47,7 @@ resource "aws_cognito_user_pool_client" "alb" {
   allowed_oauth_scopes                 = ["openid", "email"]
   supported_identity_providers         = ["COGNITO"]
   callback_urls                        = [local.callback_url]
+  logout_urls                          = ["${local.app_origin}/"] # where the hosted UI's /logout may send people back
 
   prevent_user_existence_errors = "ENABLED"
 }
