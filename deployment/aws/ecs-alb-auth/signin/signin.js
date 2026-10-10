@@ -2,7 +2,7 @@
 // this script only shows it and sends people to the hosted login when they need it.
 //   GET  /oauth2/userinfo → 200 {email} signed in, 401 not
 //   GET  /oauth2/start?rd=<path> → hosted login, then back to <path>
-//   GET  /oauth2/sign_out → session cookie removed
+//   GET  /signout → session cookie and the hosted login's session removed, back on the app
 ;(() => {
   const here = () => location.pathname + location.search
   const signIn = () => location.assign('/oauth2/start?rd=' + encodeURIComponent(here()))
@@ -45,7 +45,7 @@
       who.textContent = user.email || 'Signed in'
       who.style.cssText = 'font:14px system-ui,sans-serif;opacity:.75'
       const out = document.createElement('a')
-      out.href = '/oauth2/sign_out?rd=' + encodeURIComponent('/')
+      out.href = '/signout' // the load balancer chains the app's and the hosted login's sign-out
       out.textContent = 'Sign out'
       out.style.cssText = style + 'background:transparent;color:inherit;text-decoration:none'
       box.append(who, out)

@@ -64,6 +64,41 @@ resource "aws_lb_listener_rule" "internal_api" {
   }
 }
 
+# Sign out = two sessions: the proxy's cookie and the hosted login's own cookie, which would otherwise sign the
+# next "Sign in" straight back in without the form. Two hops, because a redirect's query is at most 128 characters:
+#   /signout   → /oauth2/sign_out?rd=/signedout   (proxy cookie gone)
+#   /signedout → hosted UI /logout → the app      (hosted-login cookie gone)
+locals {
+  signout_redirects = var.on_floci ? {
+    signout   = { priority = 5, host = "localhost", port = var.alb_host_port, path = "/oauth2/sign_out", query = "rd=%2Fsignedout" }
+    signedout = { priority = 6, host = "localhost", port = tonumber(local.floci_host_port), path = "/cognito-idp/logout", query = "client_id=${aws_cognito_user_pool_client.alb.id}&logout_uri=${urlencode("${local.app_origin}/")}" }
+  } : {}
+}
+
+resource "aws_lb_listener_rule" "internal_signout" {
+  for_each     = local.signout_redirects
+  listener_arn = aws_lb_listener.internal[0].arn
+  priority     = each.value.priority
+
+  condition {
+    path_pattern {
+      values = ["/${each.key}"]
+    }
+  }
+
+  action {
+    type = "redirect"
+    redirect {
+      protocol    = "HTTP"
+      host        = each.value.host
+      port        = tostring(each.value.port)
+      path        = each.value.path
+      query       = each.value.query
+      status_code = "HTTP_302"
+    }
+  }
+}
+
 resource "aws_lb_target_group" "proxy" {
   count       = local.proxy
   name        = "${var.name}-proxy"
