@@ -362,6 +362,136 @@ html[data-theme="mocha"] {
     --glass-line: oklch(1 0 0 / 8%);
     --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
 }
+/* Neovim colorschemes: the plugins' own palettes (background, sidebar, float, text, comment, two accents). */
+html[data-theme="tokyonight"] { /* Tokyo Night · folke/tokyonight.nvim */
+    --background: #1a1b26; --foreground: #c0caf5; --card: #24283b; --card-foreground: #c0caf5;
+    --popover: #24283b; --popover-foreground: #c0caf5;
+    --muted: color-mix(in oklab, #c0caf5 7%, #24283b); --muted-foreground: #9aa5ce;
+    --secondary: color-mix(in oklab, #c0caf5 8%, #24283b); --secondary-foreground: #c0caf5;
+    --accent: color-mix(in oklab, #7aa2f7 14%, #24283b); --accent-foreground: #c0caf5;
+    --border: color-mix(in oklab, #c0caf5 11%, transparent); --input: color-mix(in oklab, #c0caf5 15%, transparent);
+    --sidebar: #16161e;
+    --brand-1: #7aa2f7; --brand-2: #bb9af7; --brand-ink: #0f1429; --brand-text: #7aa2f7;
+    --brand-soft: color-mix(in oklab, #7aa2f7 15%, transparent); --brand-ring: color-mix(in oklab, #7aa2f7 35%, transparent);
+    --primary: #7aa2f7; --primary-foreground: #0f1429; --ring: #7aa2f7;
+    --glow-a: color-mix(in oklab, #7aa2f7 16%, transparent); --glow-b: color-mix(in oklab, #bb9af7 14%, transparent);
+    --glass-top: color-mix(in oklab, #24283b 94%, #ffffff); --glass-bottom: color-mix(in oklab, #24283b 90%, transparent);
+    --glass-line: oklch(1 0 0 / 8%);
+    --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
+}
+html[data-theme="kanagawa"] { /* Kanagawa · rebelot/kanagawa.nvim */
+    --background: #1f1f28; --foreground: #dcd7ba; --card: #2a2a37; --card-foreground: #dcd7ba;
+    --popover: #2a2a37; --popover-foreground: #dcd7ba;
+    --muted: color-mix(in oklab, #dcd7ba 7%, #2a2a37); --muted-foreground: #a8a48f;
+    --secondary: color-mix(in oklab, #dcd7ba 8%, #2a2a37); --secondary-foreground: #dcd7ba;
+    --accent: color-mix(in oklab, #7e9cd8 14%, #2a2a37); --accent-foreground: #dcd7ba;
+    --border: color-mix(in oklab, #dcd7ba 11%, transparent); --input: color-mix(in oklab, #dcd7ba 15%, transparent);
+    --sidebar: #16161d;
+    --brand-1: #7e9cd8; --brand-2: #957fb8; --brand-ink: #111522; --brand-text: #7e9cd8;
+    --brand-soft: color-mix(in oklab, #7e9cd8 15%, transparent); --brand-ring: color-mix(in oklab, #7e9cd8 35%, transparent);
+    --primary: #7e9cd8; --primary-foreground: #111522; --ring: #7e9cd8;
+    --glow-a: color-mix(in oklab, #7e9cd8 16%, transparent); --glow-b: color-mix(in oklab, #957fb8 14%, transparent);
+    --glass-top: color-mix(in oklab, #2a2a37 94%, #ffffff); --glass-bottom: color-mix(in oklab, #2a2a37 90%, transparent);
+    --glass-line: oklch(1 0 0 / 8%);
+    --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
+}
+html[data-theme="rosepine"] { /* Rosé Pine · rose-pine/neovim */
+    --background: #191724; --foreground: #e0def4; --card: #1f1d2e; --card-foreground: #e0def4;
+    --popover: #1f1d2e; --popover-foreground: #e0def4;
+    --muted: color-mix(in oklab, #e0def4 7%, #1f1d2e); --muted-foreground: #908caa;
+    --secondary: color-mix(in oklab, #e0def4 8%, #1f1d2e); --secondary-foreground: #e0def4;
+    --accent: color-mix(in oklab, #ebbcba 14%, #1f1d2e); --accent-foreground: #e0def4;
+    --border: color-mix(in oklab, #e0def4 11%, transparent); --input: color-mix(in oklab, #e0def4 15%, transparent);
+    --sidebar: #13111e;
+    --brand-1: #ebbcba; --brand-2: #c4a7e7; --brand-ink: #2a1a22; --brand-text: #ebbcba;
+    --brand-soft: color-mix(in oklab, #ebbcba 15%, transparent); --brand-ring: color-mix(in oklab, #ebbcba 35%, transparent);
+    --primary: #ebbcba; --primary-foreground: #2a1a22; --ring: #ebbcba;
+    --glow-a: color-mix(in oklab, #ebbcba 16%, transparent); --glow-b: color-mix(in oklab, #c4a7e7 14%, transparent);
+    --glass-top: color-mix(in oklab, #1f1d2e 94%, #ffffff); --glass-bottom: color-mix(in oklab, #1f1d2e 90%, transparent);
+    --glass-line: oklch(1 0 0 / 8%);
+    --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
+}
+html[data-theme="gruvbox"] { /* Gruvbox Material · sainnhe/gruvbox-material */
+    --background: #282828; --foreground: #d4be98; --card: #32302f; --card-foreground: #d4be98;
+    --popover: #32302f; --popover-foreground: #d4be98;
+    --muted: color-mix(in oklab, #d4be98 7%, #32302f); --muted-foreground: #a89984;
+    --secondary: color-mix(in oklab, #d4be98 8%, #32302f); --secondary-foreground: #d4be98;
+    --accent: color-mix(in oklab, #d8a657 14%, #32302f); --accent-foreground: #d4be98;
+    --border: color-mix(in oklab, #d4be98 11%, transparent); --input: color-mix(in oklab, #d4be98 15%, transparent);
+    --sidebar: #1d2021;
+    --brand-1: #d8a657; --brand-2: #e78a4e; --brand-ink: #2b1d08; --brand-text: #d8a657;
+    --brand-soft: color-mix(in oklab, #d8a657 15%, transparent); --brand-ring: color-mix(in oklab, #d8a657 35%, transparent);
+    --primary: #d8a657; --primary-foreground: #2b1d08; --ring: #d8a657;
+    --glow-a: color-mix(in oklab, #d8a657 16%, transparent); --glow-b: color-mix(in oklab, #e78a4e 14%, transparent);
+    --glass-top: color-mix(in oklab, #32302f 94%, #ffffff); --glass-bottom: color-mix(in oklab, #32302f 90%, transparent);
+    --glass-line: oklch(1 0 0 / 8%);
+    --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
+}
+html[data-theme="carbonfox"] { /* Carbonfox · EdenEast/nightfox.nvim */
+    --background: #161616; --foreground: #f2f4f8; --card: #252525; --card-foreground: #f2f4f8;
+    --popover: #252525; --popover-foreground: #f2f4f8;
+    --muted: color-mix(in oklab, #f2f4f8 7%, #252525); --muted-foreground: #b6b8bb;
+    --secondary: color-mix(in oklab, #f2f4f8 8%, #252525); --secondary-foreground: #f2f4f8;
+    --accent: color-mix(in oklab, #78a9ff 14%, #252525); --accent-foreground: #f2f4f8;
+    --border: color-mix(in oklab, #f2f4f8 11%, transparent); --input: color-mix(in oklab, #f2f4f8 15%, transparent);
+    --sidebar: #0c0c0c;
+    --brand-1: #78a9ff; --brand-2: #be95ff; --brand-ink: #0b1730; --brand-text: #78a9ff;
+    --brand-soft: color-mix(in oklab, #78a9ff 15%, transparent); --brand-ring: color-mix(in oklab, #78a9ff 35%, transparent);
+    --primary: #78a9ff; --primary-foreground: #0b1730; --ring: #78a9ff;
+    --glow-a: color-mix(in oklab, #78a9ff 16%, transparent); --glow-b: color-mix(in oklab, #be95ff 14%, transparent);
+    --glass-top: color-mix(in oklab, #252525 94%, #ffffff); --glass-bottom: color-mix(in oklab, #252525 90%, transparent);
+    --glass-line: oklch(1 0 0 / 8%);
+    --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
+}
+html[data-theme="onedark"] { /* One Dark Pro · navarasu/onedark.nvim */
+    --background: #282c34; --foreground: #abb2bf; --card: #2f343f; --card-foreground: #abb2bf;
+    --popover: #2f343f; --popover-foreground: #abb2bf;
+    --muted: color-mix(in oklab, #abb2bf 7%, #2f343f); --muted-foreground: #9da5b4;
+    --secondary: color-mix(in oklab, #abb2bf 8%, #2f343f); --secondary-foreground: #abb2bf;
+    --accent: color-mix(in oklab, #61afef 14%, #2f343f); --accent-foreground: #abb2bf;
+    --border: color-mix(in oklab, #abb2bf 11%, transparent); --input: color-mix(in oklab, #abb2bf 15%, transparent);
+    --sidebar: #21252b;
+    --brand-1: #61afef; --brand-2: #c678dd; --brand-ink: #0c1d2e; --brand-text: #61afef;
+    --brand-soft: color-mix(in oklab, #61afef 15%, transparent); --brand-ring: color-mix(in oklab, #61afef 35%, transparent);
+    --primary: #61afef; --primary-foreground: #0c1d2e; --ring: #61afef;
+    --glow-a: color-mix(in oklab, #61afef 16%, transparent); --glow-b: color-mix(in oklab, #c678dd 14%, transparent);
+    --glass-top: color-mix(in oklab, #2f343f 94%, #ffffff); --glass-bottom: color-mix(in oklab, #2f343f 90%, transparent);
+    --glass-line: oklch(1 0 0 / 8%);
+    --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
+}
+html[data-theme="ayu"] { /* Ayu Mirage · Shatur/neovim-ayu */
+    --background: #1f2430; --foreground: #cccac2; --card: #262c3a; --card-foreground: #cccac2;
+    --popover: #262c3a; --popover-foreground: #cccac2;
+    --muted: color-mix(in oklab, #cccac2 7%, #262c3a); --muted-foreground: #a3a9b3;
+    --secondary: color-mix(in oklab, #cccac2 8%, #262c3a); --secondary-foreground: #cccac2;
+    --accent: color-mix(in oklab, #ffcc66 14%, #262c3a); --accent-foreground: #cccac2;
+    --border: color-mix(in oklab, #cccac2 11%, transparent); --input: color-mix(in oklab, #cccac2 15%, transparent);
+    --sidebar: #1a1f29;
+    --brand-1: #ffcc66; --brand-2: #f29e74; --brand-ink: #2b1d00; --brand-text: #ffcc66;
+    --brand-soft: color-mix(in oklab, #ffcc66 15%, transparent); --brand-ring: color-mix(in oklab, #ffcc66 35%, transparent);
+    --primary: #ffcc66; --primary-foreground: #2b1d00; --ring: #ffcc66;
+    --glow-a: color-mix(in oklab, #ffcc66 16%, transparent); --glow-b: color-mix(in oklab, #f29e74 14%, transparent);
+    --glass-top: color-mix(in oklab, #262c3a 94%, #ffffff); --glass-bottom: color-mix(in oklab, #262c3a 90%, transparent);
+    --glass-line: oklch(1 0 0 / 8%);
+    --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
+}
+html[data-theme="everforest"] { /* Everforest · sainnhe/everforest */
+    --background: #2d353b; --foreground: #d3c6aa; --card: #343f44; --card-foreground: #d3c6aa;
+    --popover: #343f44; --popover-foreground: #d3c6aa;
+    --muted: color-mix(in oklab, #d3c6aa 7%, #343f44); --muted-foreground: #9da9a0;
+    --secondary: color-mix(in oklab, #d3c6aa 8%, #343f44); --secondary-foreground: #d3c6aa;
+    --accent: color-mix(in oklab, #a7c080 14%, #343f44); --accent-foreground: #d3c6aa;
+    --border: color-mix(in oklab, #d3c6aa 11%, transparent); --input: color-mix(in oklab, #d3c6aa 15%, transparent);
+    --sidebar: #232a2e;
+    --brand-1: #a7c080; --brand-2: #83c092; --brand-ink: #1d2a12; --brand-text: #a7c080;
+    --brand-soft: color-mix(in oklab, #a7c080 15%, transparent); --brand-ring: color-mix(in oklab, #a7c080 35%, transparent);
+    --primary: #a7c080; --primary-foreground: #1d2a12; --ring: #a7c080;
+    --glow-a: color-mix(in oklab, #a7c080 16%, transparent); --glow-b: color-mix(in oklab, #83c092 14%, transparent);
+    --glass-top: color-mix(in oklab, #343f44 94%, #ffffff); --glass-bottom: color-mix(in oklab, #343f44 90%, transparent);
+    --glass-line: oklch(1 0 0 / 8%);
+    --glass-shadow: 0 1px 0 0 oklch(1 0 0 / 5%) inset, 0 20px 44px -24px oklch(0 0 0 / 65%);
+}
+
 html[data-theme="porcelain"] {
     --background: #f4f6f9; --foreground: #1b2130; --card: #ffffff; --card-foreground: #1b2130;
     --popover: #ffffff; --popover-foreground: #1b2130;

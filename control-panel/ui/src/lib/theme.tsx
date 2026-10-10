@@ -1,7 +1,7 @@
 // Full themes: each one sets every surface (page, sidebar, cards, text) and the accent, plus light or dark mode.
 // The look is data-theme on <html> (CSS in index.css); next-themes keeps the light/dark class in step.
 import { useEffect, useRef, useState } from 'react'
-import { Check, Palette } from 'lucide-react'
+import { Check, Palette, Shuffle } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import THEMES from '@/lib/themes.json'
 import { cn } from '@/lib/utils'
@@ -55,6 +55,27 @@ function Preview({ t }: { t: Skin }) {
   )
 }
 
+// Neovim colorschemes first (they carry their plugin as `source`), then the panel's own dark and light themes.
+const GROUPS: { title: string; hint: string; match: (t: Skin) => boolean }[] = [
+  { title: 'Neovim colorschemes', hint: 'the plugins\' own palettes', match: (t) => !!t.source },
+  { title: 'Dark', hint: 'panel originals', match: (t) => !t.source && t.mode === 'dark' },
+  { title: 'Light', hint: 'for daylight', match: (t) => t.mode === 'light' },
+]
+
+// Any other dark theme, so a surprise is never the one already on screen.
+function surprise(current: string): string {
+  const pool = THEMES.filter((t) => t.mode === 'dark' && t.id !== current)
+  return pool[Math.floor(Math.random() * pool.length)].id
+}
+
+function Swatches({ t }: { t: Skin }) {
+  return (
+    <div className="mt-1 flex h-1.5 overflow-hidden rounded-full">
+      {[t.sidebar, t.card, t.muted, t.a, t.b].map((c, i) => <span key={i} className="flex-1" style={{ background: c }} />)}
+    </div>
+  )
+}
+
 export function ThemeMenu() {
   const [skin, setSkin] = useSkin()
   const [open, setOpen] = useState(false)
@@ -75,19 +96,30 @@ export function ThemeMenu() {
         <span className="size-3.5 rounded-full brand-gradient ring-1 ring-black/10" />
       </button>
       {open && (
-        <div role="dialog" aria-label="Themes" className="absolute right-0 top-11 z-50 w-[420px] max-w-[92vw] rounded-2xl border bg-popover p-4 shadow-2xl animate-in fade-in zoom-in-95">
-          {(['dark', 'light'] as const).map((mode) => (
-            <div key={mode} className="mb-3 last:mb-0">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{mode === 'dark' ? 'Dark themes' : 'Light themes'}</div>
+        <div role="dialog" aria-label="Themes" className="absolute right-0 top-11 z-50 max-h-[78vh] w-[460px] max-w-[92vw] overflow-y-auto rounded-2xl border bg-popover p-4 shadow-2xl animate-in fade-in zoom-in-95">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-sm font-semibold">Themes <span className="font-normal text-muted-foreground">· {THEMES.length}</span></div>
+            <button onClick={() => setSkin(surprise(skin.id))} className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
+              <Shuffle className="size-3.5" /> Surprise me
+            </button>
+          </div>
+          {GROUPS.map((g) => (
+            <div key={g.title} className="mb-4 last:mb-0">
+              <div className="mb-2 flex items-baseline justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{g.title}</span>
+                <span className="text-[11px] text-muted-foreground/80">{g.hint}</span>
+              </div>
               <div className="grid grid-cols-3 gap-2">
-                {THEMES.filter((t) => t.mode === mode).map((t) => (
-                  <button key={t.id} onClick={() => setSkin(t.id)} aria-pressed={skin.id === t.id} aria-label={`${t.name} theme`}
+                {THEMES.filter(g.match).map((t) => (
+                  <button key={t.id} onClick={() => setSkin(t.id)} aria-pressed={skin.id === t.id} aria-label={`${t.name} theme`} title={t.source || t.name}
                     className={cn('group rounded-xl border p-1.5 text-left transition-all hover:-translate-y-0.5', skin.id === t.id ? 'border-transparent ring-2 ring-[var(--primary)]' : 'hover:border-foreground/30')}>
                     <Preview t={t} />
-                    <div className="mt-1.5 flex items-center justify-between px-0.5 text-xs font-medium">
-                      {t.name}
-                      {skin.id === t.id && <Check className="size-3.5 text-[var(--primary)]" />}
+                    <Swatches t={t} />
+                    <div className="mt-1 flex items-center justify-between px-0.5 text-xs font-medium">
+                      <span className="truncate">{t.name}</span>
+                      {skin.id === t.id && <Check className="size-3.5 shrink-0 text-[var(--primary)]" />}
                     </div>
+                    {t.source && <div className="truncate px-0.5 font-mono text-[10px] text-muted-foreground">{t.source.split('/')[0]}</div>}
                   </button>
                 ))}
               </div>
