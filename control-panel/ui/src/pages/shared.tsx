@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router'
 import { Copy, KeyRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { useStatus, type Stage } from '@/lib/api'
@@ -11,11 +12,19 @@ import { cn } from '@/lib/utils'
 export function EmulatorStrip() {
   const { data: s } = useStatus()
   const { run } = useActions()
+  const nav = useNavigate()
   if (!s) return null
+  // One stage on the emulator: its page. Several: the deployments list, filtered to that emulator.
+  const go = (emu: string) => {
+    const on = s.stages.filter((x) => x.emulator === emu)
+    nav(on.length === 1 ? `/deployments/${on[0].id}` : `/deployments?emulator=${emu}`)
+  }
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
       {s.emulators.map((e) => (
-        <div key={e.id} className="glass flex items-center gap-3 rounded-2xl px-4 py-3">
+        <div key={e.id} role="link" tabIndex={0} title={`Open ${e.used_by.length === 1 ? e.used_by[0] : 'its deployments'}`}
+          onClick={() => go(e.id)} onKeyDown={(k) => k.key === 'Enter' && go(e.id)}
+          className="glass card-link relative flex items-center gap-3 rounded-2xl px-4 py-3">
           <Dot on={e.up} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 text-sm font-medium"><span className={cn('size-2 rounded-sm', CLOUD[e.cloud as keyof typeof CLOUD]?.color)} />{e.title}</div>
@@ -23,10 +32,10 @@ export function EmulatorStrip() {
           </div>
           {e.job ? <span className="text-xs text-amber-600 dark:text-amber-300">{verb(e.job.action)}…</span> : (
             <Button size="sm" variant={e.up ? 'ghost' : 'outline'} disabled={e.busy || s.ci_running}
-              onClick={() => run({
+              onClick={(ev) => { ev.stopPropagation(); run({
                 path: `/api/emulators/${e.id}/${e.up ? 'stop' : 'start'}`, label: e.title, action: e.up ? 'emu-stop' : 'emu-start',
                 confirm: e.up ? { title: `Stop ${e.title}?`, action: 'Stop emulator', danger: true, body: <p>Every deployment on it ({e.used_by.join(', ')}) loses its resources. Their state files stay behind; the panel spots that and clears them on the next deploy.</p> } : undefined,
-              })}>{e.up ? 'Stop' : 'Start'}</Button>
+              }) }}>{e.up ? 'Stop' : 'Start'}</Button>
           )}
         </div>
       ))}

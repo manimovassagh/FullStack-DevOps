@@ -15,9 +15,15 @@ export type Status = {
   system: { docker: boolean; mem_total: number; mem_used: number; ncpu: number; running: number; groups: Record<string, number> }
   tools: { grafana: boolean; prometheus: boolean; gitea: boolean }
 }
-export type StageDetail = { status: Stage; resources: [string, number][]; outputs: Record<string, unknown>; runs: Run[]; commands: Record<string, string>; dir: string }
-export type Container = { name: string; image: string; state: string; status: string; ports: string; group: string; cpu: number; mem: number }
-export type CiRun = { id: number; workflow: string; status: string; started: number; stopped: number; jobs: { name: string; status: string }[] }
+export type Address = { address: string; type: string; id: string; name: string }
+export type StageDetail = {
+  status: Stage; resources: [string, number][]; outputs: Record<string, unknown>; runs: Run[]; commands: Record<string, string>; dir: string
+  addresses: Address[]; readme: string
+  containers: { shared: boolean; network: string; emulator?: string; items: Container[] }
+}
+export type Container = { name: string; image: string; state: string; status: string; ports: string; group: string; cpu: number; mem: number; networks?: string[] }
+export type CiJob = { id: number; name: string; status: string }
+export type CiRun = { id: number; workflow: string; status: string; started: number; stopped: number; jobs: CiJob[] }
 export type Ci = { gitea: boolean; runner: boolean; workflows: string[]; runs: CiRun[]; url: string; job: Job | null }
 export type JobLog = { id: string; lines: string[]; next: number; rc: number | null; target: string; action: string; started: number; ended: number | null; expected: number | null }
 
@@ -51,6 +57,10 @@ export const useContainers = () => useQuery({ queryKey: ['containers'], queryFn:
 export const useHistory = () => useQuery({ queryKey: ['history'], queryFn: () => get<Run[]>('/api/history'), refetchInterval: 5000 })
 export const useCi = () => useQuery({ queryKey: ['ci'], queryFn: () => get<Ci>('/api/ci'), refetchInterval: 5000 })
 export const getLog = (id: string, from: number) => get<JobLog>(`/api/jobs/${id}/log?from=${from}`)
+export const useCiJobLog = (id: number | null, live: boolean) => useQuery({
+  queryKey: ['ci-log', id], enabled: id !== null, refetchInterval: live ? 3000 : false,
+  queryFn: () => get<{ lines: string[]; note: string }>(`/api/ci/jobs/${id}/log`),
+})
 
 // ── Prometheus (proxied by the server) ──────────────────────────────────────────────────────────
 type PromSeries = { metric: Record<string, string>; values?: [number, string][]; value?: [number, string] }

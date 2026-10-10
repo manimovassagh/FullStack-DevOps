@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ExternalLink } from 'lucide-react'
 import { useContainers, usePromInstant, usePromRange, useStatus } from '@/lib/api'
 import { bytes } from '@/lib/format'
@@ -64,13 +64,15 @@ export function Observability() {
 
 function ContainersTable() {
   const { data } = useContainers()
+  const loaded = !!data
+  useEffect(() => { if (loaded && location.hash === '#containers') document.getElementById('containers')?.scrollIntoView({ behavior: 'smooth' }) }, [loaded])
   const [group, setGroup] = useState('all')
   const [showStopped, setShowStopped] = useState(false)
   const list = (data?.containers ?? []).filter((c) => (showStopped || c.state === 'running') && (group === 'all' || c.group === group))
   const groups = [...new Set((data?.containers ?? []).filter((c) => showStopped || c.state === 'running').map((c) => c.group))].sort()
   const maxMem = Math.max(1, ...list.map((c) => c.mem))
   return (
-    <Panel title={`Containers (${list.length})`} bodyClass="p-0" action={
+    <Panel id="containers" title={`Containers (${list.length})`} bodyClass="p-0" action={
       <div className="flex flex-wrap items-center gap-1">
         {['all', ...groups].map((g) => <button key={g} onClick={() => setGroup(g)} className={cn('rounded-full px-2.5 py-0.5 text-xs', group === g ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground')}>{g}</button>)}
         <label className="ml-2 flex items-center gap-1 text-xs text-muted-foreground"><input type="checkbox" checked={showStopped} onChange={(e) => setShowStopped(e.target.checked)} /> stopped</label>

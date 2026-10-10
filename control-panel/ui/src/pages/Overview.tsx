@@ -25,17 +25,17 @@ export function Overview() {
         <p className="text-sm text-muted-foreground">Everything running in the local cloud lab, live.</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Kpi label="Deployments up" icon={Server} value={<>{up.length}<span className="text-lg text-muted-foreground"> / {s.stages.length}</span></>} sub={up.map((x) => x.title).join(', ') || 'Nothing deployed'} tone={up.length ? 'text-emerald-600 dark:text-emerald-400' : ''} />
-        <Kpi label="Containers" icon={Boxes} spark={contSpark.data?.[0]} value={s.system.running} sub={Object.entries(s.system.groups).sort((a, b) => b[1] - a[1]).map(([g, n]) => `${g} ${n}`).join(' · ') || '—'} />
-        <Kpi label="Docker memory" icon={HardDrive} spark={memSpark.data?.[0]} value={<>{bytes(s.system.mem_used)}<span className="text-lg text-muted-foreground"> / {bytes(s.system.mem_total)}</span></>} sub={`${s.system.ncpu} CPUs`}>
+        <Kpi to="/deployments" label="Deployments up" icon={Server} value={<>{up.length}<span className="text-lg text-muted-foreground"> / {s.stages.length}</span></>} sub={up.map((x) => x.title).join(', ') || 'Nothing deployed'} tone={up.length ? 'text-emerald-600 dark:text-emerald-400' : ''} />
+        <Kpi to="/observability#containers" label="Containers" icon={Boxes} spark={contSpark.data?.[0]} value={s.system.running} sub={Object.entries(s.system.groups).sort((a, b) => b[1] - a[1]).map(([g, n]) => `${g} ${n}`).join(' · ') || '—'} />
+        <Kpi to="/observability#containers" label="Docker memory" icon={HardDrive} spark={memSpark.data?.[0]} value={<>{bytes(s.system.mem_used)}<span className="text-lg text-muted-foreground"> / {bytes(s.system.mem_total)}</span></>} sub={`${s.system.ncpu} CPUs`}>
           <Meter value={memPct} className="mt-3" />
         </Kpi>
-        <Kpi label="Running now" icon={Cpu} value={s.active.length || 'Idle'} tone={s.active.length ? 'text-amber-600 dark:text-amber-300' : 'text-muted-foreground'}
+        <Kpi to={s.active[0] ? `/deployments/${s.active[0].target.replace(/^loadtest:/, '')}` : '/activity'} label="Running now" icon={Cpu} value={s.active.length || 'Idle'} tone={s.active.length ? 'text-amber-600 dark:text-amber-300' : 'text-muted-foreground'}
           sub={s.active[0] ? `${verb(s.active[0].action)} ${targetTitle(s.active[0].target, s.stages)} · ${dur(now() - s.active[0].started)}` : 'No job in progress'} />
       </div>
       <EmulatorStrip />
       <div className="grid gap-4 xl:grid-cols-2">
-        <Panel title="Containers by kind (30 min)">{s.tools.prometheus ? <TimeChart series={groups.data} stacked /> : <NoProm />}</Panel>
+        <Panel title="Containers by kind (30 min)" action={<Button variant="ghost" size="sm" asChild><Link to="/observability#containers">Containers →</Link></Button>}>{s.tools.prometheus ? <TimeChart series={groups.data} stacked /> : <NoProm />}</Panel>
         <Panel title="CPU · busiest containers (% of a core)">{s.tools.prometheus ? <TimeChart series={cpu.data} unit="%" /> : <NoProm />}</Panel>
       </div>
       <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">

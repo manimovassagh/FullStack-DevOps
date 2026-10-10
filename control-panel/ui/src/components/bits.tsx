@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import type { ReactNode } from 'react'
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Boxes, Cloud, Cpu, Hexagon, Server, Zap } from 'lucide-react'
@@ -45,9 +46,9 @@ export function Dot({ on, className }: { on: boolean; className?: string }) {
   return <span className={cn('inline-block size-2 shrink-0 rounded-full', on ? 'bg-emerald-400 shadow-[0_0_0_3px] shadow-emerald-400/20' : 'bg-muted-foreground/40', className)} />
 }
 
-export function Panel({ title, action, children, className, bodyClass }: { title?: ReactNode; action?: ReactNode; children: ReactNode; className?: string; bodyClass?: string }) {
+export function Panel({ title, action, children, className, bodyClass, id }: { title?: ReactNode; action?: ReactNode; children: ReactNode; className?: string; bodyClass?: string; id?: string }) {
   return (
-    <section className={cn('glass rounded-2xl', className)}>
+    <section id={id} className={cn('glass scroll-mt-6 rounded-2xl', className)}>
       {(title || action) && (
         <header className="flex items-center gap-3 border-b px-4 py-3">
           <h2 className="text-sm font-semibold">{title}</h2>
@@ -60,9 +61,10 @@ export function Panel({ title, action, children, className, bodyClass }: { title
   )
 }
 
-export function Kpi({ label, value, sub, icon: Icon = Cpu, tone = 'text-foreground', children, spark }: { label: string; value: ReactNode; sub?: ReactNode; icon?: typeof Cpu; tone?: string; children?: ReactNode; spark?: Series }) {
+export function Kpi({ label, value, sub, icon: Icon = Cpu, tone = 'text-foreground', children, spark, to }: { label: string; value: ReactNode; sub?: ReactNode; icon?: typeof Cpu; tone?: string; children?: ReactNode; spark?: Series; to?: string }) {
+  const Box = to ? Link : 'div'
   return (
-    <div className="glass relative overflow-hidden rounded-2xl p-4">
+    <Box to={to ?? ''} className={cn('glass relative block overflow-hidden rounded-2xl p-4', to && 'card-link')}>
       <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground"><Icon className="size-3.5" /> {label}</div>
       <div className={cn('mt-2 text-3xl font-semibold tabular-nums tracking-tight', tone)}>{value}</div>
       {sub && <div className="mt-1 truncate text-sm text-muted-foreground">{sub}</div>}
@@ -72,7 +74,7 @@ export function Kpi({ label, value, sub, icon: Icon = Cpu, tone = 'text-foregrou
           <ResponsiveContainer><AreaChart data={spark.points}><defs><linearGradient id={`g-${label}`} x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor={brand()} stopOpacity={0.35} /><stop offset="100%" stopColor={brand()} stopOpacity={0} /></linearGradient></defs><Area dataKey="v" type="monotone" stroke={brand()} strokeWidth={1.4} fill={`url(#g-${label})`} isAnimationActive={false} /></AreaChart></ResponsiveContainer>
         </div>
       )}
-    </div>
+    </Box>
   )
 }
 
