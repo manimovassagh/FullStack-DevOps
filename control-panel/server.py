@@ -17,6 +17,7 @@ import statistics
 import subprocess
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -305,6 +306,7 @@ def refresh_system():
                 name = c["Names"]
                 cpu, mem = st.get(name, (0.0, 0))
                 containers.append(dict(name=name, image=c["Image"], state=c["State"], status=c["Status"], ports=c.get("Ports", ""),
+                                       networks=[n for n in c.get("Networks", "").split(",") if n],
                                        group=next((g for p, g in GROUPS if name.startswith(p)), "Other"), cpu=cpu, mem=int(mem)))
             _system.update(at=time.time(), docker=rc == 0, mem_total=int(mem_total or 0), ncpu=int(ncpu or 0),
                            mem_used=int(sum(c["mem"] for c in containers)), containers=containers)
@@ -333,6 +335,18 @@ def all_status():
     )
 
 
+def stage_containers(stage):
+    """The stage's emulator container and everything on its compose network (ECS tasks, RDS proxies, registry).
+    Stages on the shared emulator share its network, so there it is everything that emulator runs."""
+    emu = next((e for e in EMULATORS if e["id"] == stage.get("emulator")), None)
+    if not emu:
+        return dict(shared=False, network="", items=[])
+    net = emu["container"].rsplit("-floci-1", 1)[0] + "_default"
+    items = [c for c in _system["containers"] if c["name"] == emu["container"] or net in c.get("networks", [])]
+    shared = sum(1 for s_ in STAGES if s_.get("emulator") == emu["id"]) > 1
+    return dict(shared=shared, network=net, emulator=emu["title"], items=items)
+
+
 def stage_detail(stage_id):
     stage = BY_ID.get(stage_id)
     if not stage:
@@ -343,7 +357,21 @@ def stage_detail(stage_id):
         if r.get("mode") == "managed":
             types[r["type"]] = types.get(r["type"], 0) + len(r.get("instances", []))
     outputs = {k: v.get("value") for k, v in st.get("outputs", {}).items() if not v.get("sensitive")}
+    addresses = []
+    for r in st.get("resources", []):
+        if r.get("mode") != "managed":
+            continue
+        for i in r.get("instances", []):
+            key = i.get("index_key")
+            idx = "" if key is None else f'[{json.dumps(key)}]'
+            a = i.get("attributes", {})
+            addresses.append(dict(address=f'{r.get("module", "") + "." if r.get("module") else ""}{r["type"]}.{r["name"]}{idx}',
+                                  type=r["type"], id=str(a.get("arn") or a.get("id") or "")[:200],
+                                  name=str(a.get("name") or a.get("function_name") or a.get("bucket") or "")))
+    readme = ROOT / "deployment" / stage["dir"] / "README.md"
     return dict(status=stage_status(stage), resources=sorted(types.items(), key=lambda kv: (-kv[1], kv[0])), outputs=outputs,
+                addresses=addresses, containers=stage_containers(stage),
+                readme=readme.read_text() if readme.is_file() else "",
                 runs=[h for h in reversed(history) if h["target"] in (stage_id, "loadtest:" + stage_id)][:40],
                 commands=dict(start=stage["start"], **{k: v for k, v in ACTIONS.items() if v}), dir=f"deployment/{stage['dir']}")
 
@@ -351,7 +379,7 @@ def stage_detail(stage_id):
 # ── local CI (Gitea) ────────────────────────────────────────────────────────────────────────────
 WORKFLOWS = sorted(p.name for p in (ROOT / ".github/workflows").glob("*.yml") if not p.name.startswith("deploy-"))
 SQL = ("SELECT r.id, r.workflow_id, r.status, r.started, r.stopped, "
-       "(SELECT group_concat(j.name || '=' || j.status, '|') FROM action_run_job j WHERE j.run_id = r.id) "
+       "(SELECT group_concat(j.id || '=' || j.status || '=' || j.name, '|') FROM action_run_job j WHERE j.run_id = r.id) "
        "FROM action_run r ORDER BY r.id DESC LIMIT 25")
 RUN_STATUS = {1: "success", 2: "failure", 3: "cancelled", 4: "skipped", 5: "waiting", 6: "running", 7: "blocked"}
 
@@ -364,13 +392,32 @@ def ci_status():
         try:
             for r in json.loads(out or "[]"):
                 vals = list(r.values())
-                jobs_ = [dict(name=x.split("=")[0], status=RUN_STATUS.get(int(x.split("=")[1]), "?")) for x in (vals[5] or "").split("|") if "=" in x]
+                jobs_ = [dict(id=int(i), status=RUN_STATUS.get(int(st_), "?"), name=n)
+                         for i, st_, n in (x.split("=", 2) for x in (vals[5] or "").split("|") if x.count("=") >= 2)]
                 runs.append(dict(id=vals[0], workflow=vals[1], status=RUN_STATUS.get(vals[2], "?"), started=vals[3], stopped=vals[4], jobs=jobs_))
         except Exception:
             pass
     runner = any(c["name"] == "plant-ci-runner-1" and c["state"] == "running" for c in _system["containers"])
     return dict(gitea=gitea, runner=runner, workflows=WORKFLOWS, runs=runs, url="http://localhost:3300/ci/FullStack-DevOps/actions",
                 job=running_job("ci"))
+
+
+GITEA_API = "http://localhost:3300/api/v1/repos/ci/FullStack-DevOps/actions"
+GITEA_AUTH = "Basic " + __import__("base64").b64encode(b"ci:ci-password-1").decode()  # local-ci's throwaway admin
+
+
+def ci_job_log(job_id):
+    """A pipeline job's log from Gitea (lines: '<timestamp> <text>'); 'not started' while it waits."""
+    req = urllib.request.Request(f"{GITEA_API}/jobs/{int(job_id)}/logs", headers={"Authorization": GITEA_AUTH})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            text = r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return dict(lines=[], note="not started yet" if e.code == 404 else f"Gitea answered {e.code}")
+    except OSError as e:
+        return dict(lines=[], note=f"Gitea unreachable: {e}")
+    lines = [ln.split(" ", 1)[1] if ln[:4].isdigit() and " " in ln else ln for ln in text.splitlines()]
+    return dict(lines=lines[-4000:], note="")
 
 
 # ── jobs ────────────────────────────────────────────────────────────────────────────────────────
@@ -559,6 +606,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, list(reversed(history[-100:])))
         if path == "/api/ci":
             return self.send(200, ci_status())
+        if len(parts) == 5 and parts[1] == "ci" and parts[2] == "jobs" and parts[4] == "log" and parts[3].isdigit():
+            return self.send(200, ci_job_log(parts[3]))
         if len(parts) == 3 and parts[1] == "stages":
             body = stage_detail(parts[2])
             return self.send(200, body) if body else self.send(404, {"error": "no such stage"})

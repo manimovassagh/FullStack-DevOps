@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { MouseEvent } from 'react'
-import { useNavigate, Link } from 'react-router'
+import { useNavigate, useSearchParams, Link } from 'react-router'
 import { Search } from 'lucide-react'
 import { useStatus, type Stage } from '@/lib/api'
 import { ago, dur, now, verb } from '@/lib/format'
@@ -18,8 +18,10 @@ export function Deployments() {
   const { data: s } = useStatus()
   const [filter, setFilter] = useState(() => localStorage.getItem('cp-filter') ?? 'all')
   const [q, setQ] = useState('')
+  const [params, setParams] = useSearchParams()
+  const emu = params.get('emulator') // from an emulator card: only the stages on that emulator
   if (!s) return <Loading />
-  const list = s.stages.filter((x) => match(x, filter) && `${x.title} ${x.note} ${x.id}`.toLowerCase().includes(q.toLowerCase()))
+  const list = s.stages.filter((x) => match(x, filter) && (!emu || x.emulator === emu) && `${x.title} ${x.note} ${x.id}`.toLowerCase().includes(q.toLowerCase()))
   const sections = (['aws', 'gcp', 'azure'] as const).flatMap((fam) =>
     (fam === 'aws' ? (['vm', 'container', 'k8s', 'serverless'] as const) : (['container'] as const)).map((kind) => ({
       fam, kind, items: list.filter((x) => x.family === fam && x.kind === kind),
@@ -30,6 +32,12 @@ export function Deployments() {
         <h1 className="text-gradient text-3xl font-semibold tracking-tight">Deployments</h1>
         <p className="text-sm text-muted-foreground">Twelve ways to ship the same app. Deploy, test, release and tear down each one.</p>
       </div>
+      {emu && (
+        <div className="flex w-fit items-center gap-2 rounded-full border brand-tint px-3 py-1 text-sm">
+          On {s.emulators.find((e) => e.id === emu)?.title ?? emu}
+          <button onClick={() => setParams({})} className="text-muted-foreground hover:text-foreground" aria-label="Clear emulator filter">✕</button>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         {FILTERS.map(([id, label]) => (
           <button key={id} onClick={() => { setFilter(id); localStorage.setItem('cp-filter', id) }}

@@ -10,7 +10,8 @@
     "muted": "#93a0bd",
     "a": "#6ee7b7",
     "b": "#10b981",
-    "source": ""
+    "source": "",
+    "ink": "#04221a"
   },
   {
     "id": "obsidian",
@@ -23,7 +24,8 @@
     "muted": "#a8a29e",
     "a": "#fcd34d",
     "b": "#d97706",
-    "source": ""
+    "source": "",
+    "ink": "#1c1003"
   },
   {
     "id": "nord",
@@ -36,7 +38,8 @@
     "muted": "#b3bccc",
     "a": "#88c0d0",
     "b": "#5e81ac",
-    "source": ""
+    "source": "",
+    "ink": "#0f1a24"
   },
   {
     "id": "dracula",
@@ -49,7 +52,8 @@
     "muted": "#a9adc8",
     "a": "#ff79c6",
     "b": "#bd93f9",
-    "source": ""
+    "source": "",
+    "ink": "#1e0b25"
   },
   {
     "id": "forest",
@@ -62,7 +66,8 @@
     "muted": "#9cb8a8",
     "a": "#86efac",
     "b": "#22c55e",
-    "source": ""
+    "source": "",
+    "ink": "#052e14"
   },
   {
     "id": "mocha",
@@ -75,7 +80,8 @@
     "muted": "#a6adc8",
     "a": "#fab387",
     "b": "#f38ba8",
-    "source": ""
+    "source": "",
+    "ink": "#2a1013"
   },
   {
     "id": "tokyonight",
@@ -88,7 +94,8 @@
     "muted": "#9aa5ce",
     "a": "#7aa2f7",
     "b": "#bb9af7",
-    "source": "folke/tokyonight.nvim"
+    "source": "folke/tokyonight.nvim",
+    "ink": "#0f1429"
   },
   {
     "id": "kanagawa",
@@ -101,7 +108,8 @@
     "muted": "#a8a48f",
     "a": "#7e9cd8",
     "b": "#957fb8",
-    "source": "rebelot/kanagawa.nvim"
+    "source": "rebelot/kanagawa.nvim",
+    "ink": "#111522"
   },
   {
     "id": "rosepine",
@@ -114,7 +122,8 @@
     "muted": "#908caa",
     "a": "#ebbcba",
     "b": "#c4a7e7",
-    "source": "rose-pine/neovim"
+    "source": "rose-pine/neovim",
+    "ink": "#2a1a22"
   },
   {
     "id": "gruvbox",
@@ -127,7 +136,8 @@
     "muted": "#a89984",
     "a": "#d8a657",
     "b": "#e78a4e",
-    "source": "sainnhe/gruvbox-material"
+    "source": "sainnhe/gruvbox-material",
+    "ink": "#2b1d08"
   },
   {
     "id": "carbonfox",
@@ -140,7 +150,8 @@
     "muted": "#b6b8bb",
     "a": "#78a9ff",
     "b": "#be95ff",
-    "source": "EdenEast/nightfox.nvim"
+    "source": "EdenEast/nightfox.nvim",
+    "ink": "#0b1730"
   },
   {
     "id": "onedark",
@@ -153,7 +164,8 @@
     "muted": "#9da5b4",
     "a": "#61afef",
     "b": "#c678dd",
-    "source": "navarasu/onedark.nvim"
+    "source": "navarasu/onedark.nvim",
+    "ink": "#0c1d2e"
   },
   {
     "id": "ayu",
@@ -166,7 +178,8 @@
     "muted": "#a3a9b3",
     "a": "#ffcc66",
     "b": "#f29e74",
-    "source": "Shatur/neovim-ayu"
+    "source": "Shatur/neovim-ayu",
+    "ink": "#2b1d00"
   },
   {
     "id": "everforest",
@@ -179,7 +192,8 @@
     "muted": "#9da9a0",
     "a": "#a7c080",
     "b": "#83c092",
-    "source": "sainnhe/everforest"
+    "source": "sainnhe/everforest",
+    "ink": "#1d2a12"
   },
   {
     "id": "porcelain",
@@ -192,7 +206,8 @@
     "muted": "#64708a",
     "a": "#34d399",
     "b": "#059669",
-    "source": ""
+    "source": "",
+    "ink": "#ffffff"
   },
   {
     "id": "paper",
@@ -205,7 +220,8 @@
     "muted": "#7a6f62",
     "a": "#fbbf24",
     "b": "#b45309",
-    "source": ""
+    "source": "",
+    "ink": "#ffffff"
   },
   {
     "id": "sky",
@@ -218,7 +234,8 @@
     "muted": "#5a6f8a",
     "a": "#38bdf8",
     "b": "#0369a1",
-    "source": ""
+    "source": "",
+    "ink": "#ffffff"
   },
   {
     "id": "lavender",
@@ -231,7 +248,8 @@
     "muted": "#6e6390",
     "a": "#a78bfa",
     "b": "#6d28d9",
-    "source": ""
+    "source": "",
+    "ink": "#ffffff"
   },
   {
     "id": "blush",
@@ -244,7 +262,8 @@
     "muted": "#8a6670",
     "a": "#fb7185",
     "b": "#be123c",
-    "source": ""
+    "source": "",
+    "ink": "#ffffff"
   },
   {
     "id": "mint",
@@ -257,6 +276,343 @@
     "muted": "#567a69",
     "a": "#34d399",
     "b": "#047857",
-    "source": ""
+    "source": "",
+    "ink": "#ffffff"
+  },
+  {
+    "id": "catppuccin-frappe",
+    "name": "Frappé",
+    "mode": "dark",
+    "bg": "#303446",
+    "sidebar": "#292c3c",
+    "card": "#414559",
+    "fg": "#c6d0f5",
+    "muted": "#a5adce",
+    "a": "#ca9ee6",
+    "b": "#f4b8e4",
+    "source": "catppuccin/nvim",
+    "ink": "#352832"
+  },
+  {
+    "id": "catppuccin-macchiato",
+    "name": "Macchiato",
+    "mode": "dark",
+    "bg": "#24273a",
+    "sidebar": "#1e2030",
+    "card": "#363a4f",
+    "fg": "#cad3f5",
+    "muted": "#a5adcb",
+    "a": "#c6a0f6",
+    "b": "#8aadf4",
+    "source": "catppuccin/nvim",
+    "ink": "#1e2635"
+  },
+  {
+    "id": "catppuccin-latte",
+    "name": "Latte",
+    "mode": "light",
+    "bg": "#eff1f5",
+    "sidebar": "#e6e9ef",
+    "card": "#ffffff",
+    "fg": "#4c4f69",
+    "muted": "#6c6f85",
+    "a": "#8839ef",
+    "b": "#1e66f5",
+    "source": "catppuccin/nvim",
+    "ink": "#ffffff"
+  },
+  {
+    "id": "rosepine-moon",
+    "name": "Rosé Pine Moon",
+    "mode": "dark",
+    "bg": "#232136",
+    "sidebar": "#1f1d30",
+    "card": "#2a273f",
+    "fg": "#e0def4",
+    "muted": "#908caa",
+    "a": "#c4a7e7",
+    "b": "#ea9a97",
+    "source": "rose-pine/neovim",
+    "ink": "#332121"
+  },
+  {
+    "id": "rosepine-dawn",
+    "name": "Rosé Pine Dawn",
+    "mode": "light",
+    "bg": "#faf4ed",
+    "sidebar": "#f2e9e1",
+    "card": "#fffaf3",
+    "fg": "#575279",
+    "muted": "#797593",
+    "a": "#d7827e",
+    "b": "#907aa9",
+    "source": "rose-pine/neovim",
+    "ink": "#ffffff"
+  },
+  {
+    "id": "tokyonight-storm",
+    "name": "Tokyo Storm",
+    "mode": "dark",
+    "bg": "#24283b",
+    "sidebar": "#1f2335",
+    "card": "#292e42",
+    "fg": "#c0caf5",
+    "muted": "#a9b1d6",
+    "a": "#7aa2f7",
+    "b": "#bb9af7",
+    "source": "folke/tokyonight.nvim",
+    "ink": "#292136"
+  },
+  {
+    "id": "tokyonight-day",
+    "name": "Tokyo Day",
+    "mode": "light",
+    "bg": "#e1e2e7",
+    "sidebar": "#d0d5e3",
+    "card": "#f2f2f5",
+    "fg": "#3760bf",
+    "muted": "#6172b0",
+    "a": "#7847bd",
+    "b": "#2e7de9",
+    "source": "folke/tokyonight.nvim",
+    "ink": "#ffffff"
+  },
+  {
+    "id": "kanagawa-dragon",
+    "name": "Kanagawa Dragon",
+    "mode": "dark",
+    "bg": "#181616",
+    "sidebar": "#0d0c0c",
+    "card": "#282727",
+    "fg": "#c5c9c5",
+    "muted": "#a6a69c",
+    "a": "#8ba4b0",
+    "b": "#c4746e",
+    "source": "rebelot/kanagawa.nvim",
+    "ink": "#2b1918"
+  },
+  {
+    "id": "nightfox",
+    "name": "Nightfox",
+    "mode": "dark",
+    "bg": "#192330",
+    "sidebar": "#131a24",
+    "card": "#212e3f",
+    "fg": "#cdcecf",
+    "muted": "#aeafb0",
+    "a": "#719cd6",
+    "b": "#9d79d6",
+    "source": "EdenEast/nightfox.nvim",
+    "ink": "#221a2f"
+  },
+  {
+    "id": "dayfox",
+    "name": "Dayfox",
+    "mode": "light",
+    "bg": "#f6f2ee",
+    "sidebar": "#e4dcd4",
+    "card": "#fbf8f5",
+    "fg": "#3d2b5a",
+    "muted": "#643f61",
+    "a": "#6e33ce",
+    "b": "#2848a9",
+    "source": "EdenEast/nightfox.nvim",
+    "ink": "#ffffff"
+  },
+  {
+    "id": "github-dark",
+    "name": "GitHub Dark",
+    "mode": "dark",
+    "bg": "#0d1117",
+    "sidebar": "#010409",
+    "card": "#161b22",
+    "fg": "#e6edf3",
+    "muted": "#8d96a0",
+    "a": "#58a6ff",
+    "b": "#a371f7",
+    "source": "projekt0n/github-nvim-theme",
+    "ink": "#231836"
+  },
+  {
+    "id": "github-light",
+    "name": "GitHub Light",
+    "mode": "light",
+    "bg": "#f6f8fa",
+    "sidebar": "#ffffff",
+    "card": "#ffffff",
+    "fg": "#1f2328",
+    "muted": "#656d76",
+    "a": "#8250df",
+    "b": "#0969da",
+    "source": "projekt0n/github-nvim-theme",
+    "ink": "#ffffff"
+  },
+  {
+    "id": "solarized-dark",
+    "name": "Solarized Dark",
+    "mode": "dark",
+    "bg": "#002b36",
+    "sidebar": "#00212b",
+    "card": "#073642",
+    "fg": "#eee8d5",
+    "muted": "#93a1a1",
+    "a": "#b58900",
+    "b": "#268bd2",
+    "source": "maxmx03/solarized.nvim",
+    "ink": "#081e2e"
+  },
+  {
+    "id": "solarized-light",
+    "name": "Solarized Light",
+    "mode": "light",
+    "bg": "#fdf6e3",
+    "sidebar": "#eee8d5",
+    "card": "#fffbf0",
+    "fg": "#073642",
+    "muted": "#657b83",
+    "a": "#cb4b16",
+    "b": "#268bd2",
+    "source": "maxmx03/solarized.nvim",
+    "ink": "#ffffff"
+  },
+  {
+    "id": "monokai-pro",
+    "name": "Monokai Pro",
+    "mode": "dark",
+    "bg": "#2d2a2e",
+    "sidebar": "#221f22",
+    "card": "#363337",
+    "fg": "#fcfcfa",
+    "muted": "#939293",
+    "a": "#ffd866",
+    "b": "#ff6188",
+    "source": "loctvl842/monokai-pro.nvim",
+    "ink": "#38151d"
+  },
+  {
+    "id": "oxocarbon",
+    "name": "Oxocarbon",
+    "mode": "dark",
+    "bg": "#161616",
+    "sidebar": "#0b0b0b",
+    "card": "#262626",
+    "fg": "#f2f4f8",
+    "muted": "#a8a8a8",
+    "a": "#78a9ff",
+    "b": "#ee5396",
+    "source": "nyoom-engineering/oxocarbon.nvim",
+    "ink": "#341221"
+  },
+  {
+    "id": "nightowl",
+    "name": "Night Owl",
+    "mode": "dark",
+    "bg": "#011627",
+    "sidebar": "#010e1a",
+    "card": "#0b2942",
+    "fg": "#d6deeb",
+    "muted": "#8badc1",
+    "a": "#82aaff",
+    "b": "#c792ea",
+    "source": "oxfist/night-owl.nvim",
+    "ink": "#2b2033"
+  },
+  {
+    "id": "cyberdream",
+    "name": "Cyberdream",
+    "mode": "dark",
+    "bg": "#16181a",
+    "sidebar": "#101112",
+    "card": "#1e2124",
+    "fg": "#ffffff",
+    "muted": "#7b8496",
+    "a": "#5ef1ff",
+    "b": "#ff5ef1",
+    "source": "scottmckendry/cyberdream.nvim",
+    "ink": "#381435"
+  },
+  {
+    "id": "sonokai",
+    "name": "Sonokai",
+    "mode": "dark",
+    "bg": "#2c2e34",
+    "sidebar": "#222327",
+    "card": "#33353f",
+    "fg": "#e2e2e3",
+    "muted": "#9a9fa9",
+    "a": "#9ed072",
+    "b": "#fc5d7c",
+    "source": "sainnhe/sonokai",
+    "ink": "#37141b"
+  },
+  {
+    "id": "vesper",
+    "name": "Vesper",
+    "mode": "dark",
+    "bg": "#101010",
+    "sidebar": "#0a0a0a",
+    "card": "#1c1c1c",
+    "fg": "#ffffff",
+    "muted": "#a0a0a0",
+    "a": "#ffc799",
+    "b": "#99ffe4",
+    "source": "datsfilipe/vesper.nvim",
+    "ink": "#213832"
+  },
+  {
+    "id": "poimandres",
+    "name": "Poimandres",
+    "mode": "dark",
+    "bg": "#1b1e28",
+    "sidebar": "#171922",
+    "card": "#252b37",
+    "fg": "#e4f0fb",
+    "muted": "#a6accd",
+    "a": "#5de4c7",
+    "b": "#89ddff",
+    "source": "olivercederborg/poimandres.nvim",
+    "ink": "#1e3038"
+  },
+  {
+    "id": "synthwave84",
+    "name": "Synthwave '84",
+    "mode": "dark",
+    "bg": "#262335",
+    "sidebar": "#1e1a2e",
+    "card": "#34294f",
+    "fg": "#ffffff",
+    "muted": "#c0b7d6",
+    "a": "#ff7edb",
+    "b": "#36f9f6",
+    "source": "lunarvim/synthwave84.nvim",
+    "ink": "#0b3636"
+  },
+  {
+    "id": "material-ocean",
+    "name": "Material Ocean",
+    "mode": "dark",
+    "bg": "#0f111a",
+    "sidebar": "#090b10",
+    "card": "#1a1c25",
+    "fg": "#e6e9f5",
+    "muted": "#8f93a2",
+    "a": "#84ffff",
+    "b": "#c792ea",
+    "source": "marko-cerovac/material.nvim",
+    "ink": "#2b2033"
+  },
+  {
+    "id": "moonfly",
+    "name": "Moonfly",
+    "mode": "dark",
+    "bg": "#080808",
+    "sidebar": "#000000",
+    "card": "#1c1c1c",
+    "fg": "#bdbdbd",
+    "muted": "#949494",
+    "a": "#74b2ff",
+    "b": "#ae81ff",
+    "source": "bluz71/vim-moonfly-colors",
+    "ink": "#261c38"
   }
 ]

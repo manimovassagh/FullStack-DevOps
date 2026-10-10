@@ -1,8 +1,10 @@
-import { ExternalLink, Play } from 'lucide-react'
-import { useCi, useStatus } from '@/lib/api'
+import { useState } from 'react'
+import { ChevronRight, ExternalLink, Play } from 'lucide-react'
+import { useCi, useCiJobLog, useStatus, type CiJob, type CiRun } from '@/lib/api'
 import { ago, dur, now } from '@/lib/format'
 import { useActions } from '@/components/actions'
 import { Dot, Empty, Panel } from '@/components/bits'
+import { LogView } from '@/components/LogView'
 import { Button } from '@/components/ui/button'
 import { Loading } from '@/pages/Overview'
 import { cn } from '@/lib/utils'
@@ -13,6 +15,8 @@ export function Pipelines() {
   const { data: ci } = useCi()
   const { data: s } = useStatus()
   const { run } = useActions()
+  const [openRun, setOpenRun] = useState<number | null>(null)
+  const [job, setJob] = useState<CiJob | null>(null)
   if (!ci) return <Loading />
   const deploysUp = s?.stages.some((x) => x.state === 'up')
   return (
@@ -46,20 +50,56 @@ export function Pipelines() {
           <table className="w-full text-sm">
             <thead className="text-left text-xs text-muted-foreground"><tr className="border-b"><th className="px-4 py-2">#</th><th>Workflow</th><th>Result</th><th>Jobs</th><th>When</th><th>Took</th></tr></thead>
             <tbody>
-              {ci.runs.map((r) => (
-                <tr key={r.id} className="border-b border-border/50 align-top">
-                  <td className="px-4 py-2 font-mono text-xs">{r.id}</td>
+              {ci.runs.map((r) => (<RunRows key={r.id} r={r} open={openRun === r.id} job={job}
+                onToggle={() => { setOpenRun(openRun === r.id ? null : r.id); setJob(null) }} onJob={setJob} />))}
+            </tbody>
+          </table>
+        ) : <div className="p-4"><Empty>No runs yet.</Empty></div>}
+      </Panel>
+      {job && <JobLog job={job} onClose={() => setJob(null)} />}
+    </div>
+  )
+}
+
+function RunRows({ r, open, job, onToggle, onJob }: { r: CiRun; open: boolean; job: CiJob | null; onToggle: () => void; onJob: (j: CiJob) => void }) {
+  return (
+    <>
+      <tr onClick={onToggle} className={cn('cursor-pointer border-b border-border/50 align-top hover:bg-muted/40', open && 'bg-muted/30')}>
+                  <td className="px-4 py-2 font-mono text-xs"><span className="flex items-center gap-1"><ChevronRight className={cn('size-3.5 transition-transform', open && 'rotate-90')} />{r.id}</span></td>
                   <td className="py-2 font-mono text-xs">{r.workflow}</td>
                   <td className={cn('py-2 font-medium capitalize', TONE[r.status])}>{r.status}</td>
                   <td className="py-2"><div className="flex flex-wrap gap-1">{r.jobs.map((j) => <span key={j.name} title={j.name} className={cn('rounded border px-1.5 py-0.5 text-[11px]', TONE[j.status])}>{j.name.split(' · ')[0]}</span>)}</div></td>
                   <td className="py-2 text-xs text-muted-foreground">{r.started ? ago(r.started) : '—'}</td>
                   <td className="py-2 font-mono text-xs">{r.started ? dur((r.stopped || now()) - r.started) : '—'}</td>
-                </tr>
+      </tr>
+      {open && (
+        <tr className="border-b border-border/50 bg-muted/20">
+          <td colSpan={6} className="px-4 py-3">
+            <div className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
+              {r.jobs.map((j) => (
+                <button key={j.id} onClick={() => onJob(j)}
+                  className={cn('card-link relative flex items-center gap-2 rounded-xl border bg-card px-3 py-2 text-left text-sm', job?.id === j.id && 'brand-selected')}>
+                  <span className={cn('text-xs font-semibold capitalize', TONE[j.status])}>{j.status}</span>
+                  <span className="min-w-0 flex-1 truncate">{j.name}</span>
+                </button>
               ))}
-            </tbody>
-          </table>
-        ) : <div className="p-4"><Empty>No runs yet.</Empty></div>}
-      </Panel>
-    </div>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">Click a job to read its log here.</p>
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+function JobLog({ job, onClose }: { job: CiJob; onClose: () => void }) {
+  const live = job.status === 'running' || job.status === 'waiting'
+  const { data } = useCiJobLog(job.id, live)
+  return (
+    <Panel title={<>{job.name} <span className={cn('ml-2 text-xs font-semibold capitalize', TONE[job.status])}>{job.status}</span></>}
+      action={<Button size="sm" variant="ghost" onClick={onClose}>Close</Button>} bodyClass="p-0">
+      {data?.note && !data.lines.length ? <div className="p-4"><Empty>{data.note}</Empty></div>
+        : <LogView lines={data?.lines ?? []} className="h-[60vh] rounded-b-2xl" />}
+    </Panel>
   )
 }
