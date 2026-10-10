@@ -34,3 +34,8 @@ output "cognito_hosted_ui" {
   description = "Where the ALB sends visitors without a session."
   value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${var.region}.amazoncognito.com"
 }
+
+output "proxy_target_group_arn" {
+  description = "Floci only: the oauth2-proxy that signs people in (proxy.tf)."
+  value       = var.on_floci ? aws_lb_target_group.proxy[0].arn : null
+}

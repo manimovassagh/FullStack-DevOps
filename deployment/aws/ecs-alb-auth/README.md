@@ -1,14 +1,16 @@
 # ECS + sign-in at the load balancer — on Floci
 
 ```
-browser ─► ALB :8097 ──[authenticate-cognito]──► no session? ─┬─ page    → 302 to the Cognito hosted login
-                │                                             │            → /oauth2/idpresponse → ALB session cookie
-                │                                             └─ /api/*  → 401
-                └── valid session ──► forward ──► frontend / backend (the repo's unchanged images)
+browser ─► :8097 ─► everyone can browse (pages, GET /api/*) ─► frontend / backend (the repo's images)
+                    ├─ "Sign in" or "Add plant" signed out ─► Cognito hosted login ─► back, with a session
+                    └─ POST/PUT/PATCH/DELETE /api/* without a session ─► 401
+ real AWS: the ALB's authenticate-cognito rules (alb.tf)     Floci: an oauth2-proxy task in front (proxy.tf)
  backend task ─► RDS Postgres ─► S3 plant-ecs-alb-auth-media
 ```
 
-The [ecs](../ecs/) recipe with one change: the **load balancer** signs people in. The listener runs an `authenticate-cognito` action before it forwards anything. Nobody reaches the app without a Cognito session, and the app does not contain a single line of auth code: it is the same `backend/` and `frontend/` every other stage runs.
+The [ecs](../ecs/) recipe with **optional sign-in in front of the app**: the app opens for everyone and has a Sign in button; adding, watering, editing or deleting a plant needs a Cognito session. The backend contains no auth code and the frontend is the shared `frontend/` plus [`signin/signin.js`](signin/signin.js) (the button, and "sign in first" when a signed-out visitor tries a change), added at image build time.
+
+On real AWS the load balancer enforces it: `authenticate-cognito` with `on_unauthenticated_request = "allow"` for pages and reads, `"deny"` (401) for API changes, `"authenticate"` on the `/oauth2/start` sign-in link. Floci stores these actions but does not run them, so on Floci an **oauth2-proxy** ECS task applies the same rules with the same pool and client (see FLOCI-NOTES.md).
 
 ## Run it
 
@@ -18,7 +20,7 @@ The [ecs](../ecs/) recipe with one change: the **load balancer** signs people in
     make apply               # build images → push to ECR → terraform apply (Cognito + the ECS stack)
     make wait                # both target groups healthy
     make smoke               # sign in through the hosted login, then the ALB rules, API and browser tests
-    open http://localhost:8097   # alice@plant.example or bob@plant.example, password Plant-Parent-2026!
+    open http://localhost:8097   # Sign in: alice@plant.example or bob@plant.example, password Plant-Parent-2026!
     make destroy && docker compose down
 
 `make check` proves the deployment is idempotent. `make rollout` ships a new task-definition revision and proves the session from before the rollout still works (the cookie belongs to the ALB, not to the tasks).

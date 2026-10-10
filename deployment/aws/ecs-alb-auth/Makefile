@@ -19,7 +19,7 @@ REGISTRY := 000000000000.dkr.ecr.$(AWS_REGION).localhost:4569
 
 WAIT_TRIES ?= 72 # × 5 s
 
-.PHONY: floci login init repos _repos images push deploy apply rollout plan check smoke health wait logs destroy forget
+.PHONY: floci login init repos _repos images signin-image push deploy apply rollout plan check smoke health wait logs destroy forget
 
 floci: ## start this stage's Floci (a nightly with ALB authentication; see compose.yaml)
 	docker compose up -d --wait
@@ -42,13 +42,23 @@ _repos:
 	done
 	terraform apply -auto-approve -target=aws_ecr_repository.app
 
-images: ## build both images locally as plant/<svc>:$(IMAGE_TAG) (CI builds them in a separate job)
+# Local image per service: the shared backend, and the shared frontend plus signin.js (signin/Dockerfile).
+LOCAL_backend  = plant/backend
+LOCAL_frontend = plant/ecs-alb-auth-frontend
+
+images: ## build both images locally (CI builds them in a separate job)
 	for svc in backend frontend; do docker build -t plant/$$svc:$(IMAGE_TAG) $(ROOT)/$$svc || exit 1; done
+	$(MAKE) -s signin-image
+
+signin-image: ## add signin.js to plant/frontend:$(IMAGE_TAG) (seconds; CI only loads the shared images)
+	docker build -q --build-arg BASE=plant/frontend:$(IMAGE_TAG) -t $(LOCAL_frontend):$(IMAGE_TAG) signin >/dev/null
 
 push: repos ## tag the local images for ECR and push them
+	@docker image inspect $(LOCAL_frontend):$(IMAGE_TAG) >/dev/null 2>&1 || $(MAKE) -s signin-image
 	$(AWS) ecr get-login-password | docker login --username AWS --password-stdin $(REGISTRY) >/dev/null
 	for svc in backend frontend; do \
-		docker tag plant/$$svc:$(IMAGE_TAG) $(REGISTRY)/plant-ecs-alb-auth-$$svc:$(IMAGE_TAG) && \
+		src=$$([ $$svc = frontend ] && echo $(LOCAL_frontend) || echo $(LOCAL_backend)); \
+		docker tag $$src:$(IMAGE_TAG) $(REGISTRY)/plant-ecs-alb-auth-$$svc:$(IMAGE_TAG) && \
 		docker push -q $(REGISTRY)/plant-ecs-alb-auth-$$svc:$(IMAGE_TAG) || exit 1; \
 	done
 
@@ -63,7 +73,7 @@ revisions = $$($(AWS) ecs describe-services --cluster plant-ecs-alb-auth --servi
 rollout: login ## deployment test: ship the same images under a new tag; expect new revisions, healthy targets, passing API smoke
 	@# The image tag is the git commit: after new commits the deployed images carry an older tag, so build this commit's first.
 	@before="$(revisions)"; echo "revisions before: $$before"; \
-	for svc in backend frontend; do { docker image inspect plant/$$svc:$(IMAGE_TAG) >/dev/null 2>&1 || $(MAKE) -s images IMAGE_TAG=$(IMAGE_TAG) >/dev/null || exit 1; } && docker tag plant/$$svc:$(IMAGE_TAG) plant/$$svc:$(IMAGE_TAG)-rollout; done; \
+	for src in $(LOCAL_backend) $(LOCAL_frontend); do { docker image inspect $$src:$(IMAGE_TAG) >/dev/null 2>&1 || $(MAKE) -s images IMAGE_TAG=$(IMAGE_TAG) >/dev/null || exit 1; } && docker tag $$src:$(IMAGE_TAG) $$src:$(IMAGE_TAG)-rollout; done; \
 	$(MAKE) -s push deploy IMAGE_TAG=$(IMAGE_TAG)-rollout >/dev/null && $(MAKE) -s wait IMAGE_TAG=$(IMAGE_TAG)-rollout >/dev/null || exit 1; \
 	after="$(revisions)"; echo "revisions after:  $$after"; \
 	[ "$$before" != "$$after" ] || { echo "FAIL: task-definition revisions did not change"; exit 1; }; \
@@ -81,7 +91,7 @@ URL      = $$(terraform output -raw app_url)
 
 login: ## sign in through the hosted login page as alice and save the ALB session
 	cd $(SMOKE) && npm ci --silent && { [ -n "$$SMOKE_BROWSER_CHANNEL" ] || npx playwright install chromium >/dev/null; } \
-		&& node hosted-login.mjs "$$(cd $(CURDIR) && terraform output -raw app_url)" alice@plant.example 'Plant-Parent-2026!' $(SESSION)
+		&& SMOKE_LOGIN_PATH='/oauth2/start?rd=/' node hosted-login.mjs "$$(cd $(CURDIR) && terraform output -raw app_url)" alice@plant.example 'Plant-Parent-2026!' $(SESSION)
 
 smoke: login ## who the ALB lets through, the shared API smoke and the browser tests, all signed in as alice
 	scripts/auth-rules.sh "$(URL)" $(SESSION)/cookies.txt
@@ -89,15 +99,15 @@ smoke: login ## who the ALB lets through, the shared API smoke and the browser t
 	cd $(SMOKE) && SMOKE_STORAGE_STATE=$(SESSION)/state.json SMOKE_STAGE=ecs-alb-auth \
 		SMOKE_BASE_URL="$$(cd $(CURDIR) && terraform output -raw app_url)" npx playwright test
 
-health: ## target health of both target groups
-	@for tg in backend frontend; do echo "$$tg:"; $(AWS) elbv2 describe-target-health \
+health: ## target health of the frontend, backend and sign-in proxy target groups
+	@for tg in backend frontend proxy; do echo "$$tg:"; $(AWS) elbv2 describe-target-health \
 		--target-group-arn "$$(terraform output -raw $${tg}_target_group_arn)" \
 		--query 'TargetHealthDescriptions[].[Target.Id,TargetHealth.State,TargetHealth.Reason]' --output text; done
 
-wait: ## block until both target groups have only healthy targets
+wait: ## block until all three target groups have only healthy targets
 	@for i in $$(seq 1 $(WAIT_TRIES)); do \
 		out=$$($(MAKE) -s health); \
-		[ "$$(echo "$$out" | grep -c healthy)" -ge 2 ] && [ -z "$$(echo "$$out" | grep -E 'unhealthy|initial|draining')" ] && { echo "$$out"; exit 0; }; \
+		[ "$$(echo "$$out" | grep -c healthy)" -ge 3 ] && [ -z "$$(echo "$$out" | grep -E 'unhealthy|initial|draining')" ] && { echo "$$out"; exit 0; }; \
 		sleep 5; \
 	done; echo "targets not healthy:"; $(MAKE) -s health; exit 1
 

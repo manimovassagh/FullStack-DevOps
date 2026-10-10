@@ -32,9 +32,29 @@ resource "aws_lb_target_group" "app" {
   deregistration_delay = 10
 }
 
-# Every request passes the authenticate action first. No session cookie: pages are redirected to the
-# hosted login, API calls get 401 (a fetch() cannot follow a redirect to another origin). Valid session:
-# the next action (forward) runs. Real AWS allows this only on an HTTPS listener.
+# Optional sign-in: everyone can browse, signing in is a click away, and only changes need a session.
+#
+#   real AWS (HTTPS :443)                         Floci (HTTP :80, see FLOCI-NOTES.md)
+#   default   authenticate "allow" → frontend     default → oauth2-proxy (proxy.tf), which applies the
+#   /api/* writes  authenticate "deny" → backend            same three rules and forwards to listener :81
+#   /api/*    authenticate "allow" → backend
+#   /oauth2/start  authenticate "authenticate" → redirect /
+#
+# "allow" forwards a visitor without a session as they are, and a signed-in one with their identity
+# (x-amzn-oidc-* headers). "deny" answers 401: a fetch() cannot follow a redirect to another origin.
+locals {
+  cognito = {
+    user_pool_arn       = aws_cognito_user_pool.main.arn
+    user_pool_client_id = aws_cognito_user_pool_client.alb.id
+    user_pool_domain    = aws_cognito_user_pool_domain.main.domain
+  }
+  aws_rules = var.on_floci ? {} : {
+    signin = { priority = 5, paths = ["/oauth2/start"], methods = [], on_unauth = "authenticate" }
+    writes = { priority = 10, paths = ["/api/*"], methods = ["POST", "PUT", "PATCH", "DELETE"], on_unauth = "deny" }
+    reads  = { priority = 20, paths = ["/api/*"], methods = [], on_unauth = "allow" }
+  }
+}
+
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = var.on_floci ? var.alb_listener_port : 443
@@ -42,34 +62,47 @@ resource "aws_lb_listener" "http" {
   certificate_arn   = var.on_floci ? null : var.certificate_arn
   ssl_policy        = var.on_floci ? null : "ELBSecurityPolicy-TLS13-1-2-2021-06"
 
-  default_action {
-    type  = "authenticate-cognito"
-    order = 1
+  dynamic "default_action" {
+    for_each = var.on_floci ? [] : [1]
+    content {
+      type  = "authenticate-cognito"
+      order = 1
 
-    authenticate_cognito {
-      user_pool_arn              = aws_cognito_user_pool.main.arn
-      user_pool_client_id        = aws_cognito_user_pool_client.alb.id
-      user_pool_domain           = aws_cognito_user_pool_domain.main.domain
-      on_unauthenticated_request = "authenticate"
-      scope                      = "openid email"
-      session_timeout            = 3600 # seconds; the ALB then sends the user through the login again
+      authenticate_cognito {
+        user_pool_arn              = local.cognito.user_pool_arn
+        user_pool_client_id        = local.cognito.user_pool_client_id
+        user_pool_domain           = local.cognito.user_pool_domain
+        on_unauthenticated_request = "allow"
+        scope                      = "openid email"
+        session_timeout            = 3600 # seconds; then the next change asks for a sign-in again
+      }
     }
   }
 
   default_action {
     type             = "forward"
     order            = 2
-    target_group_arn = aws_lb_target_group.app["frontend"].arn
+    target_group_arn = var.on_floci ? aws_lb_target_group.proxy[0].arn : aws_lb_target_group.app["frontend"].arn
   }
 }
 
-resource "aws_lb_listener_rule" "api" {
+resource "aws_lb_listener_rule" "aws" {
+  for_each     = local.aws_rules
   listener_arn = aws_lb_listener.http.arn
-  priority     = 10
+  priority     = each.value.priority
 
   condition {
     path_pattern {
-      values = ["/api/*"]
+      values = each.value.paths
+    }
+  }
+
+  dynamic "condition" {
+    for_each = length(each.value.methods) > 0 ? [1] : []
+    content {
+      http_request_method {
+        values = each.value.methods
+      }
     }
   }
 
@@ -78,18 +111,35 @@ resource "aws_lb_listener_rule" "api" {
     order = 1
 
     authenticate_cognito {
-      user_pool_arn              = aws_cognito_user_pool.main.arn
-      user_pool_client_id        = aws_cognito_user_pool_client.alb.id
-      user_pool_domain           = aws_cognito_user_pool_domain.main.domain
-      on_unauthenticated_request = "deny" # 401 instead of a redirect
+      user_pool_arn              = local.cognito.user_pool_arn
+      user_pool_client_id        = local.cognito.user_pool_client_id
+      user_pool_domain           = local.cognito.user_pool_domain
+      on_unauthenticated_request = each.value.on_unauth
       scope                      = "openid email"
       session_timeout            = 3600
     }
   }
 
-  action {
-    type             = "forward"
-    order            = 2
-    target_group_arn = aws_lb_target_group.app["backend"].arn
+  # The sign-in link comes back here after the hosted login, with the session cookie set: send it home.
+  dynamic "action" {
+    for_each = each.key == "signin" ? [1] : []
+    content {
+      type  = "redirect"
+      order = 2
+      redirect {
+        path        = "/"
+        query       = ""
+        status_code = "HTTP_302"
+      }
+    }
+  }
+
+  dynamic "action" {
+    for_each = each.key == "signin" ? [] : [1]
+    content {
+      type             = "forward"
+      order            = 2
+      target_group_arn = aws_lb_target_group.app["backend"].arn
+    }
   }
 }

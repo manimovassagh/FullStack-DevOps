@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # `check && pass … || fail …` is intended below: pass only prints, fail exits.
 # shellcheck disable=SC2015
-# What the load balancer is told to do, read back from its API: every path signs in with Cognito before it
-# forwards; pages get the hosted login, the API gets 401. On Floci this is all we can check, because Floci stores
-# these actions but does not enforce them (FLOCI-NOTES.md). On real AWS, scripts/auth-rules.sh checks the behaviour.
+# Real AWS only: the listener rules alb.tf creates, read back from the API (on Floci the proxy in proxy.tf does
+# this job instead, and scripts/auth-rules.sh checks the behaviour on both).
 # Usage: listener-config.sh <aws endpoint url> <load balancer name>
 set -euo pipefail
 EP=${1:?aws endpoint url}; NAME=${2:?load balancer name}
@@ -18,13 +17,15 @@ listener=$(a elbv2 describe-listeners --load-balancer-arn "$lb" --query 'Listene
 actions() { jq -r 'sort_by(.Order)[] | "\(.Order):\(.Type):\(.AuthenticateCognitoConfig.OnUnauthenticatedRequest // "-")"' | paste -sd' ' -; }
 
 d=$(a elbv2 describe-listeners --listener-arns "$listener" --query 'Listeners[0].DefaultActions' --output json | actions)
-[ "$d" = "1:authenticate-cognito:authenticate 2:forward:-" ] && pass "pages: sign in (redirect to the hosted login), then forward" || fail "default actions: $d"
+[ "$d" = "1:authenticate-cognito:allow 2:forward:-" ] && pass "pages: open, signed-in visitors carry their identity" || fail "default actions: $d"
 
-r=$(a elbv2 describe-rules --listener-arn "$listener" --output json \
-  | jq '[.Rules[] | select(any(.Conditions[]?; .Field == "path-pattern" and (.Values // .PathPatternConfig.Values | index("/api/*"))))][0].Actions')
-[ "$r" != null ] || fail "no /api/* rule"
-r=$(echo "$r" | actions)
-[ "$r" = "1:authenticate-cognito:deny 2:forward:-" ] && pass "API: sign in or 401 (deny), then forward" || fail "/api/* actions: $r"
+# "<path>|<methods>" → "<actions>" for every rule that is not the default
+rules=$(a elbv2 describe-rules --listener-arn "$listener" --output json | jq -r '.Rules[] | select(.IsDefault | not)
+  | "\([.Conditions[] | select(.Field == "path-pattern") | (.Values // .PathPatternConfig.Values)[]] | join(","))|\([.Conditions[] | select(.Field == "http-request-method") | .HttpRequestMethodConfig.Values[]] | join(","))|\(.Actions | tostring)"')
+rule() { echo "$rules" | grep -F "$1|$2|" | cut -d'|' -f3- | actions; }
+[ "$(rule /oauth2/start "")" = "1:authenticate-cognito:authenticate 2:redirect:-" ] && pass "sign-in link: hosted login, then home" || fail "sign-in rule"
+[ "$(rule '/api/*' POST,PUT,PATCH,DELETE)" = "1:authenticate-cognito:deny 2:forward:-" ] && pass "API changes: session or 401" || fail "API write rule"
+[ "$(rule '/api/*' "")" = "1:authenticate-cognito:allow 2:forward:-" ] && pass "API reads: open" || fail "API read rule"
 
 cfg=$(a elbv2 describe-listeners --listener-arns "$listener" --output json \
   | jq -r '.Listeners[0].DefaultActions[] | select(.Type == "authenticate-cognito") | .AuthenticateCognitoConfig | "\(.UserPoolArn) \(.UserPoolClientId)"')

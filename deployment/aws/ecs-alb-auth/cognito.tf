@@ -30,8 +30,9 @@ resource "aws_cognito_user_pool_domain" "main" {
 }
 
 locals {
-  app_origin   = var.on_floci ? "http://localhost:${var.alb_host_port}" : var.public_url
-  callback_url = "${local.app_origin}/oauth2/idpresponse" # the ALB's own path; no app route needed
+  app_origin = var.on_floci ? "http://localhost:${var.alb_host_port}" : var.public_url
+  # Real AWS: the ALB's own path, no app route needed. Floci: oauth2-proxy's callback (proxy.tf).
+  callback_url = var.on_floci ? "${local.app_origin}/oauth2/callback" : "${local.app_origin}/oauth2/idpresponse"
 }
 
 # A confidential client: the ALB keeps the secret and runs the authorization-code flow on the server side.

@@ -32,7 +32,7 @@ data "aws_iam_policy_document" "execution" {
   }
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.database_url.arn]
+    resources = concat([aws_secretsmanager_secret.database_url.arn], [for s in aws_secretsmanager_secret.proxy : s.arn])
   }
 }
 
