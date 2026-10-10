@@ -17,5 +17,11 @@ services:
       FLOCI_NETWORK_SECURITY_GROUP_ENFORCEMENT_ENABLED: "false"
       # ECS task containers join this compose network, so the ALB and the RDS proxy reach them.
       FLOCI_SERVICES_ECS_DOCKER_NETWORK: plant-ecs-alb-auth_default
+      # Its own ECR registry sidecar: Floci names it floci-aws-ecr-registry by default, so two stages on their own
+      # Floci shared one container that only the first Floci could reach (docker login → 503 for the second).
+      FLOCI_SERVICES_ECR_REGISTRY_CONTAINER_NAME: floci-ecr-registry-ecs-alb-auth
+      FLOCI_SERVICES_ECR_REGISTRY_BASE_PORT: "5200"
+      FLOCI_SERVICES_ECR_REGISTRY_MAX_PORT: "5249"
+      FLOCI_SERVICES_ECR_KEEP_RUNNING_ON_SHUTDOWN: "false" # gone with `docker compose down`, no leftover
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

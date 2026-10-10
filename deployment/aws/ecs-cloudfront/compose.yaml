@@ -19,5 +19,11 @@ services:
       FLOCI_SERVICES_ECS_DOCKER_NETWORK: plant-ecs-cloudfront_default
       # CloudFront refuses custom origins that resolve to local addresses (SSRF guard); the ALB is local here.
       FLOCI_SERVICES_CLOUDFRONT_ALLOWED_PRIVATE_ORIGIN_HOSTS: localhost
+      # Its own ECR registry sidecar: Floci names it floci-aws-ecr-registry by default, so two stages on their own
+      # Floci shared one container that only the first Floci could reach (docker login → 503 for the second).
+      FLOCI_SERVICES_ECR_REGISTRY_CONTAINER_NAME: floci-ecr-registry-ecs-cloudfront
+      FLOCI_SERVICES_ECR_REGISTRY_BASE_PORT: "5250"
+      FLOCI_SERVICES_ECR_REGISTRY_MAX_PORT: "5299"
+      FLOCI_SERVICES_ECR_KEEP_RUNNING_ON_SHUTDOWN: "false" # gone with `docker compose down`, no leftover
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
