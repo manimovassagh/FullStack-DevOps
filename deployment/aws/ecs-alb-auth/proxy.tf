@@ -81,6 +81,10 @@ resource "aws_lb_listener_rule" "internal_signout" {
   listener_arn = aws_lb_listener.internal[0].arn
   priority     = each.value.priority
 
+  # Floci: rules added to one listener at the same time can lose one (the rule exists but the listener does not
+  # list or route it; seen 2026-10-10 with the /api/* rule after a fresh apply). Create them one after another.
+  depends_on = [aws_lb_listener_rule.internal_api]
+
   condition {
     path_pattern {
       values = ["/${each.key}"]
