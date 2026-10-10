@@ -15,7 +15,8 @@ const browser = await chromium.launch({ channel: process.env.SMOKE_BROWSER_CHANN
 try {
   const context = await browser.newContext()
   const page = await context.newPage()
-  await page.goto(base) // the load balancer redirects to the login page
+  // Where sign-in starts: the app's sign-in link (SMOKE_LOGIN_PATH), or any page when every page needs a session.
+  await page.goto(base + (process.env.SMOKE_LOGIN_PATH || ''))
   await page.locator('input[name="username"]:visible').fill(user)
   await page.locator('input[name="password"]:visible').fill(password)
   await page.locator('[type="submit"]:visible').first().click()
