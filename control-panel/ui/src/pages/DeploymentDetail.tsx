@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ArrowLeft, Copy, ExternalLink, Search } from 'lucide-react'
-import { marked } from 'marked'
+import { Marked } from 'marked'
 import { toast } from 'sonner'
 import { getLog, usePromRange, useStage, useStatus } from '@/lib/api'
 import { ago, bytes, dur, now, verb } from '@/lib/format'
@@ -241,12 +241,26 @@ function ContainersTab({ c }: { c: Detail['containers'] }) {
   )
 }
 
-// The stage's README, rendered. It is the repo's own file, so its HTML is trusted.
-function DocsTab({ md, dir }: { md: string; dir: string }) {
-  if (!md) return <Empty>No README.md in {dir}.</Empty>
+// READMEs are rendered as Markdown only: raw HTML in them is dropped and links keep safe schemes, so a file
+// that ever carried a <script> or a javascript: link could not run anything in the panel.
+const SAFE_HREF = /^(https?:|mailto:|#|\.{0,2}\/|[\w.-]+(\/|$))/i
+const md = new Marked({
+  renderer: {
+    html: () => '',
+    link({ href, tokens }) {
+      const text = this.parser.parseInline(tokens)
+      return SAFE_HREF.test(href) ? `<a href="${href.replace(/"/g, '&quot;')}" target="_blank" rel="noreferrer noopener">${text}</a>` : text
+    },
+    image: ({ text }) => text.replace(/[<>&"]/g, ''),
+  },
+})
+
+// The stage's README, rendered.
+function DocsTab({ md: text, dir }: { md: string; dir: string }) {
+  if (!text) return <Empty>No README.md in {dir}.</Empty>
   return (
     <Panel title={<span className="font-mono">{dir}/README.md</span>}>
-      <article className="prose-panel" dangerouslySetInnerHTML={{ __html: marked.parse(md, { async: false }) }} />
+      <article className="prose-panel" dangerouslySetInnerHTML={{ __html: md.parse(text, { async: false }) }} />
     </Panel>
   )
 }
