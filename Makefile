@@ -58,9 +58,10 @@ PANEL_PID := control-panel/.panel.pid
 PANEL_LOG := control-panel/.panel.log
 LAB       := python3 control-panel/cli.py
 
-docker: ## make sure Docker answers (starts Rancher Desktop on macOS if needed)
+docker: ## make sure Docker answers (starts OrbStack on macOS if needed)
 	@docker info >/dev/null 2>&1 || { \
-		echo "Docker is not running; starting Rancher Desktop…"; open -a "Rancher Desktop" 2>/dev/null; \
+		echo "Docker is not running; starting OrbStack…"; \
+		if command -v orb >/dev/null; then orb start >/dev/null 2>&1; else open -a OrbStack 2>/dev/null; fi; \
 		for i in $$(seq 1 72); do docker info >/dev/null 2>&1 && exit 0; sleep 5; done; \
 		echo "Docker did not come up"; exit 1; }
 

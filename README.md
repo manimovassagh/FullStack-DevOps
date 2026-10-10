@@ -164,7 +164,7 @@ docs/                             design notes and screenshots
 
 ## Requirements
 
-Docker (Rancher Desktop or Docker Desktop, 4 GB+), Terraform 1.14, Go 1.26, Node 22, Python 3, AWS CLI v2, kubectl and Helm for the EKS stages. k6 is optional (the load tests run it in Docker). macOS and Linux.
+Docker (OrbStack, or Docker Desktop; 4 GB+), Terraform 1.14, Go 1.26, Node 22, Python 3, AWS CLI v2, kubectl and Helm for the EKS stages. k6 is optional (the load tests run it in Docker). macOS and Linux.
 
 A laptop runs two or three stages at once comfortably. The emulators keep everything in memory, so restarting Docker resets them; the control panel notices and redeploys from a clean state.
 
