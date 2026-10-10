@@ -1,0 +1,79 @@
+# Chain: CloudFront → alb → backend tasks → db. Each tier only accepts the tier in front of it.
+# With awsvpc networking every task gets its own ENI, so security groups apply per task, not per host.
+
+resource "aws_security_group" "alb" {
+  name        = "${var.name}-alb"
+  description = "Public HTTP into the load balancer"
+  vpc_id      = aws_vpc.main.id
+}
+
+resource "aws_security_group" "backend" {
+  name        = "${var.name}-backend"
+  description = "Go API tasks, only from the ALB"
+  vpc_id      = aws_vpc.main.id
+}
+
+resource "aws_security_group" "db" {
+  name        = "${var.name}-db"
+  description = "Postgres, only from backend tasks"
+  vpc_id      = aws_vpc.main.id
+}
+
+# Who may reach the load balancer at all. Real AWS: only CloudFront's origin-facing servers (an AWS-managed
+# prefix list); together with the secret header in alb.tf, nobody can skip CloudFront. Floci has no such list.
+data "aws_ec2_managed_prefix_list" "cloudfront" {
+  count = var.on_floci ? 0 : 1
+  name  = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "alb_http" {
+  security_group_id = aws_security_group.alb.id
+  cidr_ipv4         = var.on_floci ? "0.0.0.0/0" : null
+  prefix_list_id    = var.on_floci ? null : data.aws_ec2_managed_prefix_list.cloudfront[0].id
+  ip_protocol       = "tcp"
+  from_port         = var.alb_listener_port
+  to_port           = var.alb_listener_port
+}
+
+locals {
+  app_tiers = {
+    backend = { sg = aws_security_group.backend.id, port = 8080 }
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "from_alb" {
+  for_each                     = local.app_tiers
+  security_group_id            = each.value.sg
+  referenced_security_group_id = aws_security_group.alb.id
+  ip_protocol                  = "tcp"
+  from_port                    = each.value.port
+  to_port                      = each.value.port
+
+  # Floci reports the reference as "<account>/sg-…", which would show as a change on every plan.
+  lifecycle {
+    ignore_changes = [referenced_security_group_id]
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "db_from_backend" {
+  security_group_id            = aws_security_group.db.id
+  referenced_security_group_id = aws_security_group.backend.id
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+
+  lifecycle {
+    ignore_changes = [referenced_security_group_id]
+  }
+}
+
+# Tasks need egress to pull images from ECR, read the secret and reach S3/RDS.
+resource "aws_vpc_security_group_egress_rule" "all" {
+  for_each = {
+    alb     = aws_security_group.alb.id
+    backend = aws_security_group.backend.id
+  }
+  security_group_id = each.value
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+}
