@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
+import type { MouseEvent } from 'react'
+import { useNavigate, Link } from 'react-router'
 import { Search } from 'lucide-react'
 import { useStatus, type Stage } from '@/lib/api'
 import { ago, dur, now, verb } from '@/lib/format'
@@ -56,8 +57,14 @@ export function Deployments() {
 }
 
 export function StageCard({ stage: st }: { stage: Stage }) {
+  const navigate = useNavigate()
+  // The whole card opens the detail page; its own buttons and links keep doing their job.
+  const open = (e: MouseEvent) => {
+    if ((e.target as HTMLElement).closest('a, button, input, [role="dialog"]')) return
+    navigate(`/deployments/${st.id}`)
+  }
   return (
-    <article className={cn('glass glass-hover group relative flex flex-col gap-3 overflow-hidden rounded-2xl p-4',
+    <article onClick={open} className={cn('glass glass-hover group relative flex cursor-pointer flex-col gap-3 overflow-hidden rounded-2xl p-4',
       st.state === 'up' && 'border-emerald-400/25', st.job && 'border-amber-400/35')}>
       <span className={cn('absolute inset-y-0 left-0 w-0.5', st.job ? 'bg-amber-400' : st.state === 'up' ? 'bg-emerald-400' : st.state === 'partial' ? 'bg-red-400' : st.state === 'stale' ? 'bg-violet-400' : 'bg-transparent')} />
       <Link to={`/deployments/${st.id}`} className="flex items-start gap-3">
