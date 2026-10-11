@@ -8,7 +8,7 @@ browser ─► :8097 ─► everyone can browse (pages, GET /api/*) ─► front
  backend task ─► RDS Postgres ─► S3 plant-ecs-alb-auth-media
 ```
 
-The [ecs](../ecs/) recipe with **optional sign-in in front of the app**: the app opens for everyone and has a Sign in button; adding, watering, editing or deleting a plant needs a Cognito session. The backend contains no auth code and the frontend is the shared `frontend/` plus [`signin/signin.js`](signin/signin.js) (the button, and "sign in first" when a signed-out visitor tries a change), added at image build time.
+The [ecs](../ecs/) recipe with **optional sign-in in front of the app**: the app opens for everyone and has a Sign in button; adding, watering, editing or deleting a plant needs a Cognito session. The backend contains no auth code and the frontend is the shared `apps/frontend/` plus [`signin/signin.js`](signin/signin.js) (the button, and "sign in first" when a signed-out visitor tries a change), added at image build time.
 
 On real AWS the load balancer enforces it: `authenticate-cognito` with `on_unauthenticated_request = "allow"` for pages and reads, `"deny"` (401) for API changes, `"authenticate"` on the `/oauth2/start` sign-in link. Floci stores these actions but does not run them, so on Floci an **oauth2-proxy** ECS task applies the same rules with the same pool and client (see FLOCI-NOTES.md).
 
@@ -40,7 +40,7 @@ On real AWS the load balancer enforces it: `authenticate-cognito` with `on_unaut
 | | ecs-alb-auth | ecs-cognito |
 |---|---|---|
 | where the sign-in is checked | the ALB, before the request reaches a task | the Go API, on every request (JWT + JWKS) |
-| app changes | none | own copies `backend-auth/`, `frontend-auth/` |
+| app changes | none | own copies `apps/backend-auth/`, `apps/frontend-auth/` |
 | who is calling | the app only knows if it reads the ALB's `x-amzn-oidc-*` headers | the token's claims, per-user data, an admin group |
 | login page | Cognito's hosted UI | the app's own form |
 | API clients without a browser | no (they would need the ALB session cookie) | yes, with a bearer token |

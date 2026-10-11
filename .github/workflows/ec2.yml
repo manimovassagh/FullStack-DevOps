@@ -16,8 +16,8 @@ on:
   push:
     branches: [main]
     paths:
-      - backend/**
-      - frontend/**
+      - apps/backend/**
+      - apps/frontend/**
       - deployment/smoke/**
       - Makefile
       - docker-compose.yml
@@ -27,8 +27,8 @@ on:
       - .github/workflows/deploy-classic-ec2.yml
   pull_request:
     paths:
-      - backend/**
-      - frontend/**
+      - apps/backend/**
+      - apps/frontend/**
       - deployment/smoke/**
       - Makefile
       - docker-compose.yml
@@ -49,7 +49,7 @@ permissions:
   contents: read
 
 env:
-  GO_VERSION_FILE: backend/go.mod
+  GO_VERSION_FILE: apps/backend/go.mod
   NODE_VERSION: 22
   TERRAFORM_VERSION: 1.14.6
 
@@ -64,14 +64,14 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: ${{ env.GO_VERSION_FILE }}
-          cache-dependency-path: backend/go.sum
+          cache-dependency-path: apps/backend/go.sum
       - name: Start Postgres + Floci (integration test dependencies)
         run: make up
       - name: go vet
-        working-directory: backend
+        working-directory: apps/backend
         run: go vet ./...
       - name: Unit + integration tests (race detector, coverage)
-        working-directory: backend
+        working-directory: apps/backend
         env:
           TEST_DATABASE_URL: postgres://plant:plant@localhost:5432/plant_test?sslmode=disable
           AWS_ENDPOINT_URL: http://localhost:4566
@@ -90,14 +90,14 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: frontend
+        working-directory: apps/frontend
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: apps/frontend/package-lock.json
       - run: npm ci
       - name: Lint (oxlint)
         run: npm run lint
@@ -153,12 +153,12 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: ${{ env.GO_VERSION_FILE }}
-          cache-dependency-path: backend/go.sum
+          cache-dependency-path: apps/backend/go.sum
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: apps/frontend/package-lock.json
       - name: Build Go binary (linux/arm64) + React bundle
         run: make -C deployment/aws/classic-ec2 artifacts
       - uses: actions/upload-artifact@v7
@@ -168,7 +168,7 @@ jobs:
           path: |
             deployment/aws/classic-ec2/build/plant-api
             deployment/aws/classic-ec2/build/dist.tar.gz
-            frontend/dist
+            apps/frontend/dist
           retention-days: 3
       - uses: christopherhx/gitea-upload-artifact@v4
         if: ${{ github.server_url != 'https://github.com' }}
@@ -177,7 +177,7 @@ jobs:
           path: |
             deployment/aws/classic-ec2/build/plant-api
             deployment/aws/classic-ec2/build/dist.tar.gz
-            frontend/dist
+            apps/frontend/dist
           retention-days: 3
 
   # ── Stage 3: deploy to Floci and verify ───────────────────────────────────

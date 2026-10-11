@@ -2,8 +2,8 @@
 
 The [serverless](../serverless/) recipe (Lambda + API Gateway + CloudFront + S3) with real sign-in: users sign in with **Amazon Cognito**, the function verifies every request's token, and every user sees only their own plants (members of the `admin` group see all). The same rules as [ecs-cognito](../ecs-cognito/), on a serverless platform.
 
-- **Function:** [`backend-serverless-auth/`](../../../backend-serverless-auth/), a copy of `backend-auth` (token checks, per-user data, sign-in endpoints) with the Lambda entry point. The API Gateway adapter passes cookies both ways, because payload format 2.0 carries them in their own field (the refresh token is one).
-- **Site:** [`frontend-auth/`](../../../frontend-auth/): a public home page; sign-in when the visitor adds or opens a plant.
+- **Function:** [`apps/backend-serverless-auth/`](../../../apps/backend-serverless-auth/), a copy of `apps/backend-auth` (token checks, per-user data, sign-in endpoints) with the Lambda entry point. The API Gateway adapter passes cookies both ways, because payload format 2.0 carries them in their own field (the refresh token is one).
+- **Site:** [`apps/frontend-auth/`](../../../apps/frontend-auth/): a public home page; sign-in when the visitor adds or opens a plant.
 - **Own emulator** on :4568 (`compose.yaml`), so it runs next to the serverless stage. App: http://plant-auth.localhost:4568 (`alice@plant.example` / `Plant-Parent-2026!`).
 
 ```bash
@@ -19,7 +19,7 @@ Everything below is the serverless recipe this stage is built on.
 
 The Plant Parent app with no servers to run: the Go API is an AWS Lambda function, the React app is files in S3, and CloudFront is the single public entrance. Runs locally on [Floci](https://floci.io); the Terraform is real-AWS-shaped.
 
-The API code is its own project, [`backend-serverless/`](../../../backend-serverless/): the same routes as `backend/`, with a Lambda entry point instead of a web server. This folder does not use `backend/`.
+The API code is its own project, [`apps/backend-serverless/`](../../../apps/backend-serverless/): the same routes as `apps/backend/`, with a Lambda entry point instead of a web server. This folder does not use `apps/backend/`.
 
 ```
                     ┌────────────── CloudFront (one hostname) ──────────────┐

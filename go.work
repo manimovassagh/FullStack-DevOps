@@ -1,8 +1,8 @@
 go 1.26.1
 
-use ./backend
-use ./backend-serverless
-use ./backend-gcp
-use ./backend-auth
-use ./backend-serverless-auth
-use ./backend-accounts
+use ./apps/backend
+use ./apps/backend-serverless
+use ./apps/backend-gcp
+use ./apps/backend-auth
+use ./apps/backend-serverless-auth
+use ./apps/backend-accounts

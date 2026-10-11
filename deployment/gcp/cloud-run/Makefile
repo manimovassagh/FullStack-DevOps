@@ -10,7 +10,7 @@ export FLOCI_ENDPOINT := http://localhost:4588
 export SMOKE_LIST_OBJECTS := $(CURDIR)/scripts/list-objects.sh
 
 # Image tag = git commit (+ -dirty for uncommitted changes); override with IMAGE_TAG=...
-IMAGE_TAG := $(or $(IMAGE_TAG),$(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- $(ROOT)/backend-gcp $(ROOT)/frontend $(CURDIR)/gateway || echo -dirty))
+IMAGE_TAG := $(or $(IMAGE_TAG),$(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- $(ROOT)/apps/backend-gcp $(ROOT)/apps/frontend $(CURDIR)/gateway || echo -dirty))
 export TF_VAR_image_tag := $(IMAGE_TAG)
 
 WAIT_TRIES ?= 60 # × 5 s
@@ -24,8 +24,8 @@ init:
 	terraform init
 
 images: ## build the three images locally; Cloud Run starts them straight from the Docker daemon
-	docker build -t plant/backend-gcp:$(IMAGE_TAG) $(ROOT)/backend-gcp
-	docker build -t plant/frontend:$(IMAGE_TAG) $(ROOT)/frontend
+	docker build -t plant/backend-gcp:$(IMAGE_TAG) $(ROOT)/apps/backend-gcp
+	docker build -t plant/frontend:$(IMAGE_TAG) $(ROOT)/apps/frontend
 	docker build -t plant/gcp-gateway:$(IMAGE_TAG) gateway
 
 deploy: ## terraform apply for $(IMAGE_TAG)

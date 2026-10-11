@@ -9,7 +9,7 @@ export AWS_ACCESS_KEY_ID      := test
 export AWS_SECRET_ACCESS_KEY  := test
 
 # Image tag = git commit (+ -dirty for uncommitted changes); override with IMAGE_TAG=...
-IMAGE_TAG := $(or $(IMAGE_TAG),$(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- $(ROOT)/backend $(ROOT)/frontend $(CURDIR)/gateway || echo -dirty))
+IMAGE_TAG := $(or $(IMAGE_TAG),$(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- $(ROOT)/apps/backend $(ROOT)/apps/frontend $(CURDIR)/gateway || echo -dirty))
 
 WAIT_TRIES ?= 60 # × 5 s
 
@@ -41,8 +41,8 @@ init: tls
 	$(TF) init -input=false
 
 images: ## build the three images locally; the emulator starts the replicas straight from the Docker daemon
-	docker build -t plant/backend:$(IMAGE_TAG) $(ROOT)/backend
-	docker build -t plant/frontend:$(IMAGE_TAG) $(ROOT)/frontend
+	docker build -t plant/backend:$(IMAGE_TAG) $(ROOT)/apps/backend
+	docker build -t plant/frontend:$(IMAGE_TAG) $(ROOT)/apps/frontend
 	docker build -t plant/azure-gateway:$(IMAGE_TAG) gateway
 
 bucket: ## create the photos bucket in the object store (idempotent)

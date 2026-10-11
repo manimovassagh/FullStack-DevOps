@@ -14,11 +14,11 @@ The AWS stages run **locally on [Floci](https://floci.io)**, so no cloud account
 | [eks-helm](aws/eks-helm/) | EKS + the app as a Helm chart | charts, values, releases and revisions, `helm upgrade --install`, `helm rollback`, templating vs patching |
 | [ec2-asg](aws/ec2-asg/) | EC2 behind Auto Scaling Groups | launch templates and versions, Auto Scaling Groups, ALB registration by the group, self-healing, rolling replacement (instance refresh), target-tracking policies |
 | [eks-gitops](aws/eks-gitops/) | EKS + Argo CD pulling from git | GitOps: the repo is the source of truth, a release is a commit, rollback is `git revert`, self-healing drift, no cluster credentials in CI |
-| [ecs-cognito](aws/ecs-cognito/) | ECS Fargate + ALB + RDS + S3 + Amazon Cognito | user pools and app clients, JWT verification with the pool's JWKS, per-user data, an admin group, a backend-for-frontend sign-in with an HttpOnly refresh cookie; own app copies `backend-auth/`, `frontend-auth/` |
+| [ecs-cognito](aws/ecs-cognito/) | ECS Fargate + ALB + RDS + S3 + Amazon Cognito | user pools and app clients, JWT verification with the pool's JWKS, per-user data, an admin group, a backend-for-frontend sign-in with an HttpOnly refresh cookie; own app copies `apps/backend-auth/`, `apps/frontend-auth/` |
 | [ecs-alb-auth](aws/ecs-alb-auth/) | ECS Fargate + ALB authenticate-cognito + RDS + S3 | sign-in at the load balancer: hosted UI, confidential app client, ALB session cookie, 302 for pages vs 401 for the API; the unchanged backend/ and frontend/ |
 | [serverless-gateway-auth](aws/serverless-gateway-auth/) | Lambda + API Gateway JWT authorizer + CloudFront + S3 + Amazon Cognito | the token is checked by API Gateway before the function runs: JWT authorizers, open vs protected routes, a 401 that never invokes the Lambda; same app as serverless-cognito |
 | [ecs-blue-green](aws/ecs-blue-green/) | ECS Fargate + weighted ALB (two environments) | blue/green and canary releases, weighted target groups, a preview listener, instant rollback, a release state machine |
-| [serverless-cognito](aws/serverless-cognito/) | Lambda + API Gateway + CloudFront + S3 + Amazon Cognito | the serverless recipe with sign-in: JWT checks in the function, per-user data, cookies through API Gateway payload 2.0; own copies `backend-serverless-auth/`, `frontend-auth/` |
+| [serverless-cognito](aws/serverless-cognito/) | Lambda + API Gateway + CloudFront + S3 + Amazon Cognito | the serverless recipe with sign-in: JWT checks in the function, per-user data, cookies through API Gateway payload 2.0; own copies `apps/backend-serverless-auth/`, `apps/frontend-auth/` |
 | [serverless](aws/serverless/) | Lambda + API Gateway + CloudFront + S3 | function packaging and cold starts, API Gateway events, versions and aliases, CloudFront origins and behaviors, a private S3 site with origin access control, secrets read by the function |
 
 Google Cloud and Azure (one stage each, the most common container setup of each) have their own sections below. Next stages, the target folder structure and the rules for adding a stage: [ROADMAP.md](ROADMAP.md).
@@ -29,7 +29,7 @@ Docker, Terraform ≥ 1.14, AWS CLI v2, Go 1.26+, Node 22+, kubectl (eks). From 
 
 ## Google Cloud
 
-Runs on the [Floci GCP emulator](https://github.com/floci-io/floci-gcp) (its own compose file in the stage). The API is a copy of the backend with Cloud Storage as photo storage ([`backend-gcp/`](../backend-gcp/)).
+Runs on the [Floci GCP emulator](https://github.com/floci-io/floci-gcp) (its own compose file in the stage). The API is a copy of the backend with Cloud Storage as photo storage ([`apps/backend-gcp/`](../apps/backend-gcp/)).
 
 | Folder | Style | What you learn |
 |---|---|---|

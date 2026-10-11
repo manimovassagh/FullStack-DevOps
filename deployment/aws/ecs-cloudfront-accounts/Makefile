@@ -15,7 +15,7 @@ export FLOCI_ENDPOINT := $(FLOCI)
 
 # Image tag = git commit (+ -dirty for uncommitted changes); override with IMAGE_TAG=...
 # Evaluated once (:=), so images/push/deploy in one run always agree even if HEAD moves.
-IMAGE_TAG := $(or $(IMAGE_TAG),$(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- $(ROOT)/backend-accounts $(ROOT)/frontend-accounts || echo -dirty))
+IMAGE_TAG := $(or $(IMAGE_TAG),$(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- $(ROOT)/apps/backend-accounts $(ROOT)/apps/frontend-accounts || echo -dirty))
 export TF_VAR_image_tag := $(IMAGE_TAG)
 REGISTRY := 000000000000.dkr.ecr.$(AWS_REGION).localhost:4572
 
@@ -45,7 +45,7 @@ _repos:
 	terraform apply -auto-approve -target=aws_ecr_repository.app
 
 images: ## build the accounts API image locally as plant/backend-accounts:$(IMAGE_TAG) (CI builds it in a separate job)
-	docker build -t plant/backend-accounts:$(IMAGE_TAG) $(ROOT)/backend-accounts
+	docker build -t plant/backend-accounts:$(IMAGE_TAG) $(ROOT)/apps/backend-accounts
 
 push: repos ## tag the local image for ECR and push it
 	$(AWS) ecr get-login-password | docker login --username AWS --password-stdin $(REGISTRY) >/dev/null
@@ -60,10 +60,10 @@ deploy: ## terraform apply for the pushed $(IMAGE_TAG)
 apply: images push deploy
 
 frontend: ## build the React app that is uploaded to the site bucket
-	cd $(ROOT)/frontend-accounts && npm ci --silent && npm run build
+	cd $(ROOT)/apps/frontend-accounts && npm ci --silent && npm run build
 
 site: ## upload the React build to the site bucket and invalidate CloudFront (a frontend release)
-	d=$(ROOT)/frontend-accounts/dist; b=$$(terraform output -raw site_bucket); \
+	d=$(ROOT)/apps/frontend-accounts/dist; b=$$(terraform output -raw site_bucket); \
 	$(AWS) s3 sync "$$d" "s3://$$b" --delete --exclude 'assets/*' --cache-control 'no-cache' --only-show-errors && \
 	$(AWS) s3 sync "$$d/assets" "s3://$$b/assets" --delete --cache-control 'public, max-age=31536000, immutable' --only-show-errors && \
 	$(AWS) cloudfront create-invalidation --distribution-id "$$(terraform output -raw distribution_id)" --paths '/*' --query Invalidation.Status --output text

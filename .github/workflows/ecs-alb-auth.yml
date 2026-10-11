@@ -13,8 +13,8 @@ on:
   push:
     branches: [main]
     paths:
-      - backend/**
-      - frontend/**
+      - apps/backend/**
+      - apps/frontend/**
       - deployment/aws/ecs-alb-auth/**
       - deployment/smoke/**
       - Makefile
@@ -23,8 +23,8 @@ on:
       - .github/workflows/ecs-alb-auth.yml
   pull_request:
     paths:
-      - backend/**
-      - frontend/**
+      - apps/backend/**
+      - apps/frontend/**
       - deployment/aws/ecs-alb-auth/**
       - deployment/smoke/**
       - Makefile
@@ -58,15 +58,15 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
+          go-version-file: apps/backend/go.mod
+          cache-dependency-path: apps/backend/go.sum
       - name: Start Postgres + Floci (integration test dependencies)
         run: make up
       - name: go vet
-        working-directory: backend
+        working-directory: apps/backend
         run: go vet ./...
       - name: Unit + integration tests (race detector, against Postgres + Floci S3)
-        working-directory: backend
+        working-directory: apps/backend
         env:
           TEST_DATABASE_URL: postgres://plant:plant@localhost:5432/plant_test?sslmode=disable
           AWS_ENDPOINT_URL: http://localhost:4566
@@ -82,14 +82,14 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: frontend
+        working-directory: apps/frontend
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: apps/frontend/package-lock.json
       - run: npm ci
       - name: Lint (oxlint)
         run: npm run lint
@@ -146,8 +146,8 @@ jobs:
       - uses: docker/setup-buildx-action@v4
       - name: Build backend and frontend images
         run: |
-          docker buildx build --load -t "plant/backend:${IMAGE_TAG}" backend
-          docker buildx build --load -t "plant/frontend:${IMAGE_TAG}" frontend
+          docker buildx build --load -t "plant/backend:${IMAGE_TAG}" apps/backend
+          docker buildx build --load -t "plant/frontend:${IMAGE_TAG}" apps/frontend
           docker images --format 'table {{.Repository}}:{{.Tag}}\t{{.Size}}' | grep plant/ >> "$GITHUB_STEP_SUMMARY"
       - name: trivy image scan backend (fixable HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@v0.36.0

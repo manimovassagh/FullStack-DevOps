@@ -8,7 +8,7 @@ Browser ─► gateway (Cloud Run, nginx) ─┬─ /api/* ─► backend  (Clou
         localhost.floci.io:4588         └─ /*     ─► frontend (Cloud Run, nginx + React build)
 ```
 
-The API is [`backend-gcp/`](../../../backend-gcp/) (the backend with Cloud Storage as photo storage; `backend/` is untouched). The frontend image is the repo's own.
+The API is [`apps/backend-gcp/`](../../../apps/backend-gcp/) (the backend with Cloud Storage as photo storage; `apps/backend/` is untouched). The frontend image is the repo's own.
 
 ## Run it
 

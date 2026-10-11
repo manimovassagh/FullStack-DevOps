@@ -1,4 +1,4 @@
-# The repo's front door. `make` alone starts the cloud lab (control panel + observability) and opens it.
+# The repo's front door. `make` alone starts the cloud lab (Mission Control + observability) and opens it.
 #   Cloud lab (most of the time): make dashboard-up, make deploy STAGE=ecs, make stages …
 #   App development (changing the Go/React code): make up, make backend, make frontend, make test
 # CI uses `make up` too (Postgres + Floci for the backend's integration tests).
@@ -36,27 +36,27 @@ bucket: ## create the S3 bucket in Floci if it does not exist
 		|| $(AWS) s3 mb s3://$(S3_BUCKET)
 
 backend: ## run the Go API on :8080
-	cd backend && go run ./cmd/server
+	cd apps/backend && go run ./cmd/server
 
 frontend: ## run the Vite dev server on :5173
-	cd frontend && npm run dev
+	cd apps/frontend && npm run dev
 
 test: test-backend test-frontend ## unit tests of backend and frontend
 
 test-backend:
-	cd backend && go test ./...
+	cd apps/backend && go test ./...
 
 test-frontend:
-	cd frontend && npm test
+	cd apps/frontend && npm test
 
-# ── The cloud lab: control panel + observability, and every deployment from the terminal ─────────
-# `make dashboard-up` starts Prometheus + Grafana and the control panel in the background.
+# ── The cloud lab: Mission Control + observability, and every deployment from the terminal ─────────
+# `make dashboard-up` starts Prometheus + Grafana and Mission Control in the background.
 # `make deploy STAGE=ecs` (destroy, smoke, release, forget, loadtest) runs through the panel: the log streams
 # here and the run shows up live in the panel, with the same safety rules as its buttons.
 PANEL_URL := http://localhost:3500
-PANEL_PID := control-panel/.panel.pid
-PANEL_LOG := control-panel/.panel.log
-LAB       := python3 control-panel/cli.py
+PANEL_PID := platform/mission-control/.panel.pid
+PANEL_LOG := platform/mission-control/.panel.log
+LAB       := python3 platform/mission-control/cli.py
 
 docker: ## make sure Docker answers (starts OrbStack on macOS if needed)
 	@docker info >/dev/null 2>&1 || { \
@@ -65,26 +65,26 @@ docker: ## make sure Docker answers (starts OrbStack on macOS if needed)
 		for i in $$(seq 1 72); do docker info >/dev/null 2>&1 && exit 0; sleep 5; done; \
 		echo "Docker did not come up"; exit 1; }
 
-dashboard-up: docker ## start observability + the control panel in the background, then open it
-	@$(MAKE) --no-print-directory -C observability up
-	@$(MAKE) --no-print-directory -C control-panel ui/dist/index.html
-	@if curl -sf -o /dev/null $(PANEL_URL)/api/status; then echo "control panel already running"; else \
-		nohup python3 control-panel/server.py > $(PANEL_LOG) 2>&1 & echo $$! > $(PANEL_PID); \
+dashboard-up: docker ## start observability + Mission Control in the background, then open it
+	@$(MAKE) --no-print-directory -C platform/observability up
+	@$(MAKE) --no-print-directory -C platform/mission-control ui/dist/index.html
+	@if curl -sf -o /dev/null $(PANEL_URL)/api/status; then echo "Mission Control already running"; else \
+		nohup python3 platform/mission-control/server.py > $(PANEL_LOG) 2>&1 & echo $$! > $(PANEL_PID); \
 		for i in $$(seq 1 20); do curl -sf -o /dev/null $(PANEL_URL)/api/status && break; sleep 0.5; done; \
-		echo "control panel started (pid $$(cat $(PANEL_PID)), log $(PANEL_LOG))"; fi
-	@echo; echo "  Control panel  $(PANEL_URL)"; echo "  Grafana        http://localhost:3400"; echo "  Prometheus     http://localhost:9091"
+		echo "Mission Control started (pid $$(cat $(PANEL_PID)), log $(PANEL_LOG))"; fi
+	@echo; echo "  Mission Control  $(PANEL_URL)"; echo "  Grafana        http://localhost:3400"; echo "  Prometheus     http://localhost:9091"
 	@echo; echo "  From here: make deploy STAGE=ecs · make stages · make help"; echo
 	@open $(PANEL_URL) 2>/dev/null || true
 
-dashboard-down: ## stop the control panel and observability (deployments keep running)
-	@if [ -f $(PANEL_PID) ] && kill $$(cat $(PANEL_PID)) 2>/dev/null; then echo "control panel stopped"; else echo "control panel was not running"; fi
+dashboard-down: ## stop Mission Control and observability (deployments keep running)
+	@if [ -f $(PANEL_PID) ] && kill $$(cat $(PANEL_PID)) 2>/dev/null; then echo "Mission Control stopped"; else echo "Mission Control was not running"; fi
 	@rm -f $(PANEL_PID)
-	@$(MAKE) --no-print-directory -C observability down
+	@$(MAKE) --no-print-directory -C platform/observability down
 
 dashboard-status: ## what is up: panel, observability, every stage
-	@curl -sf -o /dev/null $(PANEL_URL)/api/status && $(LAB) stages || echo "control panel is not running (make dashboard-up)"
+	@curl -sf -o /dev/null $(PANEL_URL)/api/status && $(LAB) stages || echo "Mission Control is not running (make dashboard-up)"
 
-dashboard-logs: ## follow the control panel's own log
+dashboard-logs: ## follow Mission Control's own log
 	tail -f $(PANEL_LOG)
 
 ci-up: _panel ## start the local CI (Gitea + runner) through the panel

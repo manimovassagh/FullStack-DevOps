@@ -24,7 +24,7 @@ else
 endif
 
 # Release label = git commit (+ -dirty); override with RELEASE=... A new label ships a new function version.
-RELEASE := $(or $(RELEASE),$(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- $(ROOT)/backend-serverless-auth $(ROOT)/frontend-auth || echo -dirty))
+RELEASE := $(or $(RELEASE),$(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- $(ROOT)/apps/backend-serverless-auth $(ROOT)/apps/frontend-auth || echo -dirty))
 export TF_VAR_release := $(RELEASE)
 
 WAIT_TRIES ?= 60 # × 5 s
@@ -39,18 +39,18 @@ init:
 
 lambda: ## build the function: one static Linux binary named `bootstrap`, zipped
 	mkdir -p build
-	cd $(ROOT)/backend-serverless-auth && GOWORK=off CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) \
+	cd $(ROOT)/apps/backend-serverless-auth && GOWORK=off CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) \
 		go build -trimpath -tags lambda.norpc -ldflags='-s -w' -o $(CURDIR)/build/bootstrap ./cmd/lambda
 	cd build && rm -f lambda.zip && zip -q -j lambda.zip bootstrap
 
 frontend: ## build the React app that is uploaded to the site bucket
-	cd $(ROOT)/frontend-auth && npm ci --silent && npm run build
+	cd $(ROOT)/apps/frontend-auth && npm ci --silent && npm run build
 
 deploy: ## terraform apply: the infrastructure (needs build/lambda.zip)
 	terraform apply -auto-approve -input=false
 
-site: ## deploy the React build (frontend-auth/dist) to the site bucket and invalidate CloudFront
-	d=$(ROOT)/frontend-auth/dist; b=$$(terraform output -raw site_bucket); \
+site: ## deploy the React build (apps/frontend-auth/dist) to the site bucket and invalidate CloudFront
+	d=$(ROOT)/apps/frontend-auth/dist; b=$$(terraform output -raw site_bucket); \
 	$(AWS) s3 sync "$$d" "s3://$$b" --delete --exclude 'assets/*' --cache-control 'no-cache' --only-show-errors && \
 	$(AWS) s3 sync "$$d/assets" "s3://$$b/assets" --delete --cache-control 'public, max-age=31536000, immutable' --only-show-errors && \
 	$(AWS) cloudfront create-invalidation --distribution-id "$$(terraform output -raw distribution_id)" --paths '/*' --query Invalidation.Status --output text

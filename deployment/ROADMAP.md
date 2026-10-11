@@ -103,7 +103,7 @@ Each phase is one branch and one PR, merged only when CI is green.
 
 Lambda (Go, `provided.al2023`) + API Gateway HTTP API (v2) + React build in a private S3 bucket + CloudFront in front (one hostname; `/api/*` to the API, everything else to S3).
 - **Teaches:** no servers or clusters, the function packaging and handler model, cold starts, versions and aliases, per-function IAM, a function in a VPC talking to RDS, secrets read at cold start, CloudFront origins and behaviors, a private static site.
-- **Own project, not mixed:** the function code is [`backend-serverless/`](../backend-serverless/), a separate Go module with its own copy of the handlers (same routes as `backend/`). `backend/` is untouched.
+- **Own project, not mixed:** the function code is [`apps/backend-serverless/`](../apps/backend-serverless/), a separate Go module with its own copy of the handlers (same routes as `apps/backend/`). `apps/backend/` is untouched.
 - **Own workflow:** [`.github/workflows/serverless.yml`](../.github/workflows/serverless.yml), a top-level pipeline with a node for each part: Lambda backend tests, frontend build, IaC checks, function build, then deploy + verify (infrastructure, **frontend → S3**, smoke tests, rollout). Terraform manages the infrastructure; `make site` uploads the React build to the site bucket.
 - **Own Floci:** it runs on a dated nightly (port 4567, `deployment/aws/serverless/compose.yaml`), because Floci 2.1.0 does not forward POST/PUT/DELETE through CloudFront. Details in its FLOCI-NOTES.md.
 - **Rollout:** a new release label changes the function's environment, publishes a version and moves the `live` alias; the test checks the `X-Release` header.
@@ -140,20 +140,20 @@ Floci's Elastic Beanstalk is stored state only: `CreateEnvironment` returns an i
 
 AWS is the popular one, so the other two clouds get only the most common container deployment, not the full range. Both run on Floci's sibling emulators ([floci-gcp](https://github.com/floci-io/floci-gcp), [floci-az](https://github.com/floci-io/floci-az)), each with its own compose file in the stage.
 
-- **`gcp/cloud-run/` ✅:** Cloud Run + Cloud SQL + Cloud Storage, behind an nginx gateway. The API is `backend-gcp/`, a copy of the backend with Cloud Storage as photo storage (the emulator's S3-style upload is broken, so the unchanged backend can't be used). Workflow `gcp-cloud-run.yml`.
+- **`gcp/cloud-run/` ✅:** Cloud Run + Cloud SQL + Cloud Storage, behind an nginx gateway. The API is `apps/backend-gcp/`, a copy of the backend with Cloud Storage as photo storage (the emulator's S3-style upload is broken, so the unchanged backend can't be used). Workflow `gcp-cloud-run.yml`.
 - **`azure/container-apps/` ✅:** Container Apps + PostgreSQL Flexible Server, with the repo's backend and frontend unchanged and an S3-compatible object store in the stage (Azure Blob has no S3 interface). Terraform runs in a container that trusts the emulator's TLS certificate. Workflow `azure-container-apps.yml`.
 
 ### Authentication and authorization: `aws/ecs-cognito/` ✅
 
-The ecs recipe plus Amazon Cognito (user pool, app client, `admin` group, demo users). The app gets its own copies, `backend-auth/` (JWT verification against the pool's JWKS, owner-scoped queries, sign-in endpoints) and `frontend-auth/` (login page, in-memory access token, HttpOnly refresh cookie); the shared `backend/` and `frontend/` are untouched. Workflow `ecs-cognito.yml`. The shared smoke tests got two optional hooks (`SMOKE_AUTH_TOKEN`, `SMOKE_LOGIN_USER`), and the Playwright suite was reorganised into page objects, fixtures and one spec per feature.
+The ecs recipe plus Amazon Cognito (user pool, app client, `admin` group, demo users). The app gets its own copies, `apps/backend-auth/` (JWT verification against the pool's JWKS, owner-scoped queries, sign-in endpoints) and `apps/frontend-auth/` (login page, in-memory access token, HttpOnly refresh cookie); the shared `apps/backend/` and `apps/frontend/` are untouched. Workflow `ecs-cognito.yml`. The shared smoke tests got two optional hooks (`SMOKE_AUTH_TOKEN`, `SMOKE_LOGIN_USER`), and the Playwright suite was reorganised into page objects, fixtures and one spec per feature.
 
 ### Authentication at the edge: `aws/ecs-alb-auth/` ✅
 
-The ecs recipe with sign-in moved out of the app: the ALB listener runs `authenticate-cognito` before it forwards. Pages without a session are redirected to the Cognito hosted login, `/api/*` calls get 401, and after sign-in the ALB keeps the session in its own cookie. The app is the unchanged `backend/` and `frontend/`. Compare it with `ecs-cognito`, where the Go API checks every token itself. Runs on its own nightly Floci (2.1.0 has no ALB authentication); on real AWS the listener must be HTTPS. Workflow `ecs-alb-auth.yml`. The shared smoke tests got two more optional hooks (`SMOKE_COOKIE_JAR`, `SMOKE_STORAGE_STATE`) and `hosted-login.mjs`.
+The ecs recipe with sign-in moved out of the app: the ALB listener runs `authenticate-cognito` before it forwards. Pages without a session are redirected to the Cognito hosted login, `/api/*` calls get 401, and after sign-in the ALB keeps the session in its own cookie. The app is the unchanged `apps/backend/` and `apps/frontend/`. Compare it with `ecs-cognito`, where the Go API checks every token itself. Runs on its own nightly Floci (2.1.0 has no ALB authentication); on real AWS the listener must be HTTPS. Workflow `ecs-alb-auth.yml`. The shared smoke tests got two more optional hooks (`SMOKE_COOKIE_JAR`, `SMOKE_STORAGE_STATE`) and `hosted-login.mjs`.
 
 ### Authentication at the gateway: `aws/serverless-gateway-auth/` ✅
 
-The serverless-cognito recipe with an API Gateway JWT authorizer: `GET /api/health` and `POST /api/auth/{proxy+}` stay open, everything else needs a valid Cognito access token at the gateway, so a bad token gets 401 without invoking the function. Same app (`backend-serverless-auth`, `frontend-auth`), which still checks the token as defence in depth. Workflow `serverless-gateway-auth.yml`.
+The serverless-cognito recipe with an API Gateway JWT authorizer: `GET /api/health` and `POST /api/auth/{proxy+}` stay open, everything else needs a valid Cognito access token at the gateway, so a bad token gets 401 without invoking the function. Same app (`apps/backend-serverless-auth`, `apps/frontend-auth`), which still checks the token as defence in depth. Workflow `serverless-gateway-auth.yml`.
 
 ### The common SPA layout: `aws/ecs-cloudfront/` ✅
 

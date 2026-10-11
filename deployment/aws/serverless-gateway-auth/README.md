@@ -8,7 +8,7 @@ browser ─► CloudFront plant-gw.localhost:4570 ─┬─ /*      ─► S3 (f
  Lambda (backend-serverless-auth) ─► RDS Postgres, S3 media; users in Amazon Cognito
 ```
 
-The [serverless-cognito](../serverless-cognito/) recipe with one change: **API Gateway** checks the Cognito access token on every protected route before it invokes the function. Same app (`backend-serverless-auth`, `frontend-auth`), same users, same sign-in page.
+The [serverless-cognito](../serverless-cognito/) recipe with one change: **API Gateway** checks the Cognito access token on every protected route before it invokes the function. Same app (`apps/backend-serverless-auth`, `apps/frontend-auth`), same users, same sign-in page.
 
 ## Run it
 

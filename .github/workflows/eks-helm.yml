@@ -12,8 +12,8 @@ on:
   push:
     branches: [main]
     paths:
-      - backend/**
-      - frontend/**
+      - apps/backend/**
+      - apps/frontend/**
       - deployment/aws/eks-helm/**
       - deployment/smoke/**
       - Makefile
@@ -22,8 +22,8 @@ on:
       - .github/workflows/eks-helm.yml
   pull_request:
     paths:
-      - backend/**
-      - frontend/**
+      - apps/backend/**
+      - apps/frontend/**
       - deployment/aws/eks-helm/**
       - deployment/smoke/**
       - Makefile
@@ -43,7 +43,7 @@ permissions:
   contents: read
 
 env:
-  GO_VERSION_FILE: backend/go.mod
+  GO_VERSION_FILE: apps/backend/go.mod
   NODE_VERSION: 22
   TERRAFORM_VERSION: 1.14.6
   IMAGE_TAG: ci-${{ github.sha }}
@@ -59,14 +59,14 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: ${{ env.GO_VERSION_FILE }}
-          cache-dependency-path: backend/go.sum
+          cache-dependency-path: apps/backend/go.sum
       - name: Start Postgres + Floci (integration test dependencies)
         run: make up
       - name: go vet
-        working-directory: backend
+        working-directory: apps/backend
         run: go vet ./...
       - name: Unit + integration tests (race detector, coverage)
-        working-directory: backend
+        working-directory: apps/backend
         env:
           TEST_DATABASE_URL: postgres://plant:plant@localhost:5432/plant_test?sslmode=disable
           AWS_ENDPOINT_URL: http://localhost:4566
@@ -85,14 +85,14 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: frontend
+        working-directory: apps/frontend
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: apps/frontend/package-lock.json
       - run: npm ci
       - name: Lint (oxlint)
         run: npm run lint
@@ -155,7 +155,7 @@ jobs:
           for svc in backend frontend; do
             docker buildx build --load \
               --cache-from "type=gha,scope=$svc" --cache-to "type=gha,mode=max,scope=$svc" \
-              -t "plant/$svc:${IMAGE_TAG}" "$svc"
+              -t "plant/$svc:${IMAGE_TAG}" "apps/$svc"
           done
           docker images --format 'table {{.Repository}}:{{.Tag}}\t{{.Size}}' | grep plant/ >> "$GITHUB_STEP_SUMMARY"
       - name: trivy image scan (fixable HIGH/CRITICAL)
