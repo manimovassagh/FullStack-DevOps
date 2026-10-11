@@ -1,4 +1,4 @@
-module github.com/manimovassagh/FullStack-DevOps/backend-accounts
+module github.com/manimovassagh/FullStack-DevOps/backend-signup
 
 go 1.26.1
 

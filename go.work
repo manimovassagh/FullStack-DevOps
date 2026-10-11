@@ -5,4 +5,4 @@ use ./apps/backend-serverless
 use ./apps/backend-gcp
 use ./apps/backend-auth
 use ./apps/backend-serverless-auth
-use ./apps/backend-accounts
+use ./apps/backend-signup

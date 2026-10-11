@@ -1,6 +1,6 @@
-# Pipeline for ecs-cloudfront-accounts: Fargate API + S3/CloudFront React app with Cognito self-service accounts.
-# CloudFront serves the React build (frontend-accounts) from a private S3 bucket and forwards /api/* to an ALB only
-# CloudFront may use; the Go API (backend-accounts) runs on ECS Fargate. Runs on the stage's own Floci (:4572).
+# Pipeline for ecs-cloudfront-signup: Fargate API + S3/CloudFront React app with Cognito self-service accounts.
+# CloudFront serves the React build (frontend-signup) from a private S3 bucket and forwards /api/* to an ALB only
+# CloudFront may use; the Go API (backend-signup) runs on ECS Fargate. Runs on the stage's own Floci (:4572).
 #
 #   backend tests ─┐
 #                  ├─ build backend image ─┐
@@ -13,31 +13,31 @@ on:
   push:
     branches: [main]
     paths:
-      - apps/backend-accounts/**
-      - apps/frontend-accounts/**
-      - deployment/aws/ecs-cloudfront-accounts/**
+      - apps/backend-signup/**
+      - apps/frontend-signup/**
+      - deployment/aws/ecs-cloudfront-signup/**
       - deployment/smoke/**
       - Makefile
       - docker-compose.yml
       - dev/**
-      - .github/workflows/ecs-cloudfront-accounts.yml
+      - .github/workflows/ecs-cloudfront-signup.yml
   pull_request:
     paths:
-      - apps/backend-accounts/**
-      - apps/frontend-accounts/**
-      - deployment/aws/ecs-cloudfront-accounts/**
+      - apps/backend-signup/**
+      - apps/frontend-signup/**
+      - deployment/aws/ecs-cloudfront-signup/**
       - deployment/smoke/**
       - Makefile
       - docker-compose.yml
       - dev/**
-      - .github/workflows/ecs-cloudfront-accounts.yml
+      - .github/workflows/ecs-cloudfront-signup.yml
   workflow_dispatch:
 
 # Concurrency is off on purpose: a group made runs wait for / cancel each other, which delayed the start.
 # Uncomment if you like: superseded runs of the same branch get cancelled (saves runner minutes,
 # but a new push can kill a run that is still in progress).
 # concurrency:
-#   group: ecs-cloudfront-accounts-${{ github.ref }}
+#   group: ecs-cloudfront-signup-${{ github.ref }}
 #   cancel-in-progress: true
 
 permissions:
@@ -58,15 +58,15 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version-file: apps/backend-accounts/go.mod
-          cache-dependency-path: apps/backend-accounts/go.sum
+          go-version-file: apps/backend-signup/go.mod
+          cache-dependency-path: apps/backend-signup/go.sum
       - name: Start Postgres + Floci (integration test dependencies)
         run: make up
       - name: go vet
-        working-directory: apps/backend-accounts
+        working-directory: apps/backend-signup
         run: go vet ./...
       - name: Unit + integration tests (race detector, against Postgres + Floci S3)
-        working-directory: apps/backend-accounts
+        working-directory: apps/backend-signup
         env:
           TEST_DATABASE_URL: postgres://plant:plant@localhost:5432/plant_test?sslmode=disable
           AWS_ENDPOINT_URL: http://localhost:4566
@@ -82,14 +82,14 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: apps/frontend-accounts
+        working-directory: apps/frontend-signup
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: apps/frontend-accounts/package-lock.json
+          cache-dependency-path: apps/frontend-signup/package-lock.json
       - run: npm ci
       - name: Lint (oxlint)
         run: npm run lint
@@ -99,12 +99,12 @@ jobs:
         run: npm test
 
   iac:
-    name: IaC · ecs-cloudfront-accounts
+    name: IaC · ecs-cloudfront-signup
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: deployment/aws/ecs-cloudfront-accounts
+        working-directory: deployment/aws/ecs-cloudfront-signup
     env:
       TF_VAR_image_tag: validate-only
     steps:
@@ -127,13 +127,13 @@ jobs:
         with:
           skip-setup-trivy: ${{ github.server_url != 'https://github.com' }}
           scan-type: config
-          scan-ref: deployment/aws/ecs-cloudfront-accounts
+          scan-ref: deployment/aws/ecs-cloudfront-signup
           severity: HIGH,CRITICAL
           trivyignores: deployment/.trivyignore
           exit-code: "1"
       - name: shellcheck
         working-directory: deployment
-        run: shellcheck smoke/*.sh aws/ecs-cloudfront-accounts/scripts/*.sh
+        run: shellcheck smoke/*.sh aws/ecs-cloudfront-signup/scripts/*.sh
 
   # ── Stage 2: build once (only after tests pass) ───────────────────────────
   build-images:
@@ -146,19 +146,19 @@ jobs:
       - uses: docker/setup-buildx-action@v4
       - name: "Build the backend image (the frontend is not an image here: it goes to S3)"
         run: |
-          docker buildx build --load -t "plant/backend-accounts:${IMAGE_TAG}" apps/backend-accounts
+          docker buildx build --load -t "plant/backend-signup:${IMAGE_TAG}" apps/backend-signup
           docker images --format 'table {{.Repository}}:{{.Tag}}\t{{.Size}}' | grep plant/ >> "$GITHUB_STEP_SUMMARY"
       - name: trivy image scan backend (fixable HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           skip-setup-trivy: ${{ github.server_url != 'https://github.com' }}
           scan-type: image
-          image-ref: plant/backend-accounts:${{ env.IMAGE_TAG }}
+          image-ref: plant/backend-signup:${{ env.IMAGE_TAG }}
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
       - name: Save images
-        run: docker save "plant/backend-accounts:${IMAGE_TAG}" | gzip > images.tar.gz
+        run: docker save "plant/backend-signup:${IMAGE_TAG}" | gzip > images.tar.gz
       - uses: actions/upload-artifact@v7
         if: ${{ github.server_url == 'https://github.com' }}
         with:
@@ -174,13 +174,13 @@ jobs:
 
   # ── Stage 3: deploy to Floci and verify ───────────────────────────────────
   deploy:
-    name: Deploy+verify · ecs-cloudfront-accounts
+    name: Deploy+verify · ecs-cloudfront-signup
     needs: [build-images, iac]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
       run:
-        working-directory: deployment/aws/ecs-cloudfront-accounts
+        working-directory: deployment/aws/ecs-cloudfront-signup
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -230,7 +230,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: ${{ always() && github.server_url == 'https://github.com' }}
         with:
-          name: e2e-recording-ecs-cloudfront-accounts
+          name: e2e-recording-ecs-cloudfront-signup
           path: |
             deployment/smoke/test-results
             deployment/smoke/playwright-report
@@ -239,7 +239,7 @@ jobs:
         uses: christopherhx/gitea-upload-artifact@v4
         if: ${{ always() && github.server_url != 'https://github.com' }}
         with:
-          name: e2e-recording-ecs-cloudfront-accounts
+          name: e2e-recording-ecs-cloudfront-signup
           path: |
             deployment/smoke/test-results
             deployment/smoke/playwright-report

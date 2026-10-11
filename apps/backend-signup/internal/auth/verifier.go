@@ -12,7 +12,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 
-	"github.com/manimovassagh/FullStack-DevOps/backend-accounts/internal/store"
+	"github.com/manimovassagh/FullStack-DevOps/backend-signup/internal/store"
 )
 
 // AdminGroup is the Cognito group whose members see every user's data.

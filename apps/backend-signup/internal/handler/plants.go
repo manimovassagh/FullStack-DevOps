@@ -5,7 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/manimovassagh/FullStack-DevOps/backend-accounts/internal/store"
+	"github.com/manimovassagh/FullStack-DevOps/backend-signup/internal/store"
 )
 
 func (h *Handler) listPlants(c echo.Context) error {

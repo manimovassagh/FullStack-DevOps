@@ -1,5 +1,5 @@
 # Accounts for the app: an Amazon Cognito user pool people sign up to themselves, one app client for the web
-# app and two demo users. The Go API (backend-accounts) talks to Cognito for every account step, so the browser
+# app and two demo users. The Go API (backend-signup) talks to Cognito for every account step, so the browser
 # never calls Cognito directly and never holds a refresh token a script could read.
 
 resource "aws_cognito_user_pool" "main" {

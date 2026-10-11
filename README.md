@@ -154,7 +154,7 @@ Rules for adding a stage and what comes next: [deployment/ROADMAP.md](deployment
 apps/
   frontend/  backend/               the app: React + Vite + Tailwind + shadcn/ui, Go + Echo, Postgres, S3
   frontend-auth/ backend-auth/      the same app with Cognito sign-in (used by ecs-cognito)
-  frontend-accounts/ backend-accounts/  sign up, emailed codes, password reset, profile (ecs-cloudfront-accounts)
+  frontend-signup/ backend-signup/  sign up, emailed codes, password reset, profile (ecs-cloudfront-signup)
   backend-serverless/ backend-serverless-auth/ backend-gcp/  the API adapted to Lambda (plain and with sign-in) and to Cloud Storage
 deployment/                         one folder per deployment style, plus the shared smoke tests (deployment/smoke)
 platform/

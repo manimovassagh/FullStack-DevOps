@@ -18,8 +18,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/manimovassagh/FullStack-DevOps/backend-accounts/internal/storage"
-	"github.com/manimovassagh/FullStack-DevOps/backend-accounts/internal/store"
+	"github.com/manimovassagh/FullStack-DevOps/backend-signup/internal/storage"
+	"github.com/manimovassagh/FullStack-DevOps/backend-signup/internal/store"
 )
 
 // ---- in-memory Store ----

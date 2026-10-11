@@ -1,16 +1,16 @@
-# Fargate + CloudFront + accounts — on Floci
+# Fargate + CloudFront + sign-up — on Floci
 
 The most common web-app shape with the account features people expect. The React app is static files in S3 behind CloudFront. The Go API runs on ECS **Fargate** behind an ALB that only CloudFront may call. **Amazon Cognito** handles accounts that people create themselves.
 
 ```
-browser ─► CloudFront plant-accounts.localhost:4572
-             ├─ /*      ─► S3 site bucket (frontend-accounts: home, sign up, confirm, sign in, forgot/reset, account)
-             └─ /api/*  ─► ALB (403 unless CloudFront's secret header) ─► Fargate: backend-accounts ─► RDS Postgres, S3 media
+browser ─► CloudFront plant-signup.localhost:4572
+             ├─ /*      ─► S3 site bucket (frontend-signup: home, sign up, confirm, sign in, forgot/reset, account)
+             └─ /api/*  ─► ALB (403 unless CloudFront's secret header) ─► Fargate: backend-signup ─► RDS Postgres, S3 media
                                                                             └─► Cognito (every account step)
  Cognito ─► email with a 6-digit code (Floci: its SES inbox, GET :4572/_aws/ses)
 ```
 
-Built from [ecs-cloudfront](../ecs-cloudfront/) (same CDN, origin lock and Fargate service) and [ecs-cognito](../ecs-cognito/) (sign-in through the API). It runs its own copies of the app, [`apps/backend-accounts/`](../../../apps/backend-accounts/) and [`apps/frontend-accounts/`](../../../apps/frontend-accounts/), so no other stage changes.
+Built from [ecs-cloudfront](../ecs-cloudfront/) (same CDN, origin lock and Fargate service) and [ecs-cognito](../ecs-cognito/) (sign-in through the API). It runs its own copies of the app, [`apps/backend-signup/`](../../../apps/backend-signup/) and [`apps/frontend-signup/`](../../../apps/frontend-signup/), so no other stage changes.
 
 ## The account flow
 
@@ -31,10 +31,10 @@ The browser talks only to the API, never to Cognito. The page keeps the short-li
 
 ## Run it
 
-    cd deployment/aws/ecs-cloudfront-accounts
+    cd deployment/aws/ecs-cloudfront-signup
     make up        # Floci :4572, Fargate API, React site on S3, CloudFront, Cognito; then wait for healthy
     make smoke     # origin lock; a brand-new person through every account step; API + browser tests as alice
-    open http://plant-accounts.localhost:4572     # sign up yourself, or alice@plant.example / Plant-Parent-2026!
+    open http://plant-signup.localhost:4572     # sign up yourself, or alice@plant.example / Plant-Parent-2026!
     make destroy && docker compose down
 
 **Reading the emails locally:** Floci does not send email. Every code Cognito "sends" lands in Floci's SES inbox:

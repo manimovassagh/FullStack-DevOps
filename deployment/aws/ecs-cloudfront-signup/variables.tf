@@ -12,7 +12,7 @@ variable "floci_endpoint" {
 variable "name" {
   description = "Prefix for every resource name."
   type        = string
-  default     = "plant-accounts"
+  default     = "plant-signup"
 }
 
 variable "image_tag" {
@@ -41,7 +41,7 @@ variable "floci_port" {
 variable "local_hostname" {
   description = "On Floci the distribution gets this alias, so the app is at http://<hostname>:<floci_port> (*.localhost resolves to 127.0.0.1)."
   type        = string
-  default     = "plant-accounts.localhost"
+  default     = "plant-signup.localhost"
 }
 
 variable "on_floci" {
