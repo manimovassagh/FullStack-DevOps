@@ -78,6 +78,12 @@ Today every local URL is plain HTTP. Goal: the same lab, but on `https://` with 
 
 This repository is a learning and planning blueprint that runs on emulators. Image signing, SBOMs, policy-as-code gates and similar hardening are deliberately not built here. Anyone taking a stage to real AWS needs a proper security review anyway. Basic hygiene stays (pre-commit, Dependabot, the existing Trivy and tflint checks).
 
+## Known simplifications (kept on purpose, listed so nobody mistakes them for production advice)
+
+- CloudFront → ALB is plain HTTP in the `ecs-cloudfront*` stages (`origin_protocol_policy = "http-only"`); production: an HTTPS listener with an ACM certificate and `https-only`.
+- Demo users and a shared demo password live in Terraform variables, and the smoke tests sign in with them.
+- Emulator-only workarounds (security-group enforcement off, `on_floci` toggles) are marked in each stage's `FLOCI-NOTES.md`.
+
 ## Suggested order
 
 1. Quick wins (section 1), including the two loose ends.

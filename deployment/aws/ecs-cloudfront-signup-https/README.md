@@ -28,6 +28,10 @@ Built from [ecs-cloudfront](../ecs-cloudfront/) (same CDN, origin lock and Farga
 
 Why a private CA and not a "real" certificate: nothing here is public. The CA lives on your Mac only; `make tls` signs the certificate for `plant-signup-https.localhost`. In CI, [`scripts/ci-trust.sh`](scripts/ci-trust.sh) makes a throwaway CA per job, so curl and the test browser verify the certificate like any client.
 
+### A known simplification: the CloudFront → load balancer leg is plain HTTP
+
+Viewers always talk HTTPS (to CloudFront, or to Caddy locally). The *origin* leg, CloudFront → ALB, is `http-only` in `cdn.tf`, as in the base stage, because the emulator has no ACM and the ALB listener is HTTP. On real AWS that leg carries the API traffic (including sign-in) inside AWS's network, but a production version should use an HTTPS ALB listener with an ACM certificate and `origin_protocol_policy = "https-only"` (as [`ecs-alb-auth`](../ecs-alb-auth/) does for its listener). Left out on purpose: this lab is a blueprint, not a hardened deployment (see [docs/PLATFORM-ROADMAP.md](../../../docs/PLATFORM-ROADMAP.md)).
+
 ## The account flow
 
 | Step | Page | API | Cognito |
