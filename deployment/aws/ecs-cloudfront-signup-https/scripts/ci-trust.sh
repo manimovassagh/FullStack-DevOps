@@ -22,5 +22,13 @@ fi
 CAROOT=$(mktemp -d)
 export CAROOT
 mkcert -install >&2
+# Chromium on Linux trusts what is in the NSS database ~/.pki/nssdb. `mkcert -install` only writes there when that
+# database already exists, and in a fresh job container it does not: create it and add the CA explicitly (without
+# this the browser tests get net::ERR_CERT_AUTHORITY_INVALID while curl, which uses the system store, is fine).
+if command -v certutil >/dev/null; then
+  mkdir -p "$HOME/.pki/nssdb"
+  [ -f "$HOME/.pki/nssdb/cert9.db" ] || certutil -d "sql:$HOME/.pki/nssdb" -N --empty-password
+  certutil -d "sql:$HOME/.pki/nssdb" -A -t "C,," -n "mkcert local CA (CI)" -i "$CAROOT/rootCA.pem"
+fi
 echo "CAROOT=$CAROOT"
 echo "NODE_EXTRA_CA_CERTS=$CAROOT/rootCA.pem"
