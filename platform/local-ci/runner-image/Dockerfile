@@ -13,6 +13,11 @@ ARG TRIVY_VERSION=0.70.0
 RUN arch="$(uname -m | sed 's/x86_64/64bit/;s/aarch64/ARM64/')" \
  && curl -sfL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-${arch}.tar.gz" | tar -xz -C /usr/local/bin trivy \
  && trivy --version | head -1
-# The shared Playwright suite downloads Chromium at run time; the system libraries it needs are part of
-# GitHub's hosted image but not of this one.
-RUN npx --yes playwright@1.63.0 install-deps chromium && rm -rf /var/lib/apt/lists/* /root/.npm
+# The shared Playwright suite (deployment/smoke, @playwright/test 1.63.0) needs Chromium and the system
+# libraries it runs on; GitHub's hosted image has both, this one gets them here. Chromium is baked in
+# (PLAYWRIGHT_BROWSERS_PATH) so a job never downloads ~150 MB from Google at run time: that download timed
+# out after 30 s in the slowest pipeline runs. Keep the version in step with deployment/smoke/package-lock.json.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT=180000
+RUN npx --yes playwright@1.63.0 install-deps chromium \
+ && npx --yes playwright@1.63.0 install chromium \
+ && chmod -R a+rX /ms-playwright && rm -rf /var/lib/apt/lists/* /root/.npm
