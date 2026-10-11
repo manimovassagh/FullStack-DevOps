@@ -1,8 +1,8 @@
 # deps / builds
 node_modules/
 dist/
-frontend/dist/
-backend/bin/
+apps/*/dist/
+apps/*/bin/
 # env
 .env
 .env.*
@@ -22,8 +22,8 @@ deployment/**/build/
 .playwright-mcp/
 .github/artifacts/
 
-# control panel runtime data
-control-panel/.history.json
-control-panel/.logs/
-control-panel/.panel.pid
-control-panel/.panel.log
+# Mission Control runtime data
+platform/mission-control/.history.json
+platform/mission-control/.logs/
+platform/mission-control/.panel.pid
+platform/mission-control/.panel.log

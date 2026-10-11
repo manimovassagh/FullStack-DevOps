@@ -10,7 +10,7 @@ browser ─► CloudFront plant-accounts.localhost:4572
  Cognito ─► email with a 6-digit code (Floci: its SES inbox, GET :4572/_aws/ses)
 ```
 
-Built from [ecs-cloudfront](../ecs-cloudfront/) (same CDN, origin lock and Fargate service) and [ecs-cognito](../ecs-cognito/) (sign-in through the API). It runs its own copies of the app, [`backend-accounts/`](../../../backend-accounts/) and [`frontend-accounts/`](../../../frontend-accounts/), so no other stage changes.
+Built from [ecs-cloudfront](../ecs-cloudfront/) (same CDN, origin lock and Fargate service) and [ecs-cognito](../ecs-cognito/) (sign-in through the API). It runs its own copies of the app, [`apps/backend-accounts/`](../../../apps/backend-accounts/) and [`apps/frontend-accounts/`](../../../apps/frontend-accounts/), so no other stage changes.
 
 ## The account flow
 

@@ -22,7 +22,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/control-panel-overview.png">
-  <img alt="The control panel" src="docs/screenshots/control-panel-overview-light.png" width="100%">
+  <img alt="Mission Control" src="docs/screenshots/control-panel-overview-light.png" width="100%">
 </picture>
 
 [Quick start](#quick-start) · [Demos](#demos) · [How it fits together](#how-it-fits-together) · [Deployments](#deployments) · [The lab](#the-lab) · [Commands](#commands) · [Testing](#testing)
@@ -38,7 +38,7 @@ Everything runs **on your machine**. The clouds are emulated by [Floci](https://
 ## Quick start
 
 ```bash
-make                          # start the lab and open the control panel → http://localhost:3500
+make                          # start the lab and open Mission Control → http://localhost:3500
 make deploy STAGE=ecs         # deploy a stage (or press Deploy in the panel)
 make smoke STAGE=ecs          # API + browser tests against it
 make destroy STAGE=ecs        # tear it down
@@ -49,7 +49,7 @@ make help                     # everything else
 
 <table>
 <tr>
-<td width="58%"><b>Release a new version from the control panel</b><br>New task-definition revisions roll out, the live log follows every step, a toast reports the result.</td>
+<td width="58%"><b>Release a new version from Mission Control</b><br>New task-definition revisions roll out, the live log follows every step, a toast reports the result.</td>
 <td width="42%"><b>The app: sign in only when you need to</b><br>Visitors land on a public page; "Add plant" asks them to sign in with Cognito, then the form opens.</td>
 </tr>
 <tr>
@@ -62,7 +62,7 @@ make help                     # everything else
 
 ```mermaid
 flowchart LR
-  you([You]) -->|make · browser| panel[Control panel<br/>:3500]
+  you([You]) -->|make · browser| panel[Mission Control<br/>:3500]
   panel -->|deploy · test · release| tf[Stage Makefile<br/>+ Terraform]
   tf --> floci[(Floci emulators<br/>AWS · Google Cloud · Azure)]
   floci --> stack[ALB · ECS · EKS · Lambda · Cloud Run …<br/>Postgres · S3 · Cognito]
@@ -130,17 +130,17 @@ Rules for adding a stage and what comes next: [deployment/ROADMAP.md](deployment
 
 | | |
 |---|---|
-| **[Control panel](control-panel/)** — deploy, test, release and tear down every stage; live logs, run history, Terraform outputs and resources per stage; light and dark themes | ![Deployments](docs/screenshots/control-panel-deployments.png) |
-| **[Load tests](loadtest/)** — k6 virtual users sign in and use the app (smoke, load, spike, stress); users, requests/s, p95 and errors live | ![Load test](docs/screenshots/control-panel-loadtest.png) |
-| **[Observability](observability/)** — Prometheus + Grafana: containers, ECS tasks, Kubernetes pods, load balancer health, k6 results | ![Grafana](docs/screenshots/grafana-stacks.png) |
+| **[Mission Control](platform/mission-control/)** — deploy, test, release and tear down every stage; live logs, run history, Terraform outputs and resources per stage; light and dark themes | ![Deployments](docs/screenshots/control-panel-deployments.png) |
+| **[Load tests](platform/loadtest/)** — k6 virtual users sign in and use the app (smoke, load, spike, stress); users, requests/s, p95 and errors live | ![Load test](docs/screenshots/control-panel-loadtest.png) |
+| **[Observability](platform/observability/)** — Prometheus + Grafana: containers, ECS tasks, Kubernetes pods, load balancer health, k6 results | ![Grafana](docs/screenshots/grafana-stacks.png) |
 | **Per-stage detail** — Terraform outputs, every cloud resource, the commands behind each button, logs and metrics | ![Deployment detail](docs/screenshots/control-panel-detail.png) |
-| **[Local CI](local-ci/)** — Gitea + an Actions runner execute the repo's own `.github/workflows` on your machine | The same pipelines as GitHub, one per deployment family |
+| **[Local CI](platform/local-ci/)** — Gitea + an Actions runner execute the repo's own `.github/workflows` on your machine | The same pipelines as GitHub, one per deployment family |
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `make` | start Prometheus, Grafana and the control panel in the background, open the panel |
+| `make` | start Prometheus, Grafana and Mission Control in the background, open the panel |
 | `make stages` | list every deployment and its state |
 | `make deploy STAGE=<stage>` | deploy (also `destroy`, `smoke`, `release`, `forget`): runs through the panel, the log streams in your terminal |
 | `make loadtest STAGE=<stage> PROFILE=load` | k6 load test (`smoke`, `load`, `spike`, `stress`) |
@@ -151,22 +151,25 @@ Rules for adding a stage and what comes next: [deployment/ROADMAP.md](deployment
 ## Repository layout
 
 ```
-frontend/  backend/               the app: React + Vite + Tailwind + shadcn/ui, Go + Echo, Postgres, S3
-frontend-auth/ backend-auth/      the same app with Cognito sign-in (used by ecs-cognito)
-backend-serverless/ backend-gcp/  the API adapted to Lambda and to Cloud Storage
-deployment/                       one folder per deployment style, plus the shared smoke tests (deployment/smoke)
-control-panel/                    the lab's web UI (React SPA) and its small Python API
-observability/                    Prometheus, Grafana and an exporter for Docker, ECS, ALB and Kubernetes
-loadtest/                         k6 scripts and profiles
-local-ci/                         Gitea + runner for the GitHub workflows (.github/workflows)
-docs/                             design notes and screenshots
+apps/
+  frontend/  backend/               the app: React + Vite + Tailwind + shadcn/ui, Go + Echo, Postgres, S3
+  frontend-auth/ backend-auth/      the same app with Cognito sign-in (used by ecs-cognito)
+  frontend-accounts/ backend-accounts/  sign up, emailed codes, password reset, profile (ecs-cloudfront-accounts)
+  backend-serverless/ backend-serverless-auth/ backend-gcp/  the API adapted to Lambda (plain and with sign-in) and to Cloud Storage
+deployment/                         one folder per deployment style, plus the shared smoke tests (deployment/smoke)
+platform/
+  mission-control/                  the lab's web UI (React SPA) and its small Python API
+  observability/                    Prometheus, Grafana and an exporter for Docker, ECS, ALB and Kubernetes
+  loadtest/                         k6 scripts and profiles
+  local-ci/                         Gitea + runner for the GitHub workflows (.github/workflows)
+docs/                               design notes and screenshots
 ```
 
 ## Requirements
 
 Docker (OrbStack, or Docker Desktop; 4 GB+), Terraform 1.14, Go 1.26, Node 22, Python 3, AWS CLI v2, kubectl and Helm for the EKS stages. k6 is optional (the load tests run it in Docker). macOS and Linux.
 
-A laptop runs two or three stages at once comfortably. The emulators keep everything in memory, so restarting Docker resets them; the control panel notices and redeploys from a clean state.
+A laptop runs two or three stages at once comfortably. The emulators keep everything in memory, so restarting Docker resets them; Mission Control notices and redeploys from a clean state.
 
 ## Testing
 
@@ -176,5 +179,5 @@ A laptop runs two or three stages at once comfortably. The emulators keep everyt
 | Each deployment | `make smoke STAGE=…`: API journey + Playwright browser tests (sign-in, plants, photos, deep links) |
 | Load | `make loadtest STAGE=…`: k6 with thresholds (errors < 1 %, p95 < 500 ms) |
 | Infrastructure | CI runs `terraform fmt`/`validate`, tflint, trivy and shellcheck on every stage |
-| Control panel | `make -C control-panel test`: every page, every link, the main controls |
-| Pipelines | one workflow per deployment family in `.github/workflows`, runnable locally via `local-ci/` |
+| Mission Control | `make -C platform/mission-control test`: every page, every link, the main controls |
+| Pipelines | one workflow per deployment family in `.github/workflows`, runnable locally via `platform/local-ci/` |

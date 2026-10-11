@@ -11,7 +11,7 @@ Browser ─► ALB localhost:8096
  Cognito: user pool + app client + "admin" group + 3 demo users
 ```
 
-The app is **not** the shared `backend/` and `frontend/`: it is their own copies, [`backend-auth/`](../../../backend-auth/) and [`frontend-auth/`](../../../frontend-auth/), so no other stage changes.
+The app is **not** the shared `apps/backend/` and `apps/frontend/`: it is their own copies, [`apps/backend-auth/`](../../../apps/backend-auth/) and [`apps/frontend-auth/`](../../../apps/frontend-auth/), so no other stage changes.
 
 ## How sign-in works
 
@@ -54,7 +54,7 @@ Demo users (all with the password in `var.demo_password`): `alice@plant.example`
 
 | | ecs | ecs-cognito |
 |---|---|---|
-| app | `backend/`, `frontend/` | `backend-auth/`, `frontend-auth/` (copies) |
+| app | `apps/backend/`, `apps/frontend/` | `apps/backend-auth/`, `apps/frontend-auth/` (copies) |
 | identity | none | Cognito user pool, app client, group |
 | `/api/*` | open | everything but `/api/health` and `/api/auth/*` needs a bearer token |
 | data | shared by everyone | per user (`owner_id`), admin sees all |

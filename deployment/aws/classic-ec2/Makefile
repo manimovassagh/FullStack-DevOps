@@ -20,10 +20,10 @@ ami: ## bake the Ubuntu 24.04 + systemd image Floci uses for ami-ubuntu2404-clou
 
 artifacts: ## build the Go binary and the React bundle that instances download from S3
 	mkdir -p $(BUILD)
-	cd $(ROOT)/backend && CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) \
+	cd $(ROOT)/apps/backend && CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) \
 		go build -trimpath -ldflags='-s -w' -o $(CURDIR)/$(BUILD)/plant-api ./cmd/server
-	cd $(ROOT)/frontend && npm ci --silent && npm run build
-	COPYFILE_DISABLE=1 tar -czf $(BUILD)/dist.tar.gz -C $(ROOT)/frontend/dist .
+	cd $(ROOT)/apps/frontend && npm ci --silent && npm run build
+	COPYFILE_DISABLE=1 tar -czf $(BUILD)/dist.tar.gz -C $(ROOT)/apps/frontend/dist .
 
 init:
 	terraform init

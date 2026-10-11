@@ -11,7 +11,7 @@ AWS   := aws --endpoint-url $(FLOCI)
 
 # Image tag = git commit (+ -dirty for uncommitted changes); override with IMAGE_TAG=...
 # Evaluated once (:=), so images/push/deploy in one run always agree even if HEAD moves.
-IMAGE_TAG := $(or $(IMAGE_TAG),$(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- $(ROOT)/backend $(ROOT)/frontend || echo -dirty))
+IMAGE_TAG := $(or $(IMAGE_TAG),$(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- $(ROOT)/apps/backend $(ROOT)/apps/frontend || echo -dirty))
 export TF_VAR_image_tag := $(IMAGE_TAG)
 REGISTRY := 000000000000.dkr.ecr.$(AWS_REGION).localhost:4566
 
@@ -38,7 +38,7 @@ _repos:
 	terraform apply -auto-approve -target=aws_ecr_repository.app
 
 images: ## build both images locally as plant/<svc>:$(IMAGE_TAG) (CI builds them in a separate job)
-	for svc in backend frontend; do docker build -t plant/$$svc:$(IMAGE_TAG) $(ROOT)/$$svc || exit 1; done
+	for svc in backend frontend; do docker build -t plant/$$svc:$(IMAGE_TAG) $(ROOT)/apps/$$svc || exit 1; done
 
 push: repos ## tag the local images for ECR and push them
 	$(AWS) ecr get-login-password | docker login --username AWS --password-stdin $(REGISTRY) >/dev/null

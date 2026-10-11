@@ -80,7 +80,7 @@ variable "build_dir" {
 
 variable "frontend_dist_dir" {
   type    = string
-  default = "../../../frontend/dist"
+  default = "../../../apps/frontend/dist"
 }
 
 variable "floci_container" {
