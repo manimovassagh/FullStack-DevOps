@@ -3,6 +3,11 @@ output "app_url" {
   value       = var.on_floci ? "https://${var.local_hostname}:${var.tls_port}" : "https://${aws_cloudfront_distribution.main.domain_name}"
 }
 
+output "cloudfront_origin_url" {
+  description = "On Floci: the emulator's CloudFront itself (plain HTTP), the address the TLS-terminating Caddy forwards to. Useful when debugging the proxy. Null on real AWS."
+  value       = var.on_floci ? "http://${var.local_hostname}:${var.floci_port}" : null
+}
+
 output "alb_url" {
   description = "The load balancer itself. Only CloudFront may use it: a direct request gets 403."
   value       = var.on_floci ? "http://localhost:${var.alb_host_port}" : "http://${aws_lb.main.dns_name}"
