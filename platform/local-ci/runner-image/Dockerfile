@@ -21,3 +21,8 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEO
 RUN npx --yes playwright@1.63.0 install-deps chromium \
  && npx --yes playwright@1.63.0 install chromium \
  && chmod -R a+rX /ms-playwright && rm -rf /var/lib/apt/lists/* /root/.npm
+# Stages that run over HTTPS (aws/ecs-cloudfront-signup-https) make a throwaway local CA with mkcert in every job.
+# libnss3-tools (certutil) lets `mkcert -install` also put that CA where Chromium looks, so the browser tests trust it.
+RUN apt-get update && apt-get install -y --no-install-recommends libnss3-tools && rm -rf /var/lib/apt/lists/* \
+ && curl -sfL "https://dl.filippo.io/mkcert/latest?for=linux/$(dpkg --print-architecture)" -o /usr/local/bin/mkcert \
+ && chmod +x /usr/local/bin/mkcert && mkcert -version

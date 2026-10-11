@@ -1,0 +1,33 @@
+# Local HTTPS front door for the lab. Certificates come from mkcert (`make certs`), so the browser trusts them
+# without any warning; nothing here talks to Let's Encrypt or the internet.
+{
+	auto_https off # no automatic certificates and no HTTP->HTTPS redirect listener: only :443, mkcert's files
+	admin off
+}
+
+(lab_tls) {
+	tls /certs/lab.pem /certs/lab-key.pem
+}
+
+# Mission Control (python server on the Mac, 127.0.0.1:3500)
+https://mission-control.lab.localhost {
+	import lab_tls
+	reverse_proxy host.docker.internal:3500
+}
+
+# Local CI: Gitea (127.0.0.1:3300). It builds its links from X-Forwarded-Proto/Host (PUBLIC_URL_DETECTION=auto).
+https://ci.lab.localhost {
+	import lab_tls
+	reverse_proxy host.docker.internal:3300
+}
+
+# Observability
+https://grafana.lab.localhost {
+	import lab_tls
+	reverse_proxy host.docker.internal:3400
+}
+
+https://prometheus.lab.localhost {
+	import lab_tls
+	reverse_proxy host.docker.internal:9091
+}

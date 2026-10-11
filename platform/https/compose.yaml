@@ -1,0 +1,15 @@
+# The lab's HTTPS front door: one Caddy on :443 with a mkcert certificate the Mac trusts.
+# `make -C platform/https up` → https://mission-control.lab.localhost (and ci., grafana., prometheus.)
+name: plant-https
+
+services:
+  caddy:
+    image: caddy:2.8.4-alpine
+    ports:
+      - "127.0.0.1:443:443" # loopback only, like the services behind it
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # the Mac, where Mission Control, Gitea and Grafana publish their ports
+    restart: unless-stopped
