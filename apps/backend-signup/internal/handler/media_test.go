@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/manimovassagh/FullStack-DevOps/backend-accounts/internal/store"
+	"github.com/manimovassagh/FullStack-DevOps/backend-signup/internal/store"
 )
 
 func TestUploadMedia(t *testing.T) {

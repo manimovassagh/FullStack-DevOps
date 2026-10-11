@@ -16,11 +16,11 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	"github.com/manimovassagh/FullStack-DevOps/backend-accounts/internal/auth"
-	"github.com/manimovassagh/FullStack-DevOps/backend-accounts/internal/config"
-	"github.com/manimovassagh/FullStack-DevOps/backend-accounts/internal/handler"
-	"github.com/manimovassagh/FullStack-DevOps/backend-accounts/internal/storage"
-	"github.com/manimovassagh/FullStack-DevOps/backend-accounts/internal/store"
+	"github.com/manimovassagh/FullStack-DevOps/backend-signup/internal/auth"
+	"github.com/manimovassagh/FullStack-DevOps/backend-signup/internal/config"
+	"github.com/manimovassagh/FullStack-DevOps/backend-signup/internal/handler"
+	"github.com/manimovassagh/FullStack-DevOps/backend-signup/internal/storage"
+	"github.com/manimovassagh/FullStack-DevOps/backend-signup/internal/store"
 )
 
 func main() {

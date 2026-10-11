@@ -49,8 +49,8 @@ EMULATORS = [
          container="plant-serverless-gateway-auth-floci-1", start="make floci", stop="docker compose down"),
     dict(id="ecs-cloudfront", title="Floci · AWS nightly · CloudFront", cloud="aws", port=4571, dir="deployment/aws/ecs-cloudfront",
          container="plant-ecs-cloudfront-floci-1", start="make floci", stop="docker compose down"),
-    dict(id="ecs-cloudfront-accounts", title="Floci · AWS nightly · accounts", cloud="aws", port=4572, dir="deployment/aws/ecs-cloudfront-accounts",
-         container="plant-ecs-cloudfront-accounts-floci-1", start="make floci", stop="docker compose down"),
+    dict(id="ecs-cloudfront-signup", title="Floci · AWS nightly · sign-up", cloud="aws", port=4572, dir="deployment/aws/ecs-cloudfront-signup",
+         container="plant-ecs-cloudfront-signup-floci-1", start="make floci", stop="docker compose down"),
     dict(id="gcp", title="Floci · Google Cloud", cloud="gcp", port=4588, dir="deployment/gcp/cloud-run",
          container="plant-gcp-floci-gcp-1", start="make floci", stop="docker compose down"),
     dict(id="azure", title="Floci · Azure", cloud="azure", port=4577, dir="deployment/azure/container-apps",
@@ -68,9 +68,9 @@ STAGES = [
     dict(id="ecs-cloudfront", title="ECS + CloudFront + S3", family="aws", kind="container", dir="aws/ecs-cloudfront", emulator="ecs-cloudfront",
          url="http://127.0.0.1:4571/", host="plant-cf.localhost:4571", open="http://plant-cf.localhost:4571/",
          start="make up", note="React on S3 + CloudFront, API on ECS behind an ALB only CloudFront may use"),
-    dict(id="ecs-cloudfront-accounts", title="Fargate + CloudFront + accounts", family="aws", kind="container", dir="aws/ecs-cloudfront-accounts",
-         emulator="ecs-cloudfront-accounts", url="http://127.0.0.1:4572/", host="plant-accounts.localhost:4572",
-         open="http://plant-accounts.localhost:4572/", start="make up",
+    dict(id="ecs-cloudfront-signup", title="Fargate + CloudFront + sign-up", family="aws", kind="container", dir="aws/ecs-cloudfront-signup",
+         emulator="ecs-cloudfront-signup", url="http://127.0.0.1:4572/", host="plant-signup.localhost:4572",
+         open="http://plant-signup.localhost:4572/", start="make up",
          login={"users": ["alice@plant.example", "bob@plant.example"], "password": "Plant-Parent-2026!"},
          note="A normal app's accounts: sign up with an emailed code, password reset, profile, sign out everywhere"),
     dict(id="ecs-cognito", title="ECS + Cognito", family="aws", kind="container", dir="aws/ecs-cognito", emulator="aws", port=8096,
@@ -514,16 +514,16 @@ def loadtest_action(stage_id, profile):
         return 404, {"error": "unknown stage or profile"}
     if not port_open(9091):
         return 409, {"error": "Start the observability stack first (Prometheus receives the load-test metrics)."}
-    return launch("loadtest:" + stage_id, "loadtest-" + profile, "loadtest", [(f"make {profile} STAGE={stage_id}", ROOT / "loadtest")])
+    return launch("loadtest:" + stage_id, "loadtest-" + profile, "loadtest", [(f"make {profile} STAGE={stage_id}", ROOT / "platform" / "loadtest")])
 
 
 def ci_action(action, arg=None):
     if action == "up":
-        return launch("ci", "ci-up", "ci", [("make up", ROOT / "local-ci")], block_on_ci=False)
+        return launch("ci", "ci-up", "ci", [("make up", ROOT / "platform" / "local-ci")], block_on_ci=False)
     if action == "down":
-        return launch("ci", "ci-down", "ci", [("make down", ROOT / "local-ci")], block_on_ci=False)
+        return launch("ci", "ci-down", "ci", [("make down", ROOT / "platform" / "local-ci")], block_on_ci=False)
     if action == "run" and arg in WORKFLOWS:
-        return launch("ci:" + arg, "ci-run", "ci", [("make push BRANCH=ci-test", ROOT / "local-ci"), (f"./dispatch.sh {arg}", ROOT / "local-ci")],
+        return launch("ci:" + arg, "ci-run", "ci", [("make push BRANCH=ci-test", ROOT / "platform" / "local-ci"), (f"./dispatch.sh {arg}", ROOT / "platform" / "local-ci")],
                       block_on_ci=False)
     return 404, {"error": "unknown CI action"}
 
@@ -531,7 +531,7 @@ def ci_action(action, arg=None):
 def observability_action(action):
     if action not in ("up", "down"):
         return 404, {"error": "unknown action"}
-    return launch("observability", "obs-" + action, "observability", [(f"make {action}", ROOT / "observability")], block_on_ci=False)
+    return launch("observability", "obs-" + action, "observability", [(f"make {action}", ROOT / "platform" / "observability")], block_on_ci=False)
 
 
 def cancel(job_id):

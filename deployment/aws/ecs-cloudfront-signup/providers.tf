@@ -26,6 +26,6 @@ provider "aws" {
   }
 
   default_tags {
-    tags = { Project = "plant-parent", Stage = "ecs-cloudfront-accounts" }
+    tags = { Project = "plant-parent", Stage = "ecs-cloudfront-signup" }
   }
 }

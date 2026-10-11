@@ -1,4 +1,4 @@
-# ecs-cloudfront + accounts: the React build in S3 and the Go API on ECS behind one CloudFront, with Cognito
+# ecs-cloudfront + sign-up: the React build in S3 and the Go API on ECS behind one CloudFront, with Cognito
 # self-service accounts (sign up, emailed codes, password reset, profile, sign out everywhere).
 # On this stage's own Floci (see compose.yaml). Run from this directory.
 SHELL := /bin/bash
@@ -15,7 +15,7 @@ export FLOCI_ENDPOINT := $(FLOCI)
 
 # Image tag = git commit (+ -dirty for uncommitted changes); override with IMAGE_TAG=...
 # Evaluated once (:=), so images/push/deploy in one run always agree even if HEAD moves.
-IMAGE_TAG := $(or $(IMAGE_TAG),$(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- $(ROOT)/apps/backend-accounts $(ROOT)/apps/frontend-accounts || echo -dirty))
+IMAGE_TAG := $(or $(IMAGE_TAG),$(shell git rev-parse --short HEAD)$(shell git diff --quiet HEAD -- $(ROOT)/apps/backend-signup $(ROOT)/apps/frontend-signup || echo -dirty))
 export TF_VAR_image_tag := $(IMAGE_TAG)
 REGISTRY := 000000000000.dkr.ecr.$(AWS_REGION).localhost:4572
 
@@ -38,20 +38,20 @@ _repos:
 	@# this state, it is such a leftover: remove it so Terraform can create it again (the images are pushed right after).
 	@for svc in backend; do \
 		terraform state show 'aws_ecr_repository.app["'$$svc'"]' >/dev/null 2>&1 && continue; \
-		$(AWS) ecr describe-repositories --repository-names plant-accounts-$$svc >/dev/null 2>&1 || continue; \
-		echo "removing leftover ECR repository plant-accounts-$$svc from an earlier emulator run"; \
-		$(AWS) ecr delete-repository --force --repository-name plant-accounts-$$svc >/dev/null; \
+		$(AWS) ecr describe-repositories --repository-names plant-signup-$$svc >/dev/null 2>&1 || continue; \
+		echo "removing leftover ECR repository plant-signup-$$svc from an earlier emulator run"; \
+		$(AWS) ecr delete-repository --force --repository-name plant-signup-$$svc >/dev/null; \
 	done
 	terraform apply -auto-approve -target=aws_ecr_repository.app
 
-images: ## build the accounts API image locally as plant/backend-accounts:$(IMAGE_TAG) (CI builds it in a separate job)
-	docker build -t plant/backend-accounts:$(IMAGE_TAG) $(ROOT)/apps/backend-accounts
+images: ## build the sign-up API image locally as plant/backend-signup:$(IMAGE_TAG) (CI builds it in a separate job)
+	docker build -t plant/backend-signup:$(IMAGE_TAG) $(ROOT)/apps/backend-signup
 
 push: repos ## tag the local image for ECR and push it
 	$(AWS) ecr get-login-password | docker login --username AWS --password-stdin $(REGISTRY) >/dev/null
 	for svc in backend; do \
-		docker tag plant/backend-accounts:$(IMAGE_TAG) $(REGISTRY)/plant-accounts-$$svc:$(IMAGE_TAG) && \
-		docker push -q $(REGISTRY)/plant-accounts-$$svc:$(IMAGE_TAG) || exit 1; \
+		docker tag plant/backend-signup:$(IMAGE_TAG) $(REGISTRY)/plant-signup-$$svc:$(IMAGE_TAG) && \
+		docker push -q $(REGISTRY)/plant-signup-$$svc:$(IMAGE_TAG) || exit 1; \
 	done
 
 deploy: ## terraform apply for the pushed $(IMAGE_TAG)
@@ -60,23 +60,23 @@ deploy: ## terraform apply for the pushed $(IMAGE_TAG)
 apply: images push deploy
 
 frontend: ## build the React app that is uploaded to the site bucket
-	cd $(ROOT)/apps/frontend-accounts && npm ci --silent && npm run build
+	cd $(ROOT)/apps/frontend-signup && npm ci --silent && npm run build
 
 site: ## upload the React build to the site bucket and invalidate CloudFront (a frontend release)
-	d=$(ROOT)/apps/frontend-accounts/dist; b=$$(terraform output -raw site_bucket); \
+	d=$(ROOT)/apps/frontend-signup/dist; b=$$(terraform output -raw site_bucket); \
 	$(AWS) s3 sync "$$d" "s3://$$b" --delete --exclude 'assets/*' --cache-control 'no-cache' --only-show-errors && \
 	$(AWS) s3 sync "$$d/assets" "s3://$$b/assets" --delete --cache-control 'public, max-age=31536000, immutable' --only-show-errors && \
 	$(AWS) cloudfront create-invalidation --distribution-id "$$(terraform output -raw distribution_id)" --paths '/*' --query Invalidation.Status --output text
 
 up: floci init apply frontend site wait ## everything, from nothing to a working URL
 
-revisions = $$($(AWS) ecs describe-services --cluster plant-accounts --services backend \
+revisions = $$($(AWS) ecs describe-services --cluster plant-signup --services backend \
 	--query 'services[].taskDefinition' --output text | grep -o ':[0-9]*' | tr -d : | tr '\n' ' ')
 
 rollout: ## deployment test: ship the same images under a new tag; expect new revisions, healthy targets, passing API smoke
 	@# The image tag is the git commit: after new commits the deployed images carry an older tag, so build this commit's first.
 	@before="$(revisions)"; echo "revisions before: $$before"; \
-	{ docker image inspect plant/backend-accounts:$(IMAGE_TAG) >/dev/null 2>&1 || $(MAKE) -s images IMAGE_TAG=$(IMAGE_TAG) >/dev/null || exit 1; } && docker tag plant/backend-accounts:$(IMAGE_TAG) plant/backend-accounts:$(IMAGE_TAG)-rollout; \
+	{ docker image inspect plant/backend-signup:$(IMAGE_TAG) >/dev/null 2>&1 || $(MAKE) -s images IMAGE_TAG=$(IMAGE_TAG) >/dev/null || exit 1; } && docker tag plant/backend-signup:$(IMAGE_TAG) plant/backend-signup:$(IMAGE_TAG)-rollout; \
 	$(MAKE) -s push deploy IMAGE_TAG=$(IMAGE_TAG)-rollout >/dev/null && $(MAKE) -s wait IMAGE_TAG=$(IMAGE_TAG)-rollout >/dev/null || exit 1; \
 	after="$(revisions)"; echo "revisions after:  $$after"; \
 	[ "$$before" != "$$after" ] || { echo "FAIL: task-definition revisions did not change"; exit 1; }; \
@@ -99,7 +99,7 @@ smoke: ## origin lock; a new person through every account step; API + browser sm
 	$(tokenenv) $(SMOKE)/api-smoke.sh "$$(terraform output -raw app_url)" "$$(terraform output -raw media_bucket)"
 	cd $(SMOKE) && npm ci --silent && { [ -n "$$SMOKE_BROWSER_CHANNEL" ] || npx playwright install chromium >/dev/null; } \
 		&& SMOKE_LOGIN_USER=alice@plant.example SMOKE_LOGIN_PASSWORD='Plant-Parent-2026!' \
-		SMOKE_STAGE=ecs-cloudfront-accounts SMOKE_BASE_URL="$$(cd $(CURDIR) && terraform output -raw app_url)" npx playwright test
+		SMOKE_STAGE=ecs-cloudfront-signup SMOKE_BASE_URL="$$(cd $(CURDIR) && terraform output -raw app_url)" npx playwright test
 
 health: ## target health of both target groups
 	@for tg in backend; do echo "$$tg:"; $(AWS) elbv2 describe-target-health \

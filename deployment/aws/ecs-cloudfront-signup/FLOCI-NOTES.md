@@ -1,4 +1,4 @@
-# Floci notes for ecs-cloudfront-accounts (from ecs-cloudfront, plus the accounts section at the end)
+# Floci notes for ecs-cloudfront-signup (from ecs-cloudfront, plus the account-flow section at the end)
 
 ## Its own emulator, a dated nightly
 
@@ -6,7 +6,7 @@
 
 ## CloudFront on Floci (same workarounds as the serverless stages)
 
-- **App URL:** a distribution alias, `plant-accounts.localhost:4572` (`*.localhost` resolves to 127.0.0.1; Floci routes by the Host header). On AWS: the `*.cloudfront.net` domain.
+- **App URL:** a distribution alias, `plant-signup.localhost:4572` (`*.localhost` resolves to 127.0.0.1; Floci routes by the Host header). On AWS: the `*.cloudfront.net` domain.
 - **The ALB origin is `localhost` on the listener port.** Floci's CloudFront and its ALB listeners run in the same process, and CloudFront refuses origins that resolve to local addresses unless allow-listed (`FLOCI_SERVICES_CLOUDFRONT_ALLOWED_PRIVATE_ORIGIN_HOSTS: localhost`). On AWS the origin is the ALB's DNS name.
 - **CloudFront Functions are stored, not run.** Locally a distribution-wide error page turns S3's 403/404 into `index.html`, which also rewrites the API's own 404s. `make smoke` sets `SMOKE_ALLOW_SPA_FALLBACK=1` for that; on AWS the function does the SPA routing and real 404s come through.
 
