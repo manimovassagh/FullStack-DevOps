@@ -23,6 +23,13 @@ RUN npx --yes playwright@1.63.0 install-deps chromium \
  && chmod -R a+rX /ms-playwright && rm -rf /var/lib/apt/lists/* /root/.npm
 # Stages that run over HTTPS (aws/ecs-cloudfront-signup-https) make a throwaway local CA with mkcert in every job.
 # libnss3-tools (certutil) lets `mkcert -install` also put that CA where Chromium looks, so the browser tests trust it.
+# mkcert is pinned to a release and verified against the checksums below (not the /latest redirect).
+ARG MKCERT_VERSION=1.4.4
+ARG MKCERT_SHA256_AMD64=6d31c65b03972c6dc4a14ab429f2928300518b26503f58723e532d1b0a3bbb52
+ARG MKCERT_SHA256_ARM64=b98f2cc69fd9147fe4d405d859c57504571adec0d3611c3eefd04107c7ac00d0
 RUN apt-get update && apt-get install -y --no-install-recommends libnss3-tools && rm -rf /var/lib/apt/lists/* \
- && curl -sfL "https://dl.filippo.io/mkcert/latest?for=linux/$(dpkg --print-architecture)" -o /usr/local/bin/mkcert \
+ && arch="$(dpkg --print-architecture)" \
+ && curl -sfL "https://github.com/FiloSottile/mkcert/releases/download/v${MKCERT_VERSION}/mkcert-v${MKCERT_VERSION}-linux-${arch}" -o /usr/local/bin/mkcert \
+ && if [ "$arch" = arm64 ]; then sum="$MKCERT_SHA256_ARM64"; else sum="$MKCERT_SHA256_AMD64"; fi \
+ && echo "${sum}  /usr/local/bin/mkcert" | sha256sum -c - \
  && chmod +x /usr/local/bin/mkcert && mkcert -version
