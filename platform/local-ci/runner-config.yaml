@@ -2,7 +2,11 @@ log:
   level: info
 runner:
   file: /data/.runner
-  capacity: 1        # one job at a time: the stages publish fixed ports (4566, 5432, 8088-8096)
+  # Up to three jobs at once, like GitHub: inside one pipeline Backend, Frontend and IaC run side by side
+  # (about a third faster). Only Backend (Postgres 5432 + Floci 4566) and Deploy bind fixed host ports, and
+  # Deploy always waits for Backend. So run ONE pipeline at a time (the panel's Run button, dispatch.sh):
+  # two pipelines at once would fight over those ports. Set 1 to be strictly sequential.
+  capacity: 3
   timeout: 3h
 cache:
   enabled: true

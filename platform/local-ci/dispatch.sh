@@ -8,6 +8,8 @@ curl -sf -u "${ADMIN_USER:-ci}:${ADMIN_PASS:-ci-password-1}" -X POST \
   "http://localhost:3300/api/v1/repos/ci/FullStack-DevOps/actions/workflows/$WF/dispatches" \
   -H 'content-type: application/json' -d "{\"ref\":\"$REF\"}"
 sleep 5; run=$(q "select max(id) from action_run"); [ "$run" -gt "$before" ] || { echo "no run was created for $WF"; exit 1; }
-while [ "$(q "select count(*) from action_run_job where run_id=$run and status in (5,6,7)")" != 0 ]; do sleep 10; done
+# Done when the RUN has a final status. (Not "no job is waiting": a job whose dependency failed stays blocked
+# forever, and that used to keep this loop, and the panel's CI slot, busy for good.)
+while [ "$(q "select status from action_run where id=$run")" -ge 5 ]; do sleep 10; done
 q "select j.name || ' -> ' || case j.status when 1 then 'success' when 2 then 'FAILED' when 3 then 'cancelled' when 4 then 'skipped' else j.status end from action_run_job j where run_id=$run order by id"
 [ "$(q "select count(*) from action_run_job where run_id=$run and status<>1")" = 0 ]
