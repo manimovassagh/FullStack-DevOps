@@ -67,11 +67,18 @@ wait: ## block until the app answers through CloudFront (page + API)
 
 release_header = curl -sI "$(apiurl)/api/health" | tr -d '\r' | awk -F': ' 'tolower($$1)=="x-release"{print $$2}'
 
+# The apply moves the `live` alias, but the previous version keeps answering for a short while (it is healthy too,
+# so `make wait` returns at once). Poll for the new label instead of reading it once: ROLLOUT_TRIES x 5 s.
+ROLLOUT_TRIES ?= 24
+
 rollout: ## deployment test: ship a new release; the function must answer with the new X-Release and the API must still pass its smoke test
 	@before=$$($(release_header)); echo "release before: $$before"; \
 	$(MAKE) -s deploy RELEASE=$(RELEASE)-rollout >/dev/null && $(MAKE) -s wait >/dev/null || exit 1; \
-	after=$$($(release_header)); echo "release after:  $$after"; \
-	[ -n "$$after" ] && [ "$$before" != "$$after" ] || { echo "FAIL: the live release did not change"; exit 1; }; \
+	after=; waited=0; for i in $$(seq 1 $(ROLLOUT_TRIES)); do \
+		after=$$($(release_header)); [ -n "$$after" ] && [ "$$before" != "$$after" ] && break; waited=$$((i*5)); sleep 5; done; \
+	echo "release after:  $$after (waited $${waited}s)"; \
+	[ -n "$$after" ] && [ "$$before" != "$$after" ] || { echo "FAIL: the live release did not change"; \
+		$(AWS) lambda get-alias --function-name "$$(terraform output -raw function_name)" --name live --query 'FunctionVersion' --output text 2>&1 | sed 's/^/  live alias -> version /'; exit 1; }; \
 	SMOKE_ALLOW_SPA_FALLBACK=1 $(tokenenv) $(SMOKE)/api-smoke.sh "$(apiurl)" "$$(terraform output -raw media_bucket)" | tail -1
 
 plan:

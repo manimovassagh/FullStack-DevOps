@@ -18,8 +18,20 @@ WAIT_TRIES ?= 60 # × 5 s
 # container. Why not on the host: the azurerm provider requires HTTPS and macOS Go ignores SSL_CERT_FILE.
 TF_IMAGE := hashicorp/terraform:1.14.6
 EMULATOR := plant-azure-floci-az
-TF = docker run --rm --network container:$(EMULATOR) -v $(CURDIR):/work -w /work \
-	-e TF_DATA_DIR=/work/build/tfdata -e SSL_CERT_FILE=/work/build/ca-bundle.pem \
+# Where Terraform finds this folder. On a laptop (or a GitHub-hosted runner, which has no job container) the folder
+# is a host path, so it is bind-mounted at /work. Inside a container (a local-CI job) the checkout is a *volume of
+# that container*, not a host path: a bind mount would be empty ("Terraform initialized in an empty directory").
+# There the Terraform container shares the job container's volumes, so the checkout appears at the same path.
+JOB := $(shell grep -o 'docker/containers/[0-9a-f]\{64\}' /proc/self/mountinfo 2>/dev/null | head -1 | cut -d/ -f3)
+ifneq ($(JOB),)
+  TF_MOUNT := --volumes-from $(JOB) -w $(CURDIR)
+  TF_DIR   := $(CURDIR)
+else
+  TF_MOUNT := -v $(CURDIR):/work -w /work
+  TF_DIR   := /work
+endif
+TF = docker run --rm --network container:$(EMULATOR) $(TF_MOUNT) \
+	-e TF_DATA_DIR=$(TF_DIR)/build/tfdata -e SSL_CERT_FILE=$(TF_DIR)/build/ca-bundle.pem \
 	-e TF_VAR_image_tag=$(IMAGE_TAG) -e TF_VAR_db_host -e TF_VAR_emulator_address -e TF_VAR_s3_address \
 	$(TF_IMAGE)
 
