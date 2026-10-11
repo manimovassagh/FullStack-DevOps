@@ -12,10 +12,13 @@ code() { curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$@"; }
 
 # --- the certificate
 [ "$(code "$URL/")" = 200 ] && pass "HTTPS answers 200 and the certificate is trusted (no -k)" || fail "HTTPS request failed (is the CA trusted? make tls)"
-cert=$(echo | openssl s_client -connect "$HOST:$PORT" -servername "$HOST" 2>/dev/null | openssl x509 -noout -ext subjectAltName -enddate 2>/dev/null)
-echo "$cert" | grep -q "DNS:$HOST" && pass "certificate names $HOST" || fail "certificate does not name $HOST"
-end=$(echo "$cert" | sed -n 's/^notAfter=//p')
-[ -n "$end" ] && openssl x509 -checkend $((30*86400)) -noout <<<"$(echo | openssl s_client -connect "$HOST:$PORT" -servername "$HOST" 2>/dev/null | openssl x509)" >/dev/null \
+# openssl connects to the loopback address and sends the name as SNI: curl resolves *.localhost by itself, but
+# openssl asks the system resolver, which inside a CI container does not know *.localhost names.
+pem=$(echo | openssl s_client -connect "127.0.0.1:$PORT" -servername "$HOST" 2>/dev/null | openssl x509 2>/dev/null || true)
+[ -n "$pem" ] || fail "could not read the certificate served for $HOST on port $PORT"
+openssl x509 -noout -ext subjectAltName <<<"$pem" | grep -q "DNS:$HOST" && pass "certificate names $HOST" || fail "certificate does not name $HOST"
+end=$(openssl x509 -noout -enddate <<<"$pem" | sed -n 's/^notAfter=//p')
+openssl x509 -checkend $((30*86400)) -noout <<<"$pem" >/dev/null \
   && pass "valid for at least 30 more days (until $end)" || fail "certificate expires within 30 days or has no end date"
 
 # --- protocol
