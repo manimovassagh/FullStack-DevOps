@@ -7,7 +7,9 @@ name: plant-serverless-gateway-auth
 
 services:
   floci:
-    image: floci/floci:nightly-10012026
+    # nightly-10102026, not 10012026: older builds return ListVersionsByFunction in a name-dependent order and
+    # `make rollout` then never moves the alias (FLOCI-NOTES.md, "Lambda version list order").
+    image: floci/floci:nightly-10102026
     ports:
       - "4570:4566"
     environment:

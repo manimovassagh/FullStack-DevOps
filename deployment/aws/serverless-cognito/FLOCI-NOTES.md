@@ -1,6 +1,6 @@
 # Floci notes for the serverless stage
 
-Verified against the Floci nightly `nightly-10012026` (pinned in [compose.yaml](compose.yaml)).
+Verified against the Floci nightly `nightly-10102026` (earlier notes were taken on `nightly-10012026`; see the last section) (pinned in [compose.yaml](compose.yaml)).
 
 ## This stage runs its own Floci
 
@@ -27,3 +27,7 @@ The other stages use the shared Floci 2.1.0 (port 4566, root `docker-compose.yml
 
 - Tokens carry `iss = http://localhost:4566/<pool>` (Floci's address inside its container), not the host port 4568: `var.cognito_issuer_base` sets it for the function's `COGNITO_ISSUER`.
 - The CloudFront 404 → `/index.html` rewrite above also hides the API's 404s, so `scripts/auth-smoke.sh` counts the SPA page as "refused" on Floci, as long as the other user's data is not in it. On AWS the CloudFront Function keeps API 404s as they are.
+
+## Lambda version list order (why this stage is on `nightly-10102026`)
+
+Terraform's AWS provider reads a function's newest version as the **last entry** of `ListVersionsByFunction` ("sorted from oldest to latest"). On `nightly-10012026` (and release 2.2.0) Floci returned that list in an order that depends on the function's *name*: with the same three versions, 5 of 6 names came back scrambled (`plant-sls-api` → `$LATEST 3 1 2`, `plant-sls-gw-api` → `1 2 3 $LATEST`, `plant-sls-auth-api` → `$LATEST 3 2 1`). After `make rollout` published a new version the provider therefore read an old one as "latest", planned no alias change, and `live` stayed where it was: `release before: X / release after: X`, with the alias still on version 1 after a 120 s wait (local CI run 25). Whether a rollout passed depended on the hash of the function name. `nightly-10102026` returns `$LATEST 1 2 3` for every name tried (6 of 6), as the Floci docs state. Moved here on 2026-10-11; do not go back to an older nightly.

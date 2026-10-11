@@ -1,6 +1,6 @@
 # Floci notes for the serverless stage
 
-Verified against the Floci nightly `nightly-10012026` (pinned in [compose.yaml](compose.yaml)).
+Verified against the Floci nightly `nightly-10102026` (earlier notes were taken on `nightly-10012026`; see the last section) (pinned in [compose.yaml](compose.yaml)).
 
 ## This stage runs its own Floci
 
@@ -22,3 +22,7 @@ The other stages use the shared Floci 2.1.0 (port 4566, root `docker-compose.yml
 - **VPC, NAT and security groups are metadata.** The function runs in a Docker container; Floci only needs the compose network (`FLOCI_SERVICES_LAMBDA_DOCKER_NETWORK`) so it can reach RDS and S3.
 - **In-Floci address.** The function reaches Floci's S3 and Secrets Manager at the address RDS reports (`AWS_ENDPOINT_URL`, set only when `var.on_floci`). `localhost` would be the function's own container.
 - **Limits not emulated.** Real Lambda caps the request body at 6 MB (base64 adds a third), so `MAX_UPLOAD_BYTES` is 4 MiB. Floci does not enforce the cap, but the setting is kept so the behavior matches AWS.
+
+## Lambda version list order (why this stage is on `nightly-10102026`)
+
+Terraform's AWS provider reads a function's newest version as the **last entry** of `ListVersionsByFunction` ("sorted from oldest to latest"). On `nightly-10012026` (and release 2.2.0) Floci returned that list in an order that depends on the function's *name*: with the same three versions, 5 of 6 names came back scrambled (`plant-sls-api` → `$LATEST 3 1 2`, `plant-sls-gw-api` → `1 2 3 $LATEST`, `plant-sls-auth-api` → `$LATEST 3 2 1`). After `make rollout` published a new version the provider therefore read an old one as "latest", planned no alias change, and `live` stayed where it was: `release before: X / release after: X`, with the alias still on version 1 after a 120 s wait (local CI run 25). Whether a rollout passed depended on the hash of the function name. `nightly-10102026` returns `$LATEST 1 2 3` for every name tried (6 of 6), as the Floci docs state. Moved here on 2026-10-11; do not go back to an older nightly.
