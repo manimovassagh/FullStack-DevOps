@@ -1,0 +1,37 @@
+# Checks for the MCP servers in mcp/ (lab-learn and lab-operate): unit and stdio tests, then lab-learn is asked
+# 25 real questions about this repository and must find the right sources (>= 90 %). No Docker, no emulator.
+name: "MCP · lab-learn and lab-operate"
+run-name: "MCP · ${{ github.event.pull_request.title || github.ref_name }}"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - mcp/**
+      - deployment/**
+      - docs/**
+      - .github/workflows/mcp.yml
+  pull_request:
+    paths:
+      - mcp/**
+      - deployment/**
+      - docs/**
+      - .github/workflows/mcp.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install
+        run: make -C mcp install
+      - name: Tests (file guard, catalog, search, both servers, stdio)
+        run: make -C mcp test
+      - name: The docs and the catalog agree
+        run: make -C mcp check
+      - name: Evaluation (answers must cite the right sources)
+        run: make -C mcp eval

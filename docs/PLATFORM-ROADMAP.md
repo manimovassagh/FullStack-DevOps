@@ -11,7 +11,7 @@ Effort: **S** = an hour or two · **M** = half a day to a day · **L** = several
 - [ ] **pre-commit hooks** (S): `terraform fmt`, `tflint`, `gofmt`/`go vet`, `oxlint`, `shellcheck`, trailing whitespace, YAML check. One `.pre-commit-config.yaml`, `make hooks` to install. CI runs the same hooks, so local and CI agree.
 - [ ] **`.editorconfig`** (S): one indentation and newline style for Go, TS, Terraform, YAML, Makefiles.
 - [ ] **`CONTRIBUTING.md`** (S): how to add a stage (link the rules in deployment/ROADMAP.md), how to run local CI, the "one pipeline at a time" rule.
-- [ ] **Architecture Decision Records** (S): `docs/adr/`, one short page per decision already made: why Floci, why stages never share Terraform, why local CI on Gitea, why `apps/` + `platform/`, why the `signup` naming, why Floci `nightly-10102026` for the serverless stages.
+- [x] **Architecture Decision Records** (S): `docs/adr/`, one short page per decision already made: why Floci, why stages never share Terraform, why local CI on Gitea, why `apps/` + `platform/`, why the `signup` naming, why Floci `nightly-10102026` for the serverless stages.
 - [ ] **Dependabot** (S): weekly PRs for Go modules, npm, Terraform providers and GitHub Actions. Mostly to keep dependencies fresh (the `golang.org/x/net` bump would have arrived as a PR).
 - [ ] **Loose ends from the local-CI run** (S):
   - [ ] serverless workflows: teardown also runs `docker compose down`, and the "nothing left running" check matches the `plant-…` emulator names (today it only looks for `floci-…`).
@@ -80,8 +80,8 @@ This repository is a learning and planning blueprint that runs on emulators. Ima
 
 ## 9. MCP server: let any AI operate the lab and learn from it
 
-- [ ] **Plan written:** [docs/superpowers/plans/2026-10-12-mcp-lab-server.md](superpowers/plans/2026-10-12-mcp-lab-server.md): two servers, `lab-learn` (read-only: stages, lessons, concepts, search with citations, teaching prompts) and `lab-operate` (a thin, guarded wrapper over Mission Control's API). Open questions are listed at the end of the plan.
-- [ ] Build it in phases: content prep (ADRs, README tables), learn server, operate server, tests and CI.
+- [x] **Plan written:** [docs/superpowers/plans/2026-10-12-mcp-lab-server.md](superpowers/plans/2026-10-12-mcp-lab-server.md): two servers, `lab-learn` (read-only: stages, lessons, concepts, search with citations, teaching prompts) and `lab-operate` (a thin, guarded wrapper over Mission Control's API). Open questions are listed at the end of the plan.
+- [x] Built in `mcp/` (see [mcp/README.md](../mcp/README.md)): ADRs, `lab-learn`, `lab-operate`, tests, a 25-question evaluation and the `mcp.yml` workflow. Still open: the "What each file teaches" table in 10 stage READMEs (`make -C mcp check` lists them) and the optional hosted read-only `lab-learn`.
 
 ## Known simplifications (kept on purpose, listed so nobody mistakes them for production advice)
 
