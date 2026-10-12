@@ -1,0 +1,128 @@
+# Questions an AI should be able to answer from lab-learn, with what the answer must contain.
+# `expect` entries must all appear (case-insensitive) in the tool's JSON result: a source path, or a key phrase.
+# These run against the real repository (make eval); the score gates CI. Add one whenever a lesson is learned.
+- id: alias-rollout
+  question: Why did the serverless rollout never move the Lambda alias?
+  tool: lessons_for
+  args: {topic: "why did the serverless rollout not move the lambda alias"}
+  expect: ["serverless-cognito/FLOCI-NOTES.md", "version list order"]
+- id: nightly-pin
+  question: Why are the serverless stages pinned to Floci nightly-10102026?
+  tool: lessons_for
+  args: {topic: "why is the serverless stage pinned to floci nightly 10102026"}
+  expect: ["serverless-cognito/FLOCI-NOTES.md", "nightly-10102026"]
+- id: bind-mount-ci
+  question: Why can a CI job not bind-mount the checkout into a container?
+  tool: lessons_for
+  args: {topic: "why can a ci job not bind mount the checkout"}
+  expect: ["ecs-cloudfront-signup-https/FLOCI-NOTES.md", "bind mount"]
+- id: tls-local
+  question: How is TLS terminated locally for the HTTPS stage?
+  tool: search_blueprint
+  args: {query: "how is tls terminated locally for the https stage"}
+  expect: ["ecs-cloudfront-signup-https"]
+- id: simplifications
+  question: What is deliberately simplified or out of scope in this lab?
+  tool: search_blueprint
+  args: {query: "what is deliberately simplified or out of scope"}
+  expect: ["docs/PLATFORM-ROADMAP.md"]
+- id: origin-lock
+  question: Why does the ALB refuse requests that do not come through CloudFront?
+  tool: search_blueprint
+  args: {query: "why does the alb refuse requests that do not come through cloudfront origin verify header"}
+  expect: ["ecs-cloudfront"]
+- id: hosted-login
+  question: Which stage teaches the Cognito hosted login?
+  tool: learning_path
+  args: {goal: "sign in with the Cognito hosted login at the load balancer"}
+  expect: ["ecs-alb-auth"]
+- id: oauth2-proxy
+  question: Why does ecs-alb-auth run an oauth2-proxy on Floci?
+  tool: lessons_for
+  args: {topic: "oauth2-proxy because floci does not enforce authenticate-cognito"}
+  expect: ["ecs-alb-auth/FLOCI-NOTES.md"]
+- id: ecr-port
+  question: Why do tasks of a stage on its own Floci pull images from a swapped port?
+  tool: lessons_for
+  args: {topic: "ecr repository url internal port 4566 swapped for this floci host port"}
+  expect: ["ecs-alb-auth/FLOCI-NOTES.md", "4566"]
+- id: blue-green
+  question: What does the blue/green stage teach?
+  tool: explain_stage
+  args: {stage_id: "ecs-blue-green"}
+  expect: ["blue-green-deployments"]
+- id: gitops
+  question: Where is GitOps demonstrated?
+  tool: find_example
+  args: {concept: "gitops"}
+  expect: ["eks-gitops"]
+- id: helm
+  question: Where is Helm used?
+  tool: find_example
+  args: {concept: "helm"}
+  expect: ["eks-helm"]
+- id: jwt-authorizer
+  question: How does the API Gateway JWT authorizer work against Floci's Cognito?
+  tool: search_blueprint
+  args: {query: "api gateway jwt authorizer private ip jwks issuer http"}
+  expect: ["serverless-gateway-auth"]
+- id: stage-rules
+  question: What are the rules for adding a stage?
+  tool: search_blueprint
+  args: {query: "never share terraform between stages standalone cookbooks duplication is intentional"}
+  expect: ["deployment/ROADMAP.md"]
+- id: local-ci
+  question: How do I run the pipelines on local CI?
+  tool: search_blueprint
+  args: {query: "how do i run the pipelines on local ci with gitea and the runner"}
+  expect: ["platform/local-ci"]
+- id: mission-control
+  question: What is Mission Control?
+  tool: search_blueprint
+  args: {query: "what is mission control the lab dashboard"}
+  expect: ["platform/mission-control"]
+- id: https-vs-plain
+  question: What does the HTTPS variant of the sign-up stage add?
+  tool: compare_stages
+  args: {a: "ecs-cloudfront-signup", b: "ecs-cloudfront-signup-https"}
+  expect: ["tls-check.sh", "ci-trust.sh", "tls-https"]
+- id: vms-asg
+  question: Which stage teaches VMs with auto scaling?
+  tool: learning_path
+  args: {goal: "virtual machines with auto scaling groups"}
+  expect: ["ec2-asg"]
+- id: gcp
+  question: Where is the Google Cloud stage?
+  tool: search_blueprint
+  args: {query: "google cloud run cloud sql cloud storage stage"}
+  expect: ["deployment/gcp/cloud-run"]
+- id: azure
+  question: How does the Azure stage run Terraform against the emulator?
+  tool: search_blueprint
+  args: {query: "azure terraform runs in a container sharing the emulator network tls certificate"}
+  expect: ["deployment/azure/container-apps"]
+- id: signup
+  question: Which stage teaches sign-up with an emailed code and password reset?
+  tool: learning_path
+  args: {goal: "self-service sign up emailed code and password reset"}
+  expect: ["ecs-cloudfront-signup"]
+- id: loadtest
+  question: What load-test profiles exist?
+  tool: search_blueprint
+  args: {query: "k6 load test profiles smoke load spike stress"}
+  expect: ["platform/loadtest"]
+- id: lab-https
+  question: How does the lab get HTTPS for its dashboards?
+  tool: search_blueprint
+  args: {query: "mkcert caddy lab.localhost https for the dashboards"}
+  expect: ["platform/https"]
+- id: listener-rule
+  question: Where is an ALB listener rule defined?
+  tool: find_example
+  args: {concept: "alb listener rule"}
+  expect: ["alb.tf"]
+- id: mcp-plan
+  question: What is the MCP server plan?
+  tool: search_blueprint
+  args: {query: "mcp server lab-learn lab-operate plan"}
+  expect: ["2026-10-12-mcp-lab-server.md"]

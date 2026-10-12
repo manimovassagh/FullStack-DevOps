@@ -1,6 +1,6 @@
 # Plan: an MCP server for the lab (operate it, and learn from it)
 
-Status: **plan, nothing built.** Decided: location (top-level `mcp/`, option A) and language (Python). The remaining open questions are in section 9.
+Status: **built (phases 0–5)** in [mcp/](../../../mcp/README.md); phase 6 (hosted read-only lab-learn) is not. lab-operate ended with 20 tools (7 read, 8 act, 5 destructive), more than the "about 12" first planned, because each action stayed its own tool so clients can annotate each one. Decided: location (top-level `mcp/`, option A) and language (Python). The remaining open questions are in section 9.
 
 ## 1. Goal
 
