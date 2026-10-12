@@ -162,6 +162,7 @@ platform/
   observability/                    Prometheus, Grafana and an exporter for Docker, ECS, ALB and Kubernetes
   loadtest/                         k6 scripts and profiles
   local-ci/                         Gitea + runner for the GitHub workflows (.github/workflows)
+mcp/                                MCP servers so any AI can learn from the blueprint (lab-learn) and operate the lab (lab-operate): planned, see docs/superpowers/plans/2026-10-12-mcp-lab-server.md
 docs/                               design notes and screenshots
 ```
 

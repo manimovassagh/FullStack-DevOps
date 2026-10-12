@@ -78,6 +78,11 @@ Today every local URL is plain HTTP. Goal: the same lab, but on `https://` with 
 
 This repository is a learning and planning blueprint that runs on emulators. Image signing, SBOMs, policy-as-code gates and similar hardening are deliberately not built here. Anyone taking a stage to real AWS needs a proper security review anyway. Basic hygiene stays (pre-commit, Dependabot, the existing Trivy and tflint checks).
 
+## 9. MCP server: let any AI operate the lab and learn from it
+
+- [ ] **Plan written:** [docs/superpowers/plans/2026-10-12-mcp-lab-server.md](superpowers/plans/2026-10-12-mcp-lab-server.md): two servers, `lab-learn` (read-only: stages, lessons, concepts, search with citations, teaching prompts) and `lab-operate` (a thin, guarded wrapper over Mission Control's API). Open questions are listed at the end of the plan.
+- [ ] Build it in phases: content prep (ADRs, README tables), learn server, operate server, tests and CI.
+
 ## Known simplifications (kept on purpose, listed so nobody mistakes them for production advice)
 
 - CloudFront → ALB is plain HTTP in the `ecs-cloudfront*` stages (`origin_protocol_policy = "http-only"`); production: an HTTPS listener with an ACM certificate and `https-only`.
